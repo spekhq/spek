@@ -4,10 +4,11 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-spek 是一個 OpenSpec 內容檢視器，提供三種使用方式：
+spek 是一個 OpenSpec 內容檢視器，提供四種使用方式：
 1. **Web 版**：本地唯讀 Web 應用（Express + React SPA），使用者啟動後在 UI 中選擇 repo 路徑瀏覽
 2. **VS Code Extension**：直接在 VS Code 中開啟 Webview Panel 瀏覽當前 workspace 的 OpenSpec 內容
-3. **Demo**：獨立靜態 HTML（`docs/demo.html`），內嵌 spek 自身的 openspec 資料，可部署至 GitHub Pages
+3. **IntelliJ Plugin**：在 IntelliJ IDEA 系列 IDE 中透過 Tool Window + JCEF 瀏覽 OpenSpec 內容
+4. **Demo**：獨立靜態 HTML（`docs/demo.html`），內嵌 spek 自身的 openspec 資料，可部署至 GitHub Pages
 
 ## Tech Stack
 
@@ -15,6 +16,7 @@ spek 是一個 OpenSpec 內容檢視器，提供三種使用方式：
 - **Frontend**: React 19 + Vite + TypeScript + Tailwind CSS v4
 - **Backend**: Express.js (Node.js) — 讀取本地檔案系統提供 REST API
 - **VS Code Extension**: Webview Panel + esbuild bundling
+- **IntelliJ Plugin**: Kotlin + JCEF + IntelliJ Built-in Server
 - **Markdown**: react-markdown + remark-gfm（含 BDD 語法高亮）
 - **Search**: Server-side 全文搜尋 + Fuse.js
 - **Routing**: React Router v7（Web: BrowserRouter, Webview: MemoryRouter）
@@ -28,9 +30,12 @@ packages/
 ├── web/        # @spek/web — Express + React 應用
 │   ├── server/ # Express API server
 │   └── src/    # React SPA + API adapters
-└── vscode/     # spek-vscode — VS Code Extension
-    ├── src/    # extension.ts, panel.ts, handler.ts
-    └── webview/ # Vite build output（由 web build:webview 產出）
+├── vscode/     # spek-vscode — VS Code Extension
+│   ├── src/    # extension.ts, panel.ts, handler.ts
+│   └── webview/ # Vite build output（由 web build:webview 產出）
+└── intellij/   # spek-intellij — IntelliJ Platform Plugin
+    ├── src/main/kotlin/com/spek/intellij/  # Kotlin 原始碼
+    └── src/main/resources/webview/          # Vite build output（由 web build:intellij 產出）
 scripts/        # Build 工具（build-demo.ts）
 docs/           # 靜態產出（demo.html，GitHub Pages 部署）
 .agents/
@@ -51,15 +56,23 @@ npm run build:web        # Build @spek/web（web 版 production build）
 npm run build:webview    # Build webview assets（給 VS Code extension 用）
 npm run build:vscode     # Build VS Code extension
 npm run build:demo       # Build 獨立 demo HTML（docs/demo.html）
+npm run build:intellij   # Build IntelliJ webview assets
 npm run type-check       # TypeScript type check
 ```
 
 **Web 開發**：`npm run dev` 後存取 http://localhost:5173
 
-**Extension 打包**：
+**VS Code Extension 打包**：
 ```bash
 npm run build -w @spek/core && npm run build:webview -w @spek/web && npm run build -w spek-vscode
 cd packages/vscode && npx vsce package --no-dependencies
+```
+
+**IntelliJ Plugin 打包**：
+```bash
+npm run build -w @spek/core && npm run build:intellij
+cd packages/intellij && ./gradlew buildPlugin
+# 產出: packages/intellij/build/distributions/spek-intellij-*.zip
 ```
 
 ## Architecture
@@ -76,7 +89,7 @@ cd packages/vscode && npx vsce package --no-dependencies
 
 ### API Adapter Pattern
 前端透過 `ApiAdapter` 介面抽象通訊層：
-- `FetchAdapter` — Web 版，呼叫 Express REST API
+- `FetchAdapter` — Web 版 + IntelliJ 版，呼叫 REST API（支援自訂 `baseUrl` 和 `dirParam`）
 - `MessageAdapter` — VS Code Webview 版，透過 `postMessage` 與 extension host 通訊
 - `StaticAdapter` — Demo 版，從 build time 內嵌的 `window.__DEMO_DATA__` 讀取靜態資料
 - 透過 `ApiAdapterContext` (React Context) 注入
@@ -100,6 +113,16 @@ GET /api/openspec/search?dir=...&q=...   # 全文搜尋
 - `workspaceContains:openspec/config.yaml` activation
 - Webview Panel 載入 IIFE-bundled React app
 - extension host 直接呼叫 `@spek/core` 處理 API requests
+
+### IntelliJ Plugin
+- Kotlin 開發，使用 IntelliJ Platform SDK
+- JCEF（JetBrains 內建 Chromium）載入 React SPA 前端
+- IntelliJ Built-in Server 提供 REST API（`/api/spek/openspec/*`，`projectPath` query param）
+- Kotlin 重新實作 `@spek/core` 掃描/讀取邏輯（`core/` 目錄）
+- 前端用 `FetchAdapter`（含自訂 `baseUrl` + `dirParam`）連接內嵌 server
+- Tool Window 在 IDE 右側 sidebar 顯示
+- 主題同步透過 JCEF `executeJavaScript()` 注入 CSS class
+- 檔案監控透過 VFS BulkFileListener + 500ms debounce
 
 **Frontend routes**: `/` (SelectRepo, web only) → `/dashboard` → `/specs` → `/specs/:topic` → `/changes` → `/changes/:slug` → `/graph`
 

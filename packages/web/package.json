@@ -7,6 +7,7 @@
     "dev": "concurrently -n vite,api -c cyan,green \"vite\" \"tsx watch server/index.ts\"",
     "build": "tsc -p tsconfig.json --noEmit && vite build",
     "build:webview": "vite build --config vite.webview.config.ts",
+    "build:intellij": "vite build --config vite.intellij.config.ts",
     "type-check": "tsc -p tsconfig.json --noEmit",
     "lint": "eslint src server --ext .ts,.tsx",
     "format": "prettier --write src server"

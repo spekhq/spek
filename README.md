@@ -16,10 +16,11 @@
 
 **[Live Demo](https://kewang.github.io/spek/demo.html)** — Try it instantly in your browser, no install needed.
 
-Available in two forms:
+Available in three forms:
 
 - **Web** — Local Express + React app, accessible in any browser
 - **VS Code Extension** — Integrated Webview Panel within your editor
+- **IntelliJ Plugin** — JCEF-based Tool Window for IntelliJ IDEA and other JetBrains IDEs
 
 Both are **read-only** and **local-only**. No server deployment, no authentication, no data leaves your machine.
 
@@ -92,6 +93,17 @@ Once activated, click the **spek icon** in the Activity Bar to browse specs and 
 - `spek: Search OpenSpec` — Open search dialog
 - `spek: Open Dashboard` — Open the dashboard from sidebar
 
+### IntelliJ Plugin
+
+1. Download the latest `spek-intellij-*.zip` from [Releases](https://github.com/kewang/spek/releases)
+2. In IntelliJ IDEA, go to **Settings > Plugins > Gear icon > Install Plugin from Disk...**
+3. Select the downloaded ZIP file and restart the IDE
+
+The plugin activates automatically when your project contains an `openspec/` directory. Click the **spek** icon in the right sidebar to open the viewer.
+
+**Action:**
+- **Tools > Open spek** — Open the viewer panel
+
 ## OpenSpec Directory Structure
 
 spek expects the following structure under your repository:
@@ -121,14 +133,15 @@ spek expects the following structure under your repository:
 packages/
 ├── core/       # @spek/core — Pure logic (scanner, parser, types)
 ├── web/        # @spek/web — Express API + React SPA
-└── vscode/     # spek-vscode — VS Code Extension
+├── vscode/     # spek-vscode — VS Code Extension
+└── intellij/   # spek-intellij — IntelliJ Platform Plugin (Kotlin)
 ```
 
 ### API Adapter Pattern
 
 The frontend communicates through an `ApiAdapter` interface with two implementations:
 
-- **FetchAdapter** — Web version, calls Express REST API over HTTP
+- **FetchAdapter** — Web + IntelliJ version, calls REST API over HTTP (configurable base URL)
 - **MessageAdapter** — VS Code version, uses `postMessage` IPC with the extension host
 
 This allows the same React UI to run in both environments without code changes.
@@ -142,7 +155,8 @@ This allows the same React UI to run in both environments without code changes.
 | Backend | Express 4 |
 | Markdown | react-markdown, remark-gfm |
 | Search | Fuse.js |
-| Extension | VS Code Webview API, esbuild |
+| VS Code Extension | VS Code Webview API, esbuild |
+| IntelliJ Plugin | Kotlin, JCEF, IntelliJ Platform SDK |
 
 ## Development
 
@@ -153,10 +167,17 @@ npm run build            # Build core + web
 npm run build:core       # Build @spek/core only
 npm run build:webview    # Build webview assets for VS Code extension
 npm run build:vscode     # Build VS Code extension
+npm run build:intellij   # Build IntelliJ webview assets
 npm run type-check       # TypeScript type check
 ```
 
-**Requirements:** Node.js 22+
+**IntelliJ Plugin build:**
+```bash
+npm run build:intellij                    # Build frontend assets
+cd packages/intellij && ./gradlew buildPlugin  # Build plugin ZIP
+```
+
+**Requirements:** Node.js 22+, Java 17+ (for IntelliJ plugin build)
 
 ## Acknowledgments
 

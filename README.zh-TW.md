@@ -16,10 +16,11 @@
 
 **[線上 Demo](https://kewang.github.io/spek/demo.html)** — 直接在瀏覽器體驗，免安裝。
 
-提供兩種使用方式：
+提供三種使用方式：
 
 - **Web 版** — 本地 Express + React 應用，瀏覽器即可使用
 - **VS Code Extension** — 直接在 VS Code 內開啟 Webview Panel 瀏覽
+- **IntelliJ Plugin** — 在 IntelliJ IDEA 系列 IDE 中透過 JCEF Tool Window 瀏覽
 
 兩者皆為**唯讀**且**純本地**運作。不需要部署伺服器、不需要登入、資料不會離開你的電腦。
 
@@ -92,6 +93,17 @@ npm run dev
 - `spek: Search OpenSpec` — 開啟搜尋對話框
 - `spek: Open Dashboard` — 從側邊欄開啟 Dashboard
 
+### IntelliJ Plugin
+
+1. 從 [Releases](https://github.com/kewang/spek/releases) 下載最新的 `spek-intellij-*.zip`
+2. 在 IntelliJ IDEA 中，前往 **Settings > Plugins > 齒輪圖示 > Install Plugin from Disk...**
+3. 選擇下載的 ZIP 檔案，重啟 IDE
+
+當專案包含 `openspec/` 目錄時，Plugin 會自動啟用。點擊右側 sidebar 的 **spek** 圖示即可開啟檢視器。
+
+**指令：**
+- **Tools > Open spek** — 開啟檢視器面板
+
 ## OpenSpec 目錄結構
 
 spek 預期你的 repo 底下有以下結構：
@@ -121,17 +133,18 @@ spek 預期你的 repo 底下有以下結構：
 packages/
 ├── core/       # @spek/core — 純邏輯（掃描器、解析器、型別定義）
 ├── web/        # @spek/web — Express API + React SPA
-└── vscode/     # spek-vscode — VS Code Extension
+├── vscode/     # spek-vscode — VS Code Extension
+└── intellij/   # spek-intellij — IntelliJ Platform Plugin（Kotlin）
 ```
 
 ### API Adapter 模式
 
 前端透過 `ApiAdapter` 介面與後端溝通，有兩種實作：
 
-- **FetchAdapter** — Web 版，透過 HTTP 呼叫 Express REST API
+- **FetchAdapter** — Web 版 + IntelliJ 版，透過 HTTP 呼叫 REST API（支援自訂 base URL）
 - **MessageAdapter** — VS Code 版，透過 `postMessage` 與 Extension Host 通訊
 
-同一套 React UI 不需改動程式碼就能在兩種環境運作。
+同一套 React UI 不需改動程式碼就能在三種環境運作。
 
 ### 技術棧
 
@@ -142,7 +155,8 @@ packages/
 | 後端 | Express 4 |
 | Markdown 渲染 | react-markdown, remark-gfm |
 | 搜尋 | Fuse.js |
-| Extension | VS Code Webview API, esbuild |
+| VS Code Extension | VS Code Webview API, esbuild |
+| IntelliJ Plugin | Kotlin, JCEF, IntelliJ Platform SDK |
 
 ## 開發
 
@@ -153,10 +167,17 @@ npm run build            # Build core + web
 npm run build:core       # 僅 Build @spek/core
 npm run build:webview    # Build webview 靜態資源（給 VS Code Extension 用）
 npm run build:vscode     # Build VS Code Extension
+npm run build:intellij   # Build IntelliJ webview 靜態資源
 npm run type-check       # TypeScript 型別檢查
 ```
 
-**系統需求：** Node.js 22+
+**IntelliJ Plugin build：**
+```bash
+npm run build:intellij                    # Build 前端靜態資源
+cd packages/intellij && ./gradlew buildPlugin  # Build plugin ZIP
+```
+
+**系統需求：** Node.js 22+、Java 17+（IntelliJ plugin build 需要）
 
 ## 致謝
 
