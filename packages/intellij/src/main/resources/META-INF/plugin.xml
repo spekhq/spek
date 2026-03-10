@@ -1,0 +1,31 @@
+<idea-plugin>
+    <id>tw.kewang.spek</id>
+    <name>spek - OpenSpec Viewer</name>
+    <vendor>kewang</vendor>
+    <description><![CDATA[
+        OpenSpec content viewer for IntelliJ-based IDEs.
+        Browse specs, changes, and task progress directly within your IDE.
+    ]]></description>
+
+    <depends>com.intellij.modules.platform</depends>
+
+    <extensions defaultExtensionNs="com.intellij">
+        <toolWindow id="spek"
+                    anchor="right"
+                    icon="/icons/spek.svg"
+                    factoryClass="com.spek.intellij.SpekToolWindowFactory"/>
+
+        <httpRequestHandler implementation="com.spek.intellij.server.SpekHttpRequestHandler"/>
+
+        <postStartupActivity implementation="com.spek.intellij.SpekStartupActivity"/>
+    </extensions>
+
+    <actions>
+        <action id="spek.open"
+                class="com.spek.intellij.actions.OpenSpekAction"
+                text="Open spek"
+                description="Open OpenSpec viewer">
+            <add-to-group group-id="ToolsMenu" anchor="last"/>
+        </action>
+    </actions>
+</idea-plugin>

@@ -1,0 +1,4 @@
+build/
+.gradle/
+.idea/
+src/main/resources/webview/
