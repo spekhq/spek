@@ -37,7 +37,7 @@ jobs:
         working-directory: packages/intellij
         run: |
           TAG_VERSION="${GITHUB_REF#refs/tags/v}"
-          PLUGIN_VERSION=$(grep '^pluginVersion' gradle.properties | cut -d'=' -f2 | tr -d ' ')
+          PLUGIN_VERSION=$(grep '^pluginVersion' gradle.properties | cut -d'=' -f2 | tr -d ' \r')
           if [ "$TAG_VERSION" != "$PLUGIN_VERSION" ]; then
             echo "::error::Version mismatch: tag v${TAG_VERSION} but gradle.properties is ${PLUGIN_VERSION}"
             exit 1
