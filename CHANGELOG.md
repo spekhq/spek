@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.7.4
+
+- Fix IntelliJ plugin HTTP 404 error when opening specs/changes at startup
+- Fix README install instructions and plugin.xml change-notes
+
 ## 0.7.3
 
 - Add IntelliJ IDEA plugin — browse OpenSpec content in IntelliJ-based IDEs via Tool Window + JCEF
