@@ -22,7 +22,7 @@ Available in three forms:
 - **VS Code Extension** — Integrated Webview Panel within your editor
 - **IntelliJ Plugin** — JCEF-based Tool Window for IntelliJ IDEA and other JetBrains IDEs
 
-Both are **read-only** and **local-only**. No server deployment, no authentication, no data leaves your machine.
+All are **read-only** and **local-only**. No server deployment, no authentication, no data leaves your machine.
 
 ## Features
 
@@ -95,9 +95,7 @@ Once activated, click the **spek icon** in the Activity Bar to browse specs and 
 
 ### IntelliJ Plugin
 
-1. Download the latest `spek-intellij-*.zip` from [Releases](https://github.com/kewang/spek/releases)
-2. In IntelliJ IDEA, go to **Settings > Plugins > Gear icon > Install Plugin from Disk...**
-3. Select the downloaded ZIP file and restart the IDE
+Install from the [JetBrains Marketplace](https://plugins.jetbrains.com/plugin/30600-spek--openspec-viewer) — search for **"spek"** in **Settings > Plugins > Marketplace**.
 
 The plugin activates automatically when your project contains an `openspec/` directory. Click the **spek** icon in the right sidebar to open the viewer.
 

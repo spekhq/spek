@@ -23,10 +23,11 @@
     ]]></description>
 
     <change-notes><![CDATA[
-        <p><b>0.7.2</b></p>
+        <p><b>0.7.3</b></p>
         <ul>
-            <li>Fix sidebar navigation race condition when webview panel is not open</li>
-            <li>Add electron skill for Electron desktop app automation</li>
+            <li>Add IntelliJ Marketplace metadata — plugin icon, rich description, change notes, vendor info</li>
+            <li>Add IntelliJ plugin CI/CD — auto publish to JetBrains Marketplace on tag push</li>
+            <li>Fix .nvmrc to use exact Node.js version 22.22.0</li>
         </ul>
     ]]></change-notes>
 

@@ -22,7 +22,7 @@
 - **VS Code Extension** — 直接在 VS Code 內開啟 Webview Panel 瀏覽
 - **IntelliJ Plugin** — 在 IntelliJ IDEA 系列 IDE 中透過 JCEF Tool Window 瀏覽
 
-兩者皆為**唯讀**且**純本地**運作。不需要部署伺服器、不需要登入、資料不會離開你的電腦。
+三者皆為**唯讀**且**純本地**運作。不需要部署伺服器、不需要登入、資料不會離開你的電腦。
 
 ## 功能特色
 
@@ -95,9 +95,7 @@ npm run dev
 
 ### IntelliJ Plugin
 
-1. 從 [Releases](https://github.com/kewang/spek/releases) 下載最新的 `spek-intellij-*.zip`
-2. 在 IntelliJ IDEA 中，前往 **Settings > Plugins > 齒輪圖示 > Install Plugin from Disk...**
-3. 選擇下載的 ZIP 檔案，重啟 IDE
+從 [JetBrains Marketplace](https://plugins.jetbrains.com/plugin/30600-spek--openspec-viewer) 安裝 — 在 **Settings > Plugins > Marketplace** 搜尋 **「spek」** 即可。
 
 當專案包含 `openspec/` 目錄時，Plugin 會自動啟用。點擊右側 sidebar 的 **spek** 圖示即可開啟檢視器。
 
