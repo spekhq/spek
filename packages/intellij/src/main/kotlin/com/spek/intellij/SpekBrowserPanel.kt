@@ -8,6 +8,8 @@ import com.intellij.openapi.util.Disposer
 import com.intellij.ui.jcef.JBCefApp
 import com.intellij.ui.jcef.JBCefBrowser
 import java.io.File
+import java.net.HttpURLConnection
+import java.net.URL
 import java.nio.file.*
 import java.util.Timer
 import java.util.TimerTask
@@ -44,16 +46,21 @@ class SpekBrowserPanel(private val project: Project) : Disposable {
 
         setupThemeListener(jcefBrowser)
 
-        // 在背景等待 server 啟動，再於 EDT 載入 URL
+        // 在背景等待 server 啟動並確認 API handler 就緒，再於 EDT 載入 URL
         ApplicationManager.getApplication().executeOnPooledThread {
             org.jetbrains.ide.BuiltInServerManager.getInstance().waitForStart()
             if (disposed) return@executeOnPooledThread
 
+            val port = org.jetbrains.ide.BuiltInServerManager.getInstance().port
+            val projectPath = project.basePath ?: ""
+            val encodedPath = java.net.URLEncoder.encode(projectPath, "UTF-8")
+
+            // 輪詢確認 API handler 已註冊並可回應，避免啟動時 404
+            waitForApiReady(port, encodedPath)
+            if (disposed) return@executeOnPooledThread
+
             ApplicationManager.getApplication().invokeLater {
                 if (disposed) return@invokeLater
-                val port = org.jetbrains.ide.BuiltInServerManager.getInstance().port
-                val projectPath = project.basePath ?: ""
-                val encodedPath = java.net.URLEncoder.encode(projectPath, "UTF-8")
                 val isDark = isIdeInDarkMode()
                 val theme = if (isDark) "dark" else "light"
                 val url = "http://localhost:$port/spek/webview/index.intellij.html" +
@@ -179,6 +186,32 @@ class SpekBrowserPanel(private val project: Project) : Disposable {
             "",
             0,
         )
+    }
+
+    private fun waitForApiReady(port: Int, encodedProjectPath: String) {
+        val maxRetries = 50
+        val retryIntervalMs = 200L
+        val checkUrl = "http://localhost:$port/api/spek/fs/detect?path=$encodedProjectPath"
+
+        for (i in 1..maxRetries) {
+            if (disposed) return
+            try {
+                val conn = URL(checkUrl).openConnection() as HttpURLConnection
+                conn.connectTimeout = 500
+                conn.readTimeout = 500
+                conn.requestMethod = "GET"
+                val code = conn.responseCode
+                conn.disconnect()
+                if (code == 200) {
+                    log.info("API handler ready after $i attempt(s)")
+                    return
+                }
+            } catch (_: Exception) {
+                // 連線失敗，handler 尚未就緒
+            }
+            Thread.sleep(retryIntervalMs)
+        }
+        log.warn("API handler not ready after ${maxRetries * retryIntervalMs}ms, loading webview anyway")
     }
 
     fun navigateTo(path: String) {
