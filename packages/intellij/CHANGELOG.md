@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.7.6
+
+- Add native tree view navigation to IntelliJ plugin (Specs and Changes sidebar)
+- Add URL hash-based navigation for IntelliJ external browser fallback
+- Update acknowledgments in README
+
 ## 0.7.5
 
 - Add external browser fallback for IntelliJ plugin when JCEF is unavailable (e.g., Android Studio)
