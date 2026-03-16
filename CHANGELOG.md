@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.7.7
+
+- Fix deprecated `URL(String)` constructor usage in IntelliJ plugin (resolves Plugin Verifier warning)
+- Fix IntelliJ plugin.xml change-notes sync with release workflow
+
 ## 0.7.6
 
 - Add native tree view navigation to IntelliJ plugin (Specs and Changes sidebar)
