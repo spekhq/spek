@@ -38,8 +38,18 @@ jobs:
           fi
           echo "Version matched: ${PKG_VERSION}"
 
-      - name: Publish to Marketplace
-        run: npx @vscode/vsce publish --no-dependencies -p "$VSCE_PAT"
+      - name: Package extension
+        run: npx @vscode/vsce package --no-dependencies -o spek.vsix
+        working-directory: packages/vscode
+
+      - name: Publish to VS Code Marketplace
+        run: npx @vscode/vsce publish --no-dependencies --packagePath spek.vsix -p "$VSCE_PAT"
         working-directory: packages/vscode
         env:
           VSCE_PAT: ${{ secrets.VSCE_PAT }}
+
+      - name: Publish to Open VSX Registry
+        run: npx ovsx publish spek.vsix -p "$OVSX_PAT"
+        working-directory: packages/vscode
+        env:
+          OVSX_PAT: ${{ secrets.OVSX_PAT }}

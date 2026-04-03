@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.7.8
+
+- Add GitHub Action for building OpenSpec static sites
+- Add Open VSX Registry publishing to VS Code extension CI/CD workflow
+
 ## 0.7.7
 
 - Fix deprecated `URL(String)` constructor usage in IntelliJ plugin (resolves Plugin Verifier warning)

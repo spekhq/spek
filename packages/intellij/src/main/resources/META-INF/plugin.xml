@@ -23,10 +23,10 @@
     ]]></description>
 
     <change-notes><![CDATA[
-        <p><b>0.7.7</b></p>
+        <p><b>0.7.8</b></p>
         <ul>
-            <li>Fix deprecated URL(String) constructor usage in IntelliJ plugin (resolves Plugin Verifier warning)</li>
-            <li>Fix IntelliJ plugin.xml change-notes sync with release workflow</li>
+            <li>Add GitHub Action for building OpenSpec static sites</li>
+            <li>Add Open VSX Registry publishing to VS Code extension CI/CD workflow</li>
         </ul>
     ]]></change-notes>
 
