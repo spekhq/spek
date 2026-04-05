@@ -64,16 +64,17 @@ Automate the spek release process — update CHANGELOGs, bump version, create ta
 
 6. **Rebuild demo page**
 
-   Rebuild `docs/demo.html` so it reflects the latest code and openspec content:
+   Rebuild `docs/demo.html` and badges so they reflect the latest code and openspec content:
 
    ```bash
    npm run build:demo
+   npm run build:badges
    ```
 
-   Stage the updated demo file:
+   Stage the updated files:
 
    ```bash
-   git add docs/demo.html
+   git add docs/demo.html docs/badges/
    git commit -m "Rebuild demo for v<version>"
    ```
 

@@ -21,11 +21,18 @@ inputs:
     description: "spek version/ref to use (tag, branch, or commit SHA)"
     required: false
     default: "master"
+  generate-badges:
+    description: "Generate SVG badge files (specs count, open changes, tasks status)"
+    required: false
+    default: "false"
 
 outputs:
   html-path:
     description: "Absolute path to the generated HTML file"
     value: ${{ steps.build.outputs.html-path }}
+  badges-path:
+    description: "Absolute path to the generated badges directory"
+    value: ${{ steps.badges.outputs.badges-path }}
 
 runs:
   using: "composite"
@@ -70,6 +77,21 @@ runs:
           --output "$OUTPUT" \
           --title "${{ inputs.title }}"
         echo "html-path=$OUTPUT" >> "$GITHUB_OUTPUT"
+
+    - name: Generate badges
+      id: badges
+      if: ${{ inputs.generate-badges == 'true' }}
+      shell: bash
+      run: |
+        REPO_DIR=$(realpath "${{ inputs.repo-path }}")
+        BADGES_DIR=$(dirname "${{ inputs.output-path }}")/badges
+        mkdir -p "$BADGES_DIR"
+        BADGES_DIR=$(realpath "$BADGES_DIR")
+        cd .spek-builder
+        npx tsx scripts/generate-badges.ts \
+          --repo-dir "$REPO_DIR" \
+          --output-dir "$BADGES_DIR"
+        echo "badges-path=$BADGES_DIR" >> "$GITHUB_OUTPUT"
 
     - name: Cleanup spek builder
       shell: bash

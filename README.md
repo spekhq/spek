@@ -6,6 +6,12 @@
   A lightweight, read-only viewer for <a href="https://github.com/Fission-AI/OpenSpec">OpenSpec</a> content — browse specs, changes, and tasks with structure.
 </p>
 
+<p align="center">
+  <img alt="Specs" src="https://kewang.github.io/spek/badges/specs.svg" />
+  <img alt="Open Changes" src="https://kewang.github.io/spek/badges/open_changes.svg" />
+  <img alt="Tasks" src="https://kewang.github.io/spek/badges/tasks.svg" />
+</p>
+
 **[繁體中文](README.zh-TW.md)**
 
 ---
@@ -165,12 +171,33 @@ jobs:
 | `output-path` | Output HTML file path | `spek-output/spek.html` |
 | `title` | Page title | `OpenSpec Viewer` |
 | `spek-version` | spek version (tag, branch, or SHA) | `master` |
+| `generate-badges` | Generate SVG badge files | `false` |
 
 ### Outputs
 
 | Output | Description |
 |--------|-------------|
 | `html-path` | Absolute path to the generated HTML file |
+| `badges-path` | Absolute path to the generated badges directory |
+
+### Badges
+
+Enable `generate-badges` to generate SVG status badges (specs count, open changes, tasks progress) alongside your static site. Deploy them to GitHub Pages and reference in your README:
+
+```yaml
+- uses: kewang/spek@v1
+  with:
+    title: "My Project - OpenSpec"
+    generate-badges: true
+```
+
+Then in your README:
+
+```markdown
+![Specs](https://your-user.github.io/your-repo/badges/specs.svg)
+![Open Changes](https://your-user.github.io/your-repo/badges/open_changes.svg)
+![Tasks](https://your-user.github.io/your-repo/badges/tasks.svg)
+```
 
 > **Note:** Use `fetch-depth: 0` in your checkout step for accurate change timestamps. Without full git history, timestamps will be unavailable (the build still succeeds).
 

@@ -6,6 +6,12 @@
   輕量級的 <a href="https://github.com/Fission-AI/OpenSpec">OpenSpec</a> 內容檢視器 — 結構化瀏覽 specs、changes 與 tasks。
 </p>
 
+<p align="center">
+  <img alt="Specs" src="https://kewang.github.io/spek/badges/specs.svg" />
+  <img alt="Open Changes" src="https://kewang.github.io/spek/badges/open_changes.svg" />
+  <img alt="Tasks" src="https://kewang.github.io/spek/badges/tasks.svg" />
+</p>
+
 **[English](README.md)**
 
 ---
@@ -165,12 +171,33 @@ jobs:
 | `output-path` | 輸出 HTML 檔案路徑 | `spek-output/spek.html` |
 | `title` | 頁面標題 | `OpenSpec Viewer` |
 | `spek-version` | spek 版本（tag、branch 或 SHA） | `master` |
+| `generate-badges` | 產生 SVG badge 檔案 | `false` |
 
 ### Outputs
 
 | Output | 說明 |
 |--------|------|
 | `html-path` | 產出 HTML 檔案的絕對路徑 |
+| `badges-path` | 產出 badge 目錄的絕對路徑 |
+
+### Badges
+
+啟用 `generate-badges` 可在建置靜態網站時一併產生 SVG 狀態徽章（specs 數量、open changes 數量、tasks 完成率）。部署到 GitHub Pages 後即可在 README 中引用：
+
+```yaml
+- uses: kewang/spek@v1
+  with:
+    title: "My Project - OpenSpec"
+    generate-badges: true
+```
+
+在 README 中引用：
+
+```markdown
+![Specs](https://your-user.github.io/your-repo/badges/specs.svg)
+![Open Changes](https://your-user.github.io/your-repo/badges/open_changes.svg)
+![Tasks](https://your-user.github.io/your-repo/badges/tasks.svg)
+```
 
 > **注意：** 建議在 checkout 步驟使用 `fetch-depth: 0` 以取得正確的 change timestamps。若無完整 git history，timestamps 將不可用（build 仍會成功）。
 
