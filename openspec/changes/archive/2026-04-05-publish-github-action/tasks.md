@@ -10,6 +10,6 @@
 
 ## 3. 首次發布
 
-- [ ] 3.1 使用 release skill 執行 `npm version major`，將版本從 0.7.9 bump 到 1.0.0（自動產生 `v1.0.0` tag）
-- [ ] 3.2 透過 `gh release create` 建立 GitHub Release，包含 Marketplace 發布旗標
-- [ ] 3.3 建立 `v1` 浮動 tag 指向 `v1.0.0` commit 並推送
+- [x] 3.1 使用 release skill 執行 `npm version major`，將版本從 0.7.9 bump 到 1.0.0（自動產生 `v1.0.0` tag）
+- [x] 3.2 透過 `gh release create` 建立 GitHub Release，包含 Marketplace 發布旗標
+- [x] 3.3 建立 `v1` 浮動 tag 指向 `v1.0.0` commit 並推送
