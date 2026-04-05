@@ -104,6 +104,8 @@ BDD 關鍵字上色 — WHEN/GIVEN（藍）、THEN（綠）、AND（灰）、MUS
 
 ## GitHub Action
 
+[![GitHub Marketplace](https://img.shields.io/badge/Marketplace-spek-blue?logo=github)](https://github.com/marketplace/actions/spek-openspec-static-site)
+
 使用 spek GitHub Action 在 CI 中自動建置 OpenSpec 靜態網站。
 
 ### 基本用法

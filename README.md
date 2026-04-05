@@ -104,6 +104,8 @@ Tabbed view with Proposal, Design, Tasks, and Specs sections.
 
 ## GitHub Action
 
+[![GitHub Marketplace](https://img.shields.io/badge/Marketplace-spek-blue?logo=github)](https://github.com/marketplace/actions/spek-openspec-static-site)
+
 Use spek as a GitHub Action to automatically build a static OpenSpec site in your CI pipeline.
 
 ### Basic Usage
