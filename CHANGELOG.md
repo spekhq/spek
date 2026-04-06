@@ -1,5 +1,10 @@
 # Changelog
 
+## 1.0.2
+
+- Unify date format to YYYY-MM-DD across all pages (Dashboard, ChangeList, SpecDetail)
+- Fix demo SpecList not showing "N changes" count
+
 ## 1.0.1
 
 - Add SVG badge generation (specs count, open changes, tasks status) to GitHub Action and release workflow

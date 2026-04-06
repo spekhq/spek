@@ -23,10 +23,10 @@
     ]]></description>
 
     <change-notes><![CDATA[
-        <p><b>1.0.1</b></p>
+        <p><b>1.0.2</b></p>
         <ul>
-            <li>Add SVG badge generation (specs count, open changes, tasks status) to GitHub Action and release workflow</li>
-            <li>Fix CI publish triggers to only match semver tags (avoid triggering on v1 floating tag)</li>
+            <li>Unify date format to YYYY-MM-DD across all pages (Dashboard, ChangeList, SpecDetail)</li>
+            <li>Fix demo SpecList not showing "N changes" count</li>
         </ul>
     ]]></change-notes>
 
