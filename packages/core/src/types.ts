@@ -25,6 +25,8 @@ export interface ChangeInfo {
   slug: string;
   date: string | null;
   timestamp: string | null;
+  createdDate: string | null;
+  archivedDate: string | null;
   description: string;
   status: "active" | "archived";
   hasProposal: boolean;
@@ -36,6 +38,9 @@ export interface ChangeInfo {
 
 export interface ChangeDetail {
   slug: string;
+  status: "active" | "archived";
+  createdDate: string | null;
+  archivedDate: string | null;
   proposal: string | null;
   design: string | null;
   tasks: ParsedTasks | null;

@@ -7,6 +7,7 @@ import { TaskProgress } from "../components/TaskProgress";
 import { MarkdownRenderer } from "../components/MarkdownRenderer";
 import { SpecsTabContent } from "../components/SpecsTabContent";
 import { SpecToc } from "../components/SpecToc";
+import { formatLifecycleBanner, todayIso } from "../utils/lifecycle";
 
 const TAB_IDS = ["proposal", "design", "specs", "tasks"] as const;
 type TabId = (typeof TAB_IDS)[number];
@@ -15,6 +16,12 @@ const TOC_MIN_HEADINGS = 3;
 
 function isTabId(value: string | null): value is TabId {
   return value !== null && (TAB_IDS as readonly string[]).includes(value);
+}
+
+// 對齊 @spek/core 的 parseSlug：去掉開頭 YYYY-MM-DD- 前綴並把 dash 轉空格
+function slugTitle(slug: string): string {
+  const m = slug.match(/^\d{4}-\d{2}-\d{2}-(.+)$/);
+  return (m ? m[1] : slug).replace(/-/g, " ");
 }
 
 export function ChangeDetail() {
@@ -150,12 +157,17 @@ export function ChangeDetail() {
     },
   ];
 
+  const lifecycleBanner = formatLifecycleBanner(data, todayIso());
+  const title = slug ? slugTitle(slug) : "";
   const headerEl = (
     <div className="pt-2 pb-3">
       <Link to="/changes" className="text-text-muted text-base font-medium hover:text-accent transition-colors">
         &larr; Back to Changes
       </Link>
-      <h1 className="text-2xl font-bold mt-2">{slug}</h1>
+      <h1 className="text-2xl font-bold mt-2" title={slug}>{title}</h1>
+      {lifecycleBanner && (
+        <p className="text-text-muted text-xs mt-2 mb-1 tracking-wide [word-spacing:0.15em]">{lifecycleBanner}</p>
+      )}
     </div>
   );
 

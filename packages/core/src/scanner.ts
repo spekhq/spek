@@ -36,6 +36,26 @@ function safeReadDir(dirPath: string): string[] {
   return fs.readdirSync(dirPath).filter((name) => !name.startsWith("."));
 }
 
+// 讀取 .openspec.yaml 的頂層 key:value 欄位（不支援 nested 結構，目前需求內僅有 schema/created）
+export function parseChangeYaml(content: string): Record<string, string> {
+  const parsed: Record<string, string> = {};
+  for (const line of content.split("\n")) {
+    const m = line.match(/^(\w+):\s*(.+)$/);
+    if (m) parsed[m[1]] = m[2].trim();
+  }
+  return parsed;
+}
+
+// 從 .openspec.yaml 解出 createdDate；格式不符（非 YYYY-MM-DD）視為 null
+function readCreatedDate(changePath: string): string | null {
+  const yamlPath = path.join(changePath, ".openspec.yaml");
+  if (!fs.existsSync(yamlPath)) return null;
+  const meta = parseChangeYaml(fs.readFileSync(yamlPath, "utf-8"));
+  const value = meta["created"];
+  if (!value) return null;
+  return /^\d{4}-\d{2}-\d{2}$/.test(value) ? value : null;
+}
+
 function scanChangeDir(
   changePath: string,
   slug: string,
@@ -54,7 +74,24 @@ function scanChangeDir(
     taskStats = { total: parsed.total, completed: parsed.completed };
   }
 
-  return { slug, date, timestamp: null, description, status, hasProposal, hasDesign, hasTasks, hasSpecs, taskStats };
+  const createdDate = readCreatedDate(changePath);
+  // archive folder 強制 YYYY-MM-DD-slug 命名（parseSlug 已處理），active 一律 null
+  const archivedDate = status === "archived" ? date : null;
+
+  return {
+    slug,
+    date,
+    timestamp: null,
+    createdDate,
+    archivedDate,
+    description,
+    status,
+    hasProposal,
+    hasDesign,
+    hasTasks,
+    hasSpecs,
+    taskStats,
+  };
 }
 
 export async function scanOpenSpec(repoDir: string): Promise<ScanResult> {
@@ -152,8 +189,10 @@ export function readChange(repoDir: string, slug: string): ChangeDetail | null {
 
   // 在 active 和 archive 中尋找
   let changePath = path.join(changesDir, slug);
+  let status: "active" | "archived" = "active";
   if (!fs.existsSync(changePath)) {
     changePath = path.join(changesDir, "archive", slug);
+    status = "archived";
   }
   if (!fs.existsSync(changePath)) return null;
 
@@ -173,20 +212,27 @@ export function readChange(repoDir: string, slug: string): ChangeDetail | null {
     }
   }
 
-  // 讀取 .openspec.yaml metadata
+  // 讀取 .openspec.yaml metadata（保留所有 key 供未來擴充）
   const metaPath = path.join(changePath, ".openspec.yaml");
   let metadata: Record<string, unknown> | null = null;
   if (fs.existsSync(metaPath)) {
-    const metaContent = fs.readFileSync(metaPath, "utf-8");
-    const parsed: Record<string, string> = {};
-    for (const line of metaContent.split("\n")) {
-      const m = line.match(/^(\w+):\s*(.+)$/);
-      if (m) parsed[m[1]] = m[2].trim();
-    }
-    metadata = parsed;
+    metadata = parseChangeYaml(fs.readFileSync(metaPath, "utf-8"));
   }
 
-  return { slug, proposal, design, tasks, specs, metadata };
+  const createdDate = readCreatedDate(changePath);
+  const archivedDate = status === "archived" ? parseSlug(slug).date : null;
+
+  return {
+    slug,
+    status,
+    createdDate,
+    archivedDate,
+    proposal,
+    design,
+    tasks,
+    specs,
+    metadata,
+  };
 }
 
 export function readSpecAtChange(

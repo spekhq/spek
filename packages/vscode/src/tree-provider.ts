@@ -1,6 +1,7 @@
 import * as vscode from "vscode";
 import { scanOpenSpec, readSpec, extractHeadings } from "@spek/core";
 import type { SpecInfo, ChangeInfo, Heading } from "@spek/core";
+import { formatTreeItemDescription } from "./lifecycle";
 
 // --- Specs TreeView ---
 
@@ -141,7 +142,14 @@ class ChangeGroupItem extends vscode.TreeItem {
 class ChangeTreeItem extends vscode.TreeItem {
   constructor(change: ChangeInfo) {
     super(change.slug, vscode.TreeItemCollapsibleState.None);
-    this.tooltip = change.description || change.slug;
+    const description = formatTreeItemDescription(change);
+    if (description) this.description = description;
+
+    const tooltipLines = [change.description || change.slug];
+    if (change.createdDate) tooltipLines.push(`Created: ${change.createdDate}`);
+    if (change.archivedDate) tooltipLines.push(`Archived: ${change.archivedDate}`);
+    this.tooltip = tooltipLines.join("\n");
+
     this.iconPath = new vscode.ThemeIcon(
       change.status === "active" ? "edit" : "check",
     );

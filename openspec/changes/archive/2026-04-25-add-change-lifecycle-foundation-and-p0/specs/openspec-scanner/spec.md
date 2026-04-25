@@ -1,3 +1,5 @@
+## MODIFIED Requirements
+
 ### Requirement: Scan OpenSpec directory structure
 The scanner SHALL be an async function in the `@spek/core` package that reads an OpenSpec directory and returns its complete structure including specs, active changes, and archived changes. Each `ChangeInfo` SHALL include a `timestamp` field (ISO 8601 string or null) obtained from the git timestamp cache, a `createdDate` field (string in `YYYY-MM-DD` format or null) parsed from the change's `.openspec.yaml` `created` frontmatter field, and an `archivedDate` field (string in `YYYY-MM-DD` format or null). The `archivedDate` SHALL be derived from the archive folder name prefix `YYYY-MM-DD-slug` for archived changes only, and SHALL be null for active changes. Changes SHALL be sorted by timestamp descending (most recent first), falling back to slug date when timestamp is unavailable. It SHALL use Node.js `fs` directly and have no dependency on Express or any HTTP framework.
 
@@ -46,17 +48,3 @@ The scanner SHALL read individual change directories and extract available artif
 #### Scenario: Change with partial artifacts
 - **WHEN** scanner reads a change directory containing only proposal.md
 - **THEN** it returns proposal content and null for missing artifacts
-
-### Requirement: Read spec content
-The scanner SHALL read spec files and return their Markdown content.
-
-#### Scenario: Read existing spec
-- **WHEN** scanner reads `openspec/specs/{topic}/spec.md`
-- **THEN** it returns the raw Markdown content of the spec file
-
-### Requirement: Detect related changes for a spec
-The scanner SHALL identify which changes contain delta specs for a given spec topic.
-
-#### Scenario: Spec with related changes
-- **WHEN** scanner checks for changes related to spec topic "simulation-engine"
-- **THEN** it returns all change slugs that have a `specs/simulation-engine/spec.md` delta file

@@ -2,6 +2,9 @@ import { Link } from "react-router-dom";
 import { useOverview, useChanges } from "../hooks/useOpenSpec";
 import { TaskProgress } from "../components/TaskProgress";
 import { formatRelativeTime } from "../utils/formatRelativeTime";
+import { daysBetween, todayIso } from "../utils/lifecycle";
+
+const STALE_THRESHOLD_DAYS = 30;
 
 export function Dashboard() {
   const overview = useOverview();
@@ -23,6 +26,21 @@ export function Dashboard() {
   const activeChanges = changes.data?.active ?? [];
   const archivedChanges = (changes.data?.archived ?? []).slice(0, 10);
 
+  const today = todayIso();
+  const archivedSpans = (changes.data?.archived ?? [])
+    .filter((c) => c.createdDate && c.archivedDate)
+    .map((c) => daysBetween(c.createdDate!, c.archivedDate!));
+  let avgLifecycle: string;
+  if (archivedSpans.length === 0) {
+    avgLifecycle = "—";
+  } else {
+    const avg = archivedSpans.reduce((sum, n) => sum + n, 0) / archivedSpans.length;
+    avgLifecycle = avg < 1 ? "<1d" : `${Math.round(avg)}d`;
+  }
+  const staleActiveCount = activeChanges.filter(
+    (c) => c.createdDate && daysBetween(c.createdDate, today) > STALE_THRESHOLD_DAYS,
+  ).length;
+
   return (
     <div className="space-y-8">
       <h1 className="text-2xl font-bold">Overview</h1>
@@ -33,6 +51,8 @@ export function Dashboard() {
         <StatCard label="Active Changes" value={data.changesCount.active} delay={80} />
         <StatCard label="Archived Changes" value={data.changesCount.archived} delay={160} />
         <StatCard label="Task Completion" value={`${taskPercent}%`} delay={240} />
+        <StatCard label="Avg lifecycle (archived)" value={avgLifecycle} delay={320} />
+        <StatCard label="Stale active (>30d)" value={staleActiveCount} delay={400} />
       </div>
 
       {/* Active changes */}
