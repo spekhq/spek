@@ -1,5 +1,17 @@
 # Changelog
 
+## 1.3.0
+
+**Highlight: Cross-worktree aggregation** — when you run agents in parallel across multiple git worktrees, spek now shows the OpenSpec content of *all* worktrees in one place, instead of forcing you to point spek at each worktree by hand.
+
+- Point spek at any directory and it auto-discovers every git worktree of the same repo, then merges their active changes, archived changes, and the spec-change graph into a single unified view
+- Each change card / row is tagged with its source worktree branch, so you can tell at a glance which worktree a change lives in
+- A toggle turns aggregation off to view only the current directory
+- Active changes from each worktree coexist (same-named slugs are both shown, identified by their source worktree); archived changes are deduped by slug; the specs list always comes from the main worktree
+- Aggregation is the default whenever multiple worktrees are detected — single-worktree or non-git repos behave exactly as before
+- Supported in the Web version and the VS Code extension (IntelliJ and Demo are unchanged)
+- Fix: the VS Code extension now uses chokidar for file watching, so newly created nested directories (e.g. a change's `specs/<topic>/spec.md`) are detected and the change-detail spec tab live-reloads correctly
+
 ## 1.2.0
 
 - Add `/timeline` page: horizontal Gantt-style chart of every change's lifecycle — active bars extend to today with an arrow, archived bars render as fixed segments
