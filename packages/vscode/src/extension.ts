@@ -1,6 +1,7 @@
 import * as vscode from "vscode";
 import { SpekPanel } from "./panel";
 import { SpecsTreeProvider, ChangesTreeProvider } from "./tree-provider";
+import { watchOpenspecDir } from "./watcher";
 
 let statusBarItem: vscode.StatusBarItem | undefined;
 
@@ -54,9 +55,6 @@ export function activate(context: vscode.ExtensionContext) {
     );
 
     // 監聽 openspec/ 檔案變更，觸發 TreeView 更新
-    const treeWatcher = vscode.workspace.createFileSystemWatcher(
-      new vscode.RelativePattern(workspacePath, "openspec/**"),
-    );
     let refreshTimer: ReturnType<typeof setTimeout> | undefined;
     const refreshTree = () => {
       if (refreshTimer) clearTimeout(refreshTimer);
@@ -65,9 +63,7 @@ export function activate(context: vscode.ExtensionContext) {
         changesProvider.refresh();
       }, 500);
     };
-    treeWatcher.onDidCreate(refreshTree);
-    treeWatcher.onDidChange(refreshTree);
-    treeWatcher.onDidDelete(refreshTree);
+    const treeWatcher = watchOpenspecDir(workspacePath, refreshTree);
     context.subscriptions.push(treeWatcher);
   }
 }

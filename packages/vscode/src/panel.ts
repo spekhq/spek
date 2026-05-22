@@ -2,6 +2,7 @@ import * as vscode from "vscode";
 import * as fs from "fs";
 import * as path from "path";
 import { MessageHandler } from "./handler";
+import { watchOpenspecDir } from "./watcher";
 import { listWorktrees } from "@spek/core";
 
 export class SpekPanel {
@@ -115,12 +116,7 @@ export class SpekPanel {
   // 對指定目錄的 openspec/ 建立檔案監看，變更時 debounce 通知 webview
   private watchOpenspec(dir: string): void {
     if (this.disposed) return;
-    const watcher = vscode.workspace.createFileSystemWatcher(
-      new vscode.RelativePattern(vscode.Uri.file(dir), "openspec/**"),
-    );
-    watcher.onDidCreate(() => this.notifyFileChange(), null, this.disposables);
-    watcher.onDidChange(() => this.notifyFileChange(), null, this.disposables);
-    watcher.onDidDelete(() => this.notifyFileChange(), null, this.disposables);
+    const watcher = watchOpenspecDir(dir, () => this.notifyFileChange());
     this.disposables.push(watcher);
   }
 
