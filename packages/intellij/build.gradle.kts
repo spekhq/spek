@@ -21,6 +21,7 @@ dependencies {
         pluginVerifier()
     }
     implementation("org.jetbrains.kotlinx:kotlinx-serialization-json:1.6.3")
+    testImplementation(kotlin("test"))
 }
 
 kotlin {
@@ -50,5 +51,8 @@ intellijPlatform {
 tasks {
     wrapper {
         gradleVersion = "8.11.1"
+    }
+    test {
+        useJUnitPlatform()
     }
 }

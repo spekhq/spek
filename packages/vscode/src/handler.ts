@@ -104,7 +104,7 @@ export class MessageHandler {
         source = toWorktreeSource(match);
       }
     }
-    const result = readChange(targetDir, slug);
+    const result = await readChange(targetDir, slug);
     if (!result) throw new Error("Change not found");
     if (source) result.source = source;
     return result;
@@ -141,11 +141,15 @@ export class MessageHandler {
         if (slug === "archive") continue;
         const changePath = path.join(baseDir, slug);
         if (!fs.statSync(changePath).isDirectory()) continue;
-        for (const file of ["proposal.md", "design.md", "tasks.md"]) {
-          const filePath = path.join(changePath, file);
-          if (fs.existsSync(filePath)) {
-            documents.push({ type: "change", name: slug, content: fs.readFileSync(filePath, "utf-8") });
-          }
+        // 索引每個 change 內所有 root *.md artifact（含自訂 schema 的 brainstorm/plan/verify 等）
+        for (const entry of fs.readdirSync(changePath, { withFileTypes: true })) {
+          if (!entry.isFile() || entry.name.startsWith(".")) continue;
+          if (!entry.name.toLowerCase().endsWith(".md")) continue;
+          documents.push({
+            type: "change",
+            name: slug,
+            content: fs.readFileSync(path.join(changePath, entry.name), "utf-8"),
+          });
         }
       }
     };

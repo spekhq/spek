@@ -16,6 +16,8 @@ function mkChange(overrides: Partial<ChangeInfo> & { slug: string }): ChangeInfo
     hasDesign: false,
     hasTasks: true,
     hasSpecs: true,
+    artifactCount: overrides.artifactCount ?? 3,
+    schema: overrides.schema ?? null,
     taskStats: null,
   };
 }

@@ -8,7 +8,7 @@
         <p><b>Features:</b></p>
         <ul>
             <li><b>Specs Browser</b> — Browse spec documents with BDD syntax highlighting (WHEN/GIVEN, THEN, AND, MUST/SHALL)</li>
-            <li><b>Changes Browser</b> — View changes with tabbed views for Proposal, Design, Tasks, and Specs; rows surface creation/archive dates and lifecycle duration</li>
+            <li><b>Changes Browser</b> — View changes with a tab per artifact the change contains (custom OpenSpec schemas supported), with the change's schema shown as a badge; rows surface creation/archive dates and lifecycle duration</li>
             <li><b>Timeline</b> — Horizontal Gantt-style chart of every change's lifecycle, with optional spec-topic grouping and an auto-scaling time axis</li>
             <li><b>Task Progress</b> — Track task completion with section-grouped progress bars</li>
             <li><b>Graph View</b> — Interactive force-directed graph showing spec-change relationships</li>

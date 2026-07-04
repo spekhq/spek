@@ -42,16 +42,20 @@ The scanner SHALL be an async function in the `@spek/core` package that reads an
 - **THEN** `ChangeInfo.archivedDate` SHALL be null
 
 ### Requirement: Parse change artifacts
-The scanner SHALL read individual change directories and extract available artifacts. The returned `ChangeDetail` SHALL include the same `createdDate` and `archivedDate` fields as `ChangeInfo`, sourced from the same locations (`.openspec.yaml` frontmatter and archive folder name prefix respectively).
+The scanner SHALL read individual change directories and dynamically discover their artifacts rather than detecting a fixed set of files. It SHALL discover every regular `*.md` file at the change root and a non-empty `specs/` delta tree, classify each by kind (`tasks`, `specs`, or `markdown`), optionally enrich ordering/title/description from the change's resolved schema, and return them as an ordered `artifacts` array on `ChangeDetail`. The returned `ChangeDetail` SHALL continue to include the same `createdDate` and `archivedDate` fields as `ChangeInfo`, sourced from the same locations (`.openspec.yaml` frontmatter and archive folder name prefix respectively). `ChangeInfo` SHALL continue to expose lightweight presence flags so list views need not read full artifact content.
 
-#### Scenario: Change with all artifacts
+#### Scenario: Change with spec-driven artifacts
 - **WHEN** scanner reads a change directory containing proposal.md, design.md, tasks.md, and specs/
-- **THEN** it returns the raw Markdown content for each artifact and a list of delta spec files
+- **THEN** it returns an ordered `artifacts` array with markdown artifacts for proposal and design, a tasks artifact with parsed task data, and a specs artifact listing the delta spec files
 - **AND** the returned `ChangeDetail` SHALL include `createdDate` and `archivedDate` fields populated as for the corresponding `ChangeInfo`
+
+#### Scenario: Change with custom-schema artifacts
+- **WHEN** scanner reads a change directory containing brainstorm.md, proposal.md, plan.md, and verify.md
+- **THEN** the returned `artifacts` array includes an entry for each of those markdown files, ordered and titled per the resolved schema when available
 
 #### Scenario: Change with partial artifacts
 - **WHEN** scanner reads a change directory containing only proposal.md
-- **THEN** it returns proposal content and null for missing artifacts
+- **THEN** the returned `artifacts` array contains a single markdown artifact for the proposal and no entries for absent files
 
 ### Requirement: Read spec content
 The scanner SHALL read spec files and return their Markdown content.

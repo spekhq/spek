@@ -30,11 +30,11 @@ object OpenSpecScanner {
 
         val activeChanges = safeListDirs(changesDir)
             .filter { it.name != "archive" }
-            .map { scanChangeDir(it, "active") }
+            .map { scanChangeDir(projectPath, it, "active") }
             .sortedByDescending { it.timestamp ?: it.date ?: "" }
 
         val archivedChanges = safeListDirs(archiveDir)
-            .map { scanChangeDir(it, "archived") }
+            .map { scanChangeDir(projectPath, it, "archived") }
             .sortedByDescending { it.timestamp ?: it.date ?: "" }
 
         // 計算每個 spec 被多少 changes 引用
@@ -52,7 +52,7 @@ object OpenSpecScanner {
         return ScanResult(specs, activeChanges, archivedChanges)
     }
 
-    private fun scanChangeDir(dir: File, status: String): ChangeInfo {
+    private fun scanChangeDir(projectPath: String, dir: File, status: String): ChangeInfo {
         val slug = dir.name
         val (date, description) = parseSlug(slug)
         val hasProposal = File(dir, "proposal.md").exists()
@@ -76,8 +76,25 @@ object OpenSpecScanner {
             hasDesign = hasDesign,
             hasTasks = hasTasks,
             hasSpecs = hasSpecs,
+            artifactCount = ArtifactDiscovery.count(dir),
+            schema = readChangeSchema(projectPath, dir),
             taskStats = taskStats,
         )
+    }
+
+    /** change schema：change .openspec.yaml 的 schema → repo openspec/config.yaml → null */
+    private fun readChangeSchema(projectPath: String, dir: File): String? {
+        val changeYaml = File(dir, ".openspec.yaml")
+        if (changeYaml.exists()) {
+            val m = Regex("""^schema:\s*(.+)$""", RegexOption.MULTILINE).find(changeYaml.readText())
+            if (m != null) return m.groupValues[1].trim()
+        }
+        val config = File(projectPath, "openspec/config.yaml")
+        if (config.exists()) {
+            val m = Regex("""^schema:\s*(.+)$""", RegexOption.MULTILINE).find(config.readText())
+            if (m != null) return m.groupValues[1].trim()
+        }
+        return null
     }
 
     private fun safeListDirs(dir: File): List<File> {

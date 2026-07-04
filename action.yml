@@ -63,9 +63,22 @@ runs:
       shell: bash
       run: npm run build:core --prefix .spek-builder
 
+    # spek delegates custom-schema artifact ordering to the OpenSpec CLI. Installing it lets
+    # the static site reflect the schema's authoritative artifact order. It is optional:
+    # if the install fails, the build still succeeds with default (filename) ordering.
+    - name: Install OpenSpec CLI (optional, for authoritative artifact ordering)
+      shell: bash
+      run: npm install -g @fission-ai/openspec || echo "openspec unavailable; using default artifact order"
+      env:
+        OPENSPEC_TELEMETRY: "0"
+        DO_NOT_TRACK: "1"
+
     - name: Build OpenSpec static site
       id: build
       shell: bash
+      env:
+        OPENSPEC_TELEMETRY: "0"
+        DO_NOT_TRACK: "1"
       run: |
         REPO_DIR=$(realpath "${{ inputs.repo-path }}")
         OUTPUT_DIR=$(dirname "${{ inputs.output-path }}")

@@ -57,9 +57,31 @@ export interface ChangeInfo {
   hasDesign: boolean;
   hasTasks: boolean;
   hasSpecs: boolean;
+  /** 此 change 探索到的 artifact 數量（root *.md + specs/ 視為各一個） */
+  artifactCount: number;
+  /** 此 change 採用的 schema 名稱（.openspec.yaml schema → repo config.yaml fallback），無法判定為 null */
+  schema: string | null;
   taskStats: TaskStats | null;
   /** 來源 worktree；僅聚合掃描會填入，單一目錄掃描為 undefined */
   source?: WorktreeSource;
+}
+
+/** 一個 change artifact 的 kind，決定解析與渲染方式 */
+export type ArtifactKind = "markdown" | "tasks" | "specs";
+
+/** 動態探索到的單一 change artifact；排序由 openspec CLI 提供（不可用時退回預設排序） */
+export interface ChangeArtifact {
+  /** 穩定識別碼：檔名去副檔名（specs tree 為 "specs"） */
+  id: string;
+  /** 顯示標題（由檔名 humanize） */
+  title: string;
+  kind: ArtifactKind;
+  /** kind === "markdown"：原始 Markdown 內容 */
+  content?: string;
+  /** kind === "tasks"：解析後的 tasks */
+  tasks?: ParsedTasks;
+  /** kind === "specs"：delta spec 清單 */
+  specs?: { topic: string; content: string }[];
 }
 
 export interface ChangeDetail {
@@ -67,10 +89,12 @@ export interface ChangeDetail {
   status: "active" | "archived";
   createdDate: string | null;
   archivedDate: string | null;
-  proposal: string | null;
-  design: string | null;
-  tasks: ParsedTasks | null;
-  specs: { topic: string; content: string }[];
+  /** 此 change 採用的 schema 名稱，無法判定為 null */
+  schema: string | null;
+  /** artifacts，預設依 mtime 由新到舊排序 */
+  artifacts: ChangeArtifact[];
+  /** schema 權威順序（artifact id 清單，供前端 schema-order 排序用）；CLI 不可用 / archived 時為 null */
+  schemaOrder?: string[];
   metadata: Record<string, unknown> | null;
   /** 來源 worktree；僅聚合讀取會填入 */
   source?: WorktreeSource;

@@ -29,6 +29,8 @@ export type {
   TaskSection,
   TaskStats,
   ParsedTasks,
+  ArtifactKind,
+  ChangeArtifact,
   SpecInfo,
   SpecDetail,
   HistoryEntry,

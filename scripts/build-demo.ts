@@ -65,7 +65,7 @@ async function main() {
   const changeDetails: Record<string, ChangeDetail> = {};
   const allChanges = [...scan.activeChanges, ...scan.archivedChanges];
   for (const change of allChanges) {
-    const detail = readChange(REPO_DIR, change.slug);
+    const detail = await readChange(REPO_DIR, change.slug);
     if (detail) {
       changeDetails[change.slug] = detail;
     }

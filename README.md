@@ -121,9 +121,14 @@ Horizontal Gantt-style view of every change's lifecycle — active bars extend t
 ![Timeline](screenshots/timeline.png)
 
 ### Change Detail
-Tabbed view with Proposal, Design, Tasks, and Specs sections.
+Tabbed view with one tab per artifact the change contains. For the default `spec-driven` schema that's Proposal, Design, Specs, and Tasks; the schema a change was authored under is shown as a badge.
 
 ![Change Detail](screenshots/change-detail.png)
+
+### Custom Schemas
+spek renders whatever artifacts a change actually contains, so changes authored under a custom OpenSpec schema (e.g. `superpowers-bridge` with `brainstorm` / `plan` / `verify` / `retrospective`) show every artifact as its own tab. Tabs default to **last-modified** order so the artifact you're actively editing surfaces first, and a sort control lets you switch to **Schema order** or **A–Z**. Schema order comes from the OpenSpec authority (the `openspec` CLI) rather than spek parsing the schema format itself, so it's correct for any schema; when the CLI isn't available (or the change is archived) that mode falls back to the default order and says why.
+
+![Custom Schema](screenshots/custom-schema.png)
 
 ### Full-text Search
 `Cmd+K` / `Ctrl+K` to search across all specs and changes.

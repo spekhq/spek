@@ -9,45 +9,33 @@ object ChangeReader {
 
         // 在 active 和 archive 中尋找
         var changeDir = File(base, slug)
+        var status = "active"
         if (!changeDir.exists()) {
             changeDir = File(base, "archive/$slug")
+            status = "archived"
         }
         if (!changeDir.exists()) return null
-
-        val proposal = readFileOrNull(File(changeDir, "proposal.md"))
-        val design = readFileOrNull(File(changeDir, "design.md"))
-
-        val tasksContent = readFileOrNull(File(changeDir, "tasks.md"))
-        val tasks = tasksContent?.let { TaskParser.parse(it) }
-
-        val specsDir = File(changeDir, "specs")
-        val specs = if (specsDir.isDirectory) {
-            specsDir.listFiles()
-                ?.filter { it.isDirectory && !it.name.startsWith(".") }
-                ?.mapNotNull { topicDir ->
-                    val specFile = File(topicDir, "spec.md")
-                    if (specFile.exists()) {
-                        ChangeSpec(topicDir.name, specFile.readText())
-                    } else null
-                }
-                ?: emptyList()
-        } else emptyList()
 
         // 讀取 .openspec.yaml metadata
         val metadata = readMetadata(File(changeDir, ".openspec.yaml"))
 
+        // change schema：優先 change .openspec.yaml，否則 fallback 回 repo config.yaml（僅供顯示 badge）
+        val schema = readChangeSchema(projectPath, changeDir)
+        // artifact 依 mtime 由新到舊排序（見 ArtifactDiscovery）
+        val artifacts = ArtifactDiscovery.discover(changeDir)
+        // schema 權威順序（供前端 schema-order 排序用）：只對 active change 查詢 CLI，
+        // archived change 無 planningArtifacts，直接為 null（前端顯示 archived 退回訊息）
+        val refs = if (status == "active") SchemaOrder.cli.order(projectPath, slug) else null
+        val schemaOrder = SchemaOrder.resolveSchemaOrder(refs, artifacts.map { it.id })
+
         return ChangeDetail(
             slug = slug,
-            proposal = proposal,
-            design = design,
-            tasks = tasks,
-            specs = specs,
+            status = status,
+            schema = schema,
+            artifacts = artifacts,
+            schemaOrder = schemaOrder,
             metadata = metadata,
         )
-    }
-
-    private fun readFileOrNull(file: File): String? {
-        return if (file.exists()) file.readText() else null
     }
 
     private fun readMetadata(file: File): Map<String, String>? {
@@ -60,5 +48,22 @@ object ChangeReader {
             }
         }
         return result
+    }
+
+    /** change schema：change .openspec.yaml 的 schema → repo openspec/config.yaml 的 schema → null */
+    private fun readChangeSchema(projectPath: String, changeDir: File): String? {
+        val changeYaml = File(changeDir, ".openspec.yaml")
+        if (changeYaml.exists()) {
+            val meta = readMetadata(changeYaml)
+            meta?.get("schema")?.let { return it }
+        }
+        return readRepoSchema(projectPath)
+    }
+
+    private fun readRepoSchema(projectPath: String): String? {
+        val config = File(projectPath, "openspec/config.yaml")
+        if (!config.exists()) return null
+        val m = Regex("""^schema:\s*(.+)$""", RegexOption.MULTILINE).find(config.readText())
+        return m?.groupValues?.get(1)?.trim()
     }
 }

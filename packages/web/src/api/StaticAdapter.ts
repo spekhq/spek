@@ -78,9 +78,11 @@ export class StaticAdapter implements ApiAdapter {
       }
     }
 
-    // 搜尋 changes
+    // 搜尋 changes：合併所有 markdown artifact 內容（不再限定 proposal/design）
     for (const [slug, detail] of Object.entries(this.data.changeDetails)) {
-      const texts = [detail.proposal, detail.design].filter(Boolean) as string[];
+      const texts = detail.artifacts
+        .map((a) => a.content)
+        .filter((c): c is string => Boolean(c));
       const combined = texts.join("\n");
       if (combined.toLowerCase().includes(q) || slug.toLowerCase().includes(q)) {
         const idx = combined.toLowerCase().indexOf(q);

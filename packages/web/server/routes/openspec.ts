@@ -162,7 +162,7 @@ openspecRouter.get("/changes/:slug", async (req, res) => {
     }
   }
 
-  const result = readChange(targetDir, req.params.slug);
+  const result = await readChange(targetDir, req.params.slug);
   if (!result) {
     res.status(404).json({ error: "Change not found" });
     return;
@@ -204,7 +204,8 @@ openspecRouter.get("/search", (req, res) => {
     }
   }
 
-  // 收集 changes 內容（active + archived）
+  // 收集 changes 內容（active + archived）：索引每個 change 內所有 root *.md artifact，
+  // 不再限定 proposal/design/tasks，使自訂 schema 的 brainstorm/plan/verify 等也可被搜尋
   const changesDir = path.join(openspecBase, "changes");
   const collectChanges = (baseDir: string) => {
     if (!fs.existsSync(baseDir)) return;
@@ -213,16 +214,14 @@ openspecRouter.get("/search", (req, res) => {
       const changePath = path.join(baseDir, slug);
       if (!fs.statSync(changePath).isDirectory()) continue;
 
-      const files = ["proposal.md", "design.md", "tasks.md"];
-      for (const file of files) {
-        const filePath = path.join(changePath, file);
-        if (fs.existsSync(filePath)) {
-          documents.push({
-            type: "change",
-            name: slug,
-            content: fs.readFileSync(filePath, "utf-8"),
-          });
-        }
+      for (const entry of fs.readdirSync(changePath, { withFileTypes: true })) {
+        if (!entry.isFile() || entry.name.startsWith(".")) continue;
+        if (!entry.name.toLowerCase().endsWith(".md")) continue;
+        documents.push({
+          type: "change",
+          name: slug,
+          content: fs.readFileSync(path.join(changePath, entry.name), "utf-8"),
+        });
       }
     }
   };

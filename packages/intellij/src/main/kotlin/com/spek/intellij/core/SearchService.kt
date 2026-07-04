@@ -54,10 +54,12 @@ object SearchService {
             ?.filter { it.isDirectory && it.name != "archive" && !it.name.startsWith(".") }
             ?.forEach { changeDir ->
                 val slug = changeDir.name
-                val files = listOf("proposal.md", "design.md", "tasks.md")
-                for (fileName in files) {
-                    val file = File(changeDir, fileName)
-                    if (!file.exists()) continue
+                // 索引每個 change 內所有 root *.md artifact（含自訂 schema 的 brainstorm/plan/verify 等）
+                val files = changeDir.listFiles()
+                    ?.filter { it.isFile && !it.name.startsWith(".") && it.name.lowercase().endsWith(".md") }
+                    ?.sortedBy { it.name }
+                    ?: emptyList()
+                for (file in files) {
                     val content = file.readText()
                     if (slug.lowercase().contains(lowerQuery) ||
                         content.lowercase().contains(lowerQuery)
@@ -69,7 +71,7 @@ object SearchService {
                                 title = description,
                                 slug = slug,
                                 context = extractContext(content, lowerQuery),
-                                file = fileName,
+                                file = file.name,
                             )
                         )
                         break // 每個 change 只回傳一次

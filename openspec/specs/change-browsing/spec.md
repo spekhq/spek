@@ -78,40 +78,36 @@ The banner SHALL be visually distinct from the title (smaller font size, muted t
 - **THEN** the banner SHALL remain visible as part of the sticky header region (alongside the title and tab navigation bar)
 
 ### Requirement: Change detail with tab navigation
-The system SHALL display change details using a tabbed interface with tabs in OpenSpec workflow order: Proposal, Design, Specs (delta specs), and Tasks. Tab content SHALL transition with a fade-in animation when switching. The change title (including back navigation link) and tab navigation bar SHALL be sticky-positioned below the main header, remaining visible when the user scrolls through long content.
+The system SHALL display change details using a tabbed interface whose tabs are generated from the change's discovered `artifacts` array, in the order that array provides (schema-enriched when available, otherwise the default `proposal, design, specs, tasks` ordering). Each tab's label SHALL be the artifact's title, and its content SHALL render according to the artifact's kind: `markdown` artifacts render their Markdown content, the `specs` artifact lists and renders its delta spec files, and the `tasks` artifact renders structured task data with a TaskProgress bar. Tab content SHALL transition with a fade-in animation when switching. The change title (including back navigation link) and tab navigation bar SHALL be sticky-positioned below the main header, remaining visible when the user scrolls through long content. The active tab SHALL be reflected in the URL `?tab=<artifact-id>` query parameter; when absent or unknown, the first artifact's tab SHALL be active.
 
-#### Scenario: View proposal tab
-- **WHEN** user views a change and clicks the Proposal tab
-- **THEN** the proposal.md content is displayed with a fade-in transition
+#### Scenario: Tabs generated from artifacts
+- **WHEN** a change's discovered artifacts are `proposal, design, specs, tasks`
+- **THEN** the page renders tabs in that order with those titles
 
-#### Scenario: View design tab
-- **WHEN** user clicks the Design tab
-- **THEN** the design.md content is displayed with a fade-in transition
+#### Scenario: Custom-schema tabs
+- **WHEN** a change's discovered artifacts include `brainstorm, proposal, plan, verify` (a non spec-driven schema)
+- **THEN** a tab is rendered for each artifact, in the discovered/enriched order, each showing that artifact's content
+
+#### Scenario: View a markdown artifact tab
+- **WHEN** user clicks a markdown artifact's tab
+- **THEN** that artifact's Markdown content is displayed with a fade-in transition
 
 #### Scenario: View specs tab
-- **WHEN** user clicks the Specs tab and the change has delta specs
+- **WHEN** user clicks the specs artifact's tab and the change has delta specs
 - **THEN** the delta spec files are listed and their content displayed with a fade-in transition
 
 #### Scenario: View tasks tab
-- **WHEN** user clicks the Tasks tab
-- **THEN** the tasks.md content is displayed with a TaskProgress bar showing completion statistics, with a fade-in transition
+- **WHEN** user clicks the tasks artifact's tab
+- **THEN** the tasks content is displayed with a TaskProgress bar showing completion statistics, with a fade-in transition
 
-#### Scenario: Tab order
-- **WHEN** the ChangeDetail page is rendered
-- **THEN** the tabs are displayed in order: Proposal, Design, Specs, Tasks (matching the OpenSpec workflow sequence)
-
-#### Scenario: Missing artifact
-- **WHEN** a tab's corresponding artifact file does not exist
-- **THEN** the tab shows a "No content" placeholder
+#### Scenario: Default and unknown tab query param
+- **WHEN** the page loads with no `tab` query parameter, or a `tab` value that matches no artifact id
+- **THEN** the first artifact's tab is active and no error is raised
 
 #### Scenario: Sticky header on scroll
 - **WHEN** user scrolls down through long change content
 - **THEN** the change title (with back link) and tab navigation bar SHALL remain fixed below the main application header
 - **AND** the sticky area SHALL have an opaque background that covers scrolling content beneath it
-
-#### Scenario: Sticky does not overlap main header
-- **WHEN** the sticky area is active
-- **THEN** it SHALL be positioned directly below the main header (top offset equal to header height) with a z-index lower than the main header and sidebar
 
 ### Requirement: Task progress display in change detail
 The Tasks tab SHALL display a progress bar and statistics (completed/total) derived from the change's task data.
@@ -148,24 +144,19 @@ The system SHALL render task items in the Tasks tab using custom SVG icons inste
 - **THEN** the task displays a green checkmark SVG icon followed by the task text with strikethrough and reduced opacity (0.6)
 
 ### Requirement: Change detail TOC sidebar
-The change detail page (`/changes/:slug`) SHALL display a sticky table-of-contents (TOC) sidebar for the current markdown tab when the heading count is at least 3 and the viewport width is at least 1280px. TOC SHALL be shown only when the active tab is Proposal, Design, or Specs; the Tasks tab SHALL never show a TOC. Each TOC entry SHALL be a clickable link that smooth-scrolls the main content to the corresponding heading. `h3` entries SHALL be visually indented relative to `h2` entries.
+The change detail page (`/changes/:slug`) SHALL display a sticky table-of-contents (TOC) sidebar for the current tab when the active artifact is renderable as Markdown (kind `markdown` or `specs`), its heading count is at least 3, and the viewport width is at least 1280px. The `tasks` artifact tab SHALL never show a TOC because its content is structured rather than Markdown. Each TOC entry SHALL be a clickable link that smooth-scrolls the main content to the corresponding heading. `h3` entries SHALL be visually indented relative to `h2` entries.
 
-#### Scenario: TOC visible on Proposal tab with long content
-- **WHEN** user views a change whose Proposal content contains 3 or more `h2`/`h3` headings on a viewport at least 1280px wide
-- **AND** the Proposal tab is active
-- **THEN** a sticky TOC sidebar appears alongside the main content listing every `h2` and `h3` heading from the Proposal markdown in document order
+#### Scenario: TOC visible on a markdown artifact with long content
+- **WHEN** user views a change whose active markdown artifact contains 3 or more `h2`/`h3` headings on a viewport at least 1280px wide
+- **THEN** a sticky TOC sidebar appears alongside the main content listing every `h2` and `h3` heading from that artifact in document order
 
-#### Scenario: TOC visible on Design tab
-- **WHEN** user switches to the Design tab and the Design content has 3 or more `h2`/`h3` headings
-- **THEN** the TOC sidebar updates to list the Design tab's headings
-
-#### Scenario: TOC visible on Specs tab
-- **WHEN** user switches to the Specs tab and the combined headings across all delta specs total 3 or more
+#### Scenario: TOC visible on specs tab
+- **WHEN** user switches to the specs artifact tab and the combined headings across all delta specs total 3 or more
 - **THEN** the TOC sidebar lists every heading from every delta spec in the order the specs are rendered
 
-#### Scenario: TOC hidden on Tasks tab
-- **WHEN** user switches to the Tasks tab
-- **THEN** no TOC sidebar is rendered regardless of heading count, because Tasks content is structured (non-markdown)
+#### Scenario: TOC hidden on tasks tab
+- **WHEN** user switches to the tasks artifact tab
+- **THEN** no TOC sidebar is rendered regardless of heading count, because tasks content is structured (non-markdown)
 
 #### Scenario: TOC hidden for short markdown tab
 - **WHEN** the active tab's content contains fewer than 3 `h2`/`h3` headings
@@ -176,13 +167,9 @@ The change detail page (`/changes/:slug`) SHALL display a sticky table-of-conten
 - **THEN** the TOC sidebar is not rendered regardless of the active tab
 
 #### Scenario: Click TOC entry
-- **WHEN** user clicks a TOC entry while on a markdown tab
+- **WHEN** user clicks a TOC entry while on a markdown or specs tab
 - **THEN** the main content smooth-scrolls to the corresponding heading
 - **AND** the URL hash updates to that heading's slug
-
-#### Scenario: Indented h3 entries
-- **WHEN** the TOC contains both `h2` and `h3` entries
-- **THEN** each `h3` entry is visually indented relative to its preceding `h2` entry
 
 ### Requirement: Change detail TOC updates on tab switch
 The TOC sidebar SHALL recompute its entries whenever the active tab changes, and SHALL apply scrollspy and hash-anchor behavior to the newly active tab's content.

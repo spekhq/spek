@@ -121,9 +121,14 @@ BDD 關鍵字上色 — WHEN/GIVEN（藍）、THEN（綠）、AND（灰）、MUS
 ![Timeline](screenshots/timeline.png)
 
 ### Change 詳細內容
-分頁顯示 Proposal、Design、Tasks、Specs。
+每個 artifact 一個分頁。預設 `spec-driven` schema 為 Proposal、Design、Specs、Tasks；變更採用的 schema 會以 badge 顯示。
 
 ![Change 詳細](screenshots/change-detail.png)
+
+### 自訂 Schema
+spek 會顯示變更實際包含的所有 artifact，因此以自訂 OpenSpec schema 撰寫的變更（例如 `superpowers-bridge` 的 `brainstorm` / `plan` / `verify` / `retrospective`）每個 artifact 都會有自己的分頁。分頁預設以**最後修改時間**排序，讓正在編輯的 artifact 浮到最前；並提供排序控制可切換為 **Schema order** 或 **A–Z**。Schema order 來自 OpenSpec 權威（`openspec` CLI），而非 spek 自行解析 schema 格式，因此對任何 schema 都正確；CLI 不可用（或變更已封存）時，該模式會退回預設排序並說明原因。
+
+![自訂 Schema](screenshots/custom-schema.png)
 
 ### 全文搜尋
 `Cmd+K` / `Ctrl+K` 跨 specs 與 changes 搜尋。

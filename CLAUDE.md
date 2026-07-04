@@ -83,14 +83,16 @@ cd packages/intellij && ./gradlew buildPlugin
 - `scanOpenSpec(basePath)` — 掃描單一目錄的 OpenSpec 結構
 - `scanOpenSpecAggregated(basePath, { aggregate })` — 跨 worktree 聚合掃描：探索同 repo 全部 worktree，active changes 聯集並附來源、archived 依 slug 去重、specs 取主 worktree；單一 worktree / 非 git / 關閉聚合時等同 `scanOpenSpec`
 - `readSpec(basePath, topic)` — 讀取單一 spec（含歷史）
-- `readChange(basePath, slug)` — 讀取單一 change
+- `readChange(basePath, slug, orderProvider?)` — 讀取單一 change；回傳 `ChangeDetail`，內含動態探索的 `artifacts` 陣列（預設 mtime 序）、`schema` 欄位、以及 `schemaOrder`（schema 權威順序的 artifact id 清單，供前端 schema-order 排序用；只對 active change 查 CLI，archived / CLI 不可用時為 undefined）。`orderProvider` 可注入以利測試
+- `discoverArtifacts(changePath)` — 以檔案系統為準探索 change 的 artifacts：root 每個 `*.md`（忽略 dotfile / 非 md）為一個 artifact、非空 `specs/` 為一個 specs artifact，依 kind（`markdown` / `tasks` / `specs`）分類；排序依檔案 mtime 由新到舊（見下）。`countArtifacts(changePath)` 不讀內容算出數量供列表用
+- **Artifact 預設 mtime 排序 + 使用者可選排序** — `artifacts.ts` 的 `discoverArtifacts` 以檔案 mtime 由新到舊排序（root 檔案取自身 mtime、`specs` 取其 delta 檔案中最新的 mtime），讓執行中被編輯的 artifact（如 tasks）浮到最前；mtime 相同時（例如剛 clone/checkout）以穩定的預設順序 tiebreak（`proposal, design, specs, tasks` 優先、其餘字母序）。**掃描（scanOpenSpec）永遠不呼叫 CLI**。前端提供排序控制（Last modified 預設 / Schema order / A–Z，mode id 分別為 `modified` / `schema` / `alpha`，偏好存於 `localStorage["spek:artifact-sort"]`，全域套用）：`modified` 用交付的 mtime 序、`alpha` 依標題、`schema` 依 `ChangeDetail.schemaOrder` 排序。`schemaOrder` 由 `readChange` 呼叫 `schema-order.ts` 的 `cliSchemaOrderProvider`（`openspec status --change <slug> --json` → `parseOrderFromStatus` 取 `planningArtifacts` + `artifactPaths`，`resolveSchemaOrder` 對應成 artifact id 清單）算出，**只在單一 change detail 讀取時查一次（有 cache），不進掃描熱路徑**；CLI 不可用或 archived change 時 `schemaOrder` 為 null，前端退回預設敘事序並顯示原因（active → CLI 未安裝、archived → 不追蹤 schema 順序）。change 顯示用的 schema 名稱仍從 `.openspec.yaml` `schema:` 讀取（fallback `openspec/config.yaml`），純讀 yaml key 非解析 schema
 - `readSpecAtChange(basePath, topic, slug)` — 讀取特定 change 中的 spec 歷史版本
 - `buildGraphData(basePath)` — 建立 spec-change 關聯圖資料
 - `buildGraphDataAggregated(basePath, { aggregate })` — 跨 worktree 聚合的關聯圖（change 節點 id 以 `change:<worktreeKey>:<slug>` 命名避免碰撞）
 - `listWorktrees(basePath)` — 以 `git worktree list --porcelain` 列出同 repo 全部 worktree；非 git / 無 `git` 時回 `[]`
 - `parseTasks(content)` — 解析 tasks.md checkbox
 - `extractHeadings(content)` / `slugifyHeading(text)` — 解析 markdown h2/h3 並產生穩定 slug，給 spec detail TOC 與 VS Code sidebar 共用（從 `@spek/core/headings` subpath 引入，避免 webview bundle 把 server-only 模組打包進去）
-- 共用型別：`OverviewData`, `SpecInfo`, `ChangeInfo`, `ChangeDetail`, `GraphData`, `WorktreeInfo`, `WorktreeSource`, `Heading` 等
+- 共用型別：`OverviewData`, `SpecInfo`, `ChangeInfo`, `ChangeDetail`, `ChangeArtifact`, `ArtifactKind`, `GraphData`, `WorktreeInfo`, `WorktreeSource`, `Heading` 等。`ChangeDetail.artifacts: ChangeArtifact[]` 是跨 core / API / adapters / 各前端的通用合約，change detail 的 tab、TOC 都由它驅動（markdown / specs 有 TOC、tasks 無）
 
 ### API Adapter Pattern
 前端透過 `ApiAdapter` 介面抽象通訊層：
@@ -127,7 +129,7 @@ GET /api/openspec/search?dir=...&q=...   # 全文搜尋
 - Kotlin 開發，使用 IntelliJ Platform SDK
 - JCEF（JetBrains 內建 Chromium）載入 React SPA 前端
 - IntelliJ Built-in Server 提供 REST API（`/api/spek/openspec/*`，`projectPath` query param）
-- Kotlin 重新實作 `@spek/core` 掃描/讀取邏輯（`core/` 目錄）
+- Kotlin 重新實作 `@spek/core` 掃描/讀取邏輯（`core/` 目錄），含 artifact 動態探索與 mtime 排序（`ArtifactDiscovery.kt`）及 schema 權威順序（`SchemaOrder.kt`：`parseOrderFromStatus` / `resolveSchemaOrder` + CLI provider，`ChangeReader` 附上 `schemaOrder`），皆對齊 TS 版規則；單元測試見 `src/test/kotlin`
 - 前端用 `FetchAdapter`（含自訂 `baseUrl` + `dirParam`）連接內嵌 server
 - Tool Window 在 IDE 右側 sidebar 顯示
 - 主題同步透過 JCEF `executeJavaScript()` 注入 CSS class
