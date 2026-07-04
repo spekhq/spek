@@ -13,6 +13,8 @@ import {
   buildGraphDataAggregated,
   listWorktrees,
   toWorktreeSource,
+  shouldUsePolling,
+  pollingInterval,
 } from "@spek/core";
 
 // --- File watcher 共享管理 ---
@@ -31,6 +33,9 @@ function getOrCreateWatcher(key: string, watchDirs: string[]): WatcherEntry {
   if (existing) return existing;
 
   const watchPaths = watchDirs.map((d) => path.join(d, "openspec"));
+  // 任一監看路徑落在不傳遞原生事件的掛載（9p/drvfs/NFS/CIFS 等，常見於 devcontainer/WSL）
+  // 時改用 polling，否則 inotify 收不到事件、live-reload 靜默失效。
+  const usePolling = watchPaths.some((p) => shouldUsePolling(p));
   const watcher = chokidar.watch(watchPaths, {
     ignored: (filePath: string) => {
       // 只監聽 .md 和 .yaml 檔案（以及目錄）
@@ -41,6 +46,9 @@ function getOrCreateWatcher(key: string, watchDirs: string[]): WatcherEntry {
     },
     ignoreInitial: true,
     persistent: true,
+    usePolling,
+    interval: pollingInterval(),
+    binaryInterval: pollingInterval(),
   });
 
   const entry: WatcherEntry = { watcher, clients: new Set(), debounceTimer: null };

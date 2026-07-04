@@ -298,6 +298,13 @@ cd packages/intellij && ./gradlew buildPlugin  # Build plugin ZIP
 
 **系統需求：** Node.js 22+、Java 17+（IntelliJ plugin build 需要）
 
+### 容器環境的即時重載（devcontainer / WSL）
+
+spek 會監看 `openspec/` 並在檔案變更時即時重載。在不傳遞原生檔案事件的檔案系統上 —— 9p / drvfs / NFS / CIFS 等掛載（devcontainer、WSL 把 host 目錄掛進容器即如此）—— spek 會自動改用 polling，確保新建檔案仍能被偵測。判別依據是被監看路徑所在掛載的檔案系統型別。可用環境變數覆寫：
+
+- `SPEK_WATCH_POLLING=on`（或 `off`）—— 對所有版本強制開啟 / 關閉 polling
+- `CHOKIDAR_USEPOLLING=1` / `CHOKIDAR_INTERVAL=<ms>` —— Web 與 VS Code 另外尊重 chokidar 原生環境變數
+
 ## 致謝
 
 本專案的靈感來自[龍哥（高見龍）](https://kaochenlong.com)介紹 SDD（Spec Driven Development）的系列文章。特別感謝龍哥在 SDD 和 [OpenSpec](https://github.com/Fission-AI/OpenSpec) 上的貢獻。

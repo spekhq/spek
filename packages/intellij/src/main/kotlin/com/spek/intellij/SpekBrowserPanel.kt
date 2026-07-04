@@ -7,6 +7,7 @@ import com.intellij.openapi.project.Project
 import com.intellij.openapi.util.Disposer
 import com.intellij.ui.jcef.JBCefApp
 import com.intellij.ui.jcef.JBCefBrowser
+import com.spek.intellij.core.WatchPolling
 import java.io.File
 import java.net.HttpURLConnection
 import java.net.URI
@@ -168,6 +169,16 @@ class SpekBrowserPanel(private val project: Project) : Disposable {
         val openspecDir = File(basePath, "openspec")
         if (!openspecDir.isDirectory) return
 
+        // inotify（Java NIO WatchService 在 Linux 的底層）在 9p/drvfs/NFS 等掛載上收不到事件
+        // （devcontainer/WSL 常見）。這類路徑改用輪詢掃描；其餘維持原生 WatchService。
+        if (WatchPolling.shouldUsePolling(openspecDir.absolutePath)) {
+            setupPollingWatcher(openspecDir)
+        } else {
+            setupWatchServiceWatcher(openspecDir)
+        }
+    }
+
+    private fun setupWatchServiceWatcher(openspecDir: File) {
         val ws = FileSystems.getDefault().newWatchService()
         watchService = ws
 
@@ -224,6 +235,30 @@ class SpekBrowserPanel(private val project: Project) : Disposable {
                 ?.forEach { registerDirRecursively(it.toPath(), ws) }
         } catch (e: Exception) {
             log.debug("Cannot watch directory: $dir", e)
+        }
+    }
+
+    private fun setupPollingWatcher(openspecDir: File) {
+        val intervalMs = WatchPolling.pollingIntervalMs()
+        var snapshot = WatchPolling.scanSnapshot(openspecDir)
+        watchThread = thread(isDaemon = true, name = "spek-file-watcher-poll") {
+            try {
+                while (!disposed) {
+                    Thread.sleep(intervalMs)
+                    if (disposed) break
+                    val current = WatchPolling.scanSnapshot(openspecDir)
+                    if (current != snapshot) {
+                        snapshot = current
+                        scheduleRefresh()
+                    }
+                }
+            } catch (_: InterruptedException) {
+                // 正常關閉（dispose 時 interrupt）
+            } catch (e: Exception) {
+                if (!disposed) {
+                    log.warn("Polling file watcher error", e)
+                }
+            }
         }
     }
 

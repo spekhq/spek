@@ -88,6 +88,7 @@ cd packages/intellij && ./gradlew buildPlugin
 - `buildGraphData(basePath)` — 建立 spec-change 關聯圖資料
 - `buildGraphDataAggregated(basePath, { aggregate })` — 跨 worktree 聚合的關聯圖（change 節點 id 以 `change:<worktreeKey>:<slug>` 命名避免碰撞）
 - `listWorktrees(basePath)` — 以 `git worktree list --porcelain` 列出同 repo 全部 worktree；非 git / 無 `git` 時回 `[]`
+- `shouldUsePolling(path, opts?)` / `pollingInterval(env?)` — 判定檔案監看是否該改用 polling（`watch-polling.ts`）。原生事件（inotify）在 9p/drvfs/NFS/CIFS 等掛載上不傳遞（devcontainer/WSL），故依「被監看路徑的 fstype」決定：純函式 `decidePolling` 套用優先序「明確覆寫（`SPEK_WATCH_POLLING`/`CHOKIDAR_USEPOLLING`）→ fstype 偵測（讀 `/proc/mounts`）→ remote 環境保底」。Web/VS Code 傳給 chokidar `usePolling`；IntelliJ 以 Kotlin 對齊版（`WatchPolling.kt`）在需要時改走輪詢掃描執行緒
 - `parseTasks(content)` — 解析 tasks.md checkbox
 - `extractHeadings(content)` / `slugifyHeading(text)` — 解析 markdown h2/h3 並產生穩定 slug，給 spec detail TOC 與 VS Code sidebar 共用（從 `@spek/core/headings` subpath 引入，避免 webview bundle 把 server-only 模組打包進去）
 - 共用型別：`OverviewData`, `SpecInfo`, `ChangeInfo`, `ChangeDetail`, `GraphData`, `WorktreeInfo`, `WorktreeSource`, `Heading` 等

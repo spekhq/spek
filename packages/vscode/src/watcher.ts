@@ -2,6 +2,7 @@ import * as vscode from "vscode";
 import * as fs from "fs";
 import * as path from "path";
 import { watch } from "chokidar";
+import { shouldUsePolling, pollingInterval } from "@spek/core";
 
 /**
  * 對 `<dir>/openspec` 建立 chokidar 檔案監看，任一相關事件都呼叫 `onChange`。
@@ -15,6 +16,13 @@ import { watch } from "chokidar";
 export function watchOpenspecDir(dir: string, onChange: () => void): vscode.Disposable {
   const openspecPath = path.join(dir, "openspec");
 
+  // 被監看路徑落在不傳遞原生事件的掛載（9p/drvfs 等，devcontainer/WSL）時改用 polling。
+  // VS Code 在 remote（dev-container / wsl / ssh / codespaces）時 `remoteName` 非 undefined，
+  // 當 fstype 無法判定時可作為保底訊號。
+  const usePolling = shouldUsePolling(openspecPath, {
+    extraRemoteIndicator: vscode.env.remoteName !== undefined,
+  });
+
   const watcher = watch(openspecPath, {
     ignored: (filePath: string) => {
       // 只監看 .md 與 .yaml 檔案；目錄一律不忽略，才能遞迴進去
@@ -25,6 +33,9 @@ export function watchOpenspecDir(dir: string, onChange: () => void): vscode.Disp
     },
     ignoreInitial: true,
     persistent: true,
+    usePolling,
+    interval: pollingInterval(),
+    binaryInterval: pollingInterval(),
   });
 
   // 一併監聽目錄事件（addDir/unlinkDir），涵蓋僅目錄變動的情況
