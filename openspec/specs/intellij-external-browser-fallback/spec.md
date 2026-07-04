@@ -1,3 +1,7 @@
+## Purpose
+
+當 JCEF 不可用時，提供以外部瀏覽器開啟 spek 前端的後備方案。
+
 ## Requirements
 
 ### Requirement: External browser launch

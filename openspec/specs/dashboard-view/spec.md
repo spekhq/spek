@@ -1,3 +1,9 @@
+## Purpose
+
+提供總覽頁，彙整 specs、changes、tasks 的統計數據作為進入點。
+
+## Requirements
+
 ### Requirement: Overview statistics display
 The system SHALL display overview statistics from the overview API: total specs count, active changes count, archived changes count, and task completion rate (percentage). Statistics SHALL be displayed in stat cards with large numbers (text-4xl) and a staggered fade-in-up entry animation on page load.
 

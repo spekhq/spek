@@ -1,5 +1,8 @@
-## ADDED Requirements
+## Purpose
 
+解析 tasks.md 的 checkbox 與 section 分組，回傳完成度統計。
+
+## Requirements
 ### Requirement: Parse task checkboxes
 The task parser SHALL be a pure function in the `@spek/core` package that reads a tasks.md content string and extracts checkbox items with their completion status. It SHALL have no dependency on Express or any HTTP framework.
 

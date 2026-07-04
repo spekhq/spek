@@ -1,3 +1,7 @@
+## Purpose
+
+提供 spec-change 關聯的力導向圖視覺化，讓使用者探索 specs 與 changes 之間的關係。
+
 ## Requirements
 
 ### Requirement: Graph page route

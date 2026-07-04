@@ -1,3 +1,9 @@
+## Purpose
+
+渲染 OpenSpec markdown（含 GFM 與 BDD 語法高亮），統一各前端的內容呈現。
+
+## Requirements
+
 ### Requirement: Markdown content rendering
 The system SHALL render Markdown content using react-markdown with remark-gfm plugin, supporting GFM features including tables, strikethrough, and task lists.
 

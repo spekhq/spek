@@ -1,5 +1,8 @@
-## ADDED Requirements
+## Purpose
 
+提供 OpenSpec 內容的 server-side 全文搜尋 API。
+
+## Requirements
 ### Requirement: Full-text search endpoint
 The system SHALL provide `GET /api/openspec/search` that searches across all specs and changes content.
 

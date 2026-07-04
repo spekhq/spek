@@ -1,5 +1,8 @@
-## ADDED Requirements
+## Purpose
 
+快取 git 檔案時間戳查詢，加速 change 建立與封存日期等時間資訊的取得。
+
+## Requirements
 ### Requirement: Build timestamp cache from git log
 The system SHALL provide a function that executes a single `git log` command scoped to `openspec/changes/` and parses the output to build a Map of change slug to earliest commit timestamp (ISO 8601 format).
 

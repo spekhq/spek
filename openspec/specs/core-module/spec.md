@@ -1,5 +1,8 @@
-## ADDED Requirements
+## Purpose
 
+提供無框架依賴的共用邏輯套件 @spek/core（掃描、讀取、tasks 解析、型別），供 web server 與各 extension host 共用。
+
+## Requirements
 ### Requirement: Standalone core package
 The core module SHALL be an independent npm package (`@spek/core`) with no framework dependencies, usable by both the web server and the VS Code extension host.
 

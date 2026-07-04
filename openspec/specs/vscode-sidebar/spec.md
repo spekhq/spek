@@ -1,3 +1,9 @@
+## Purpose
+
+在 VS Code sidebar 提供 specs TreeView，子節點為 heading 並可跳至 webview 錨點。
+
+## Requirements
+
 ### Requirement: Activity Bar icon
 The extension SHALL register a ViewContainer in the Activity Bar with a spek-branded SVG icon. The ViewContainer SHALL be visible when the workspace contains an `openspec/` directory.
 

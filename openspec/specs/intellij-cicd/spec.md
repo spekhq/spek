@@ -60,4 +60,3 @@ Workflow SHALL 使用 `actions/cache` 或 `gradle-build-action` 快取 Gradle de
 #### Scenario: Cache hit on repeated builds
 - **WHEN** Gradle dependencies 未變更且 cache 存在
 - **THEN** 跳過 dependency 下載，直接使用快取
-

@@ -1,3 +1,9 @@
+## Purpose
+
+規範 monorepo 從 fresh clone 到可執行 dev 環境的建置流程，確保 @spek/core 已編譯且 npm run dev 能成功啟動。
+
+## Requirements
+
 ### Requirement: Install builds the core package
 A fresh-clone `npm install` at the repository root SHALL leave `@spek/core` in a compiled state so that consumers resolving its `dist/` entry points succeed without a separate manual build step.
 

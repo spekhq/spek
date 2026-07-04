@@ -1,5 +1,8 @@
-## ADDED Requirements
+## Purpose
 
+提供受限的檔案系統 API（目錄瀏覽、openspec 偵測），僅暴露 openspec/ 子目錄內容以確保安全。
+
+## Requirements
 ### Requirement: Browse directories
 The system SHALL provide an API endpoint `GET /api/fs/browse` that returns directory contents for a given path, allowing users to navigate the filesystem to find repos.
 

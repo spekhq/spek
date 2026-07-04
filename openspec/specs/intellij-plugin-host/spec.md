@@ -1,3 +1,7 @@
+## Purpose
+
+定義 IntelliJ plugin 主體（Tool Window、專案偵測、生命週期），作為前端與 core 邏輯的宿主。
+
 ## Requirements
 
 ### Requirement: Plugin registration and lifecycle

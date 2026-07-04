@@ -1,3 +1,7 @@
+## Purpose
+
+於 IntelliJ 以 JCEF 載入 React 前端，並同步 IDE 主題與檔案變更。
+
 ## Requirements
 
 ### Requirement: JCEF webview initialization

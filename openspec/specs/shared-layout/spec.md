@@ -1,5 +1,8 @@
-## ADDED Requirements
+## Purpose
 
+定義各頁共用的版面框架（導覽、標題列、內容區）。
+
+## Requirements
 ### Requirement: Header component
 The system SHALL render a fixed header bar (56px height) containing: an inline SVG logomark (S-curve with diamond accents, 24x24) followed by the "spek" brand text (left), a search button (center), and the current repo path (right, desktop only). On mobile viewports, the header SHALL include a hamburger menu button with `aria-label="Open navigation menu"` and hide the repo path. The header SHALL also include a theme toggle button. The logomark SVG SHALL use `currentColor` to follow the accent color, ensuring theme compatibility.
 

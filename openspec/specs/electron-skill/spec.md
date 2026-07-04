@@ -1,3 +1,9 @@
+## Purpose
+
+提供 Claude Code skill，以 agent-browser 透過 CDP 自動化 Electron 桌面應用。
+
+## Requirements
+
 ### Requirement: Electron skill 目錄結構
 skill 原始檔 SHALL 存放於 `.agents/skills/electron/SKILL.md`，並透過 `.claude/skills/electron` symlink 指向原始目錄。
 

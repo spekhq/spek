@@ -1,3 +1,9 @@
+## Purpose
+
+提供前端設計指引 skill，產出具設計品質、避免通用 AI 風格的介面。
+
+## Requirements
+
 ### Requirement: Skill 目錄結構
 
 frontend-design skill SHALL 存放於 `.agents/skills/frontend-design/` 目錄下，包含 `SKILL.md` 和 `LICENSE.txt` 兩個檔案。

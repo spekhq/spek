@@ -1,5 +1,8 @@
-## ADDED Requirements
+## Purpose
 
+提供 spec 列表與單一 spec 內容檢視（含 TOC 與歷史）。
+
+## Requirements
 ### Requirement: Spec list with filtering
 The system SHALL display all specs sorted alphabetically with history count metadata. A filter input SHALL allow instant client-side filtering by spec topic name. Each spec item SHALL display the topic name and the number of related changes (history count) as secondary information.
 

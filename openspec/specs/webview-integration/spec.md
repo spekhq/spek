@@ -1,5 +1,8 @@
-## ADDED Requirements
+## Purpose
 
+規範 VS Code Webview 與 extension host 的通訊（postMessage、CSP、acquireVsCodeApi）。
+
+## Requirements
 ### Requirement: Load React SPA in Webview
 The Webview SHALL load the spek React application from the extension's bundled assets.
 

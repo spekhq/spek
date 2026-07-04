@@ -1,5 +1,8 @@
-## ADDED Requirements
+## Purpose
 
+提供側邊欄的展開與收合控制及狀態記憶。
+
+## Requirements
 ### Requirement: Sidebar collapse toggle button
 The system SHALL display a toggle button at the bottom of the sidebar (above the Resync button) that collapses or expands the sidebar. The button SHALL display a left-pointing chevron (`«`) when the sidebar is expanded and a right-pointing chevron (`»`) when collapsed.
 

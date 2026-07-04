@@ -1,3 +1,9 @@
+## Purpose
+
+從 OpenSpec 資料產生 SVG 狀態徽章（specs 數、open changes、tasks 進度），供 README 與 CI 嵌入。
+
+## Requirements
+
 ### Requirement: Badge generation script
 The project SHALL provide a `scripts/generate-badges.ts` script that scans an OpenSpec directory and generates SVG badge files.
 

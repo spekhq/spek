@@ -1,5 +1,8 @@
-## ADDED Requirements
+## Purpose
 
+前端透過 ApiAdapter 介面抽象通訊層，讓 Web（Fetch）、VS Code Webview（postMessage）、Demo（靜態）以相同前端程式碼對接不同後端。
+
+## Requirements
 ### Requirement: ApiAdapter interface
 The frontend SHALL define an `ApiAdapter` interface that abstracts all API communication, allowing different implementations for web and VS Code environments. The interface SHALL include a `getSpecAtChange(topic: string, slug: string): Promise<{ content: string }>` method for fetching spec content at a specific change version.
 

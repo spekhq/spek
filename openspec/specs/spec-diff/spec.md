@@ -1,5 +1,8 @@
-## ADDED Requirements
+## Purpose
 
+比對目前 spec 內容與歷史 change 版本，呈現差異。
+
+## Requirements
 ### Requirement: Read spec content at a specific change version
 The system SHALL provide a core function `readSpecAtChange(repoDir, topic, slug)` that reads the spec content from a specific change's delta spec file. It SHALL check both active (`openspec/changes/<slug>/specs/<topic>/spec.md`) and archived (`openspec/changes/archive/<slug>/specs/<topic>/spec.md`) change directories.
 

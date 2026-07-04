@@ -1,5 +1,8 @@
-## ADDED Requirements
+## Purpose
 
+讓 Web 版使用者選擇本地 repo 路徑並偵測其 openspec/ 目錄作為資料來源。
+
+## Requirements
 ### Requirement: Path input with auto-detection
 The system SHALL provide a text input for entering a filesystem path. Upon input, the system SHALL call the detect API to check for an `openspec/` directory and display the detection result.
 

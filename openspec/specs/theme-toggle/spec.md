@@ -1,5 +1,8 @@
-## ADDED Requirements
+## Purpose
 
+提供深色與淺色主題切換，並與環境（IDE / 系統）同步。
+
+## Requirements
 ### Requirement: Theme state management
 The system SHALL provide a ThemeContext that manages the current theme ("dark" or "light") and exposes a toggle function. The theme state MUST be persisted in localStorage under the key `spek:theme`.
 

@@ -1,5 +1,8 @@
-## ADDED Requirements
+## Purpose
 
+提供 OpenSpec 內容的 REST API（overview / specs / changes / graph / search），作為前端資料來源。
+
+## Requirements
 ### Requirement: Overview endpoint
 The system SHALL provide `GET /api/openspec/overview` that returns aggregate statistics for an OpenSpec repository. The endpoint SHALL accept an optional `aggregate` query parameter (default true); when aggregation is active and the repository has multiple worktrees, the statistics SHALL cover all worktrees following the worktree-aggregation rules (active changes unioned, archived changes deduplicated by slug).
 

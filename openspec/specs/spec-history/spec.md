@@ -1,5 +1,8 @@
-## ADDED Requirements
+## Purpose
 
+呈現單一 spec 隨各 change 演進的歷史版本。
+
+## Requirements
 ### Requirement: Spec history data in API response
 The system SHALL include a `history` array in the `GET /api/openspec/specs/:topic` response. Each entry MUST contain the change slug, date (if parseable from slug), timestamp (ISO 8601 from git commit cache, or null if unavailable), description, and status (active or archived).
 

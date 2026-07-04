@@ -1,5 +1,8 @@
-## ADDED Requirements
+## Purpose
 
+定義前端 SPA 路由（dashboard / specs / changes / graph 等），並適配 Web 與 Webview 環境。
+
+## Requirements
 ### Requirement: Client-side routing
 The system SHALL use React Router v7 with `createBrowserRouter` to define the following routes:
 

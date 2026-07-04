@@ -1,3 +1,9 @@
+## Purpose
+
+監控 openspec 檔案變更並自動刷新前端內容，讓檢視即時反映磁碟狀態。
+
+## Requirements
+
 ### Requirement: File change detection for Web version
 
 The Web server SHALL monitor OpenSpec content for file changes using `chokidar` and push notifications to connected clients via Server-Sent Events (SSE). When worktree aggregation is active for a connection, the server SHALL monitor the `openspec/` directory of every aggregated worktree, so that changes made in any worktree (for example by a parallel agent) refresh the aggregated view.

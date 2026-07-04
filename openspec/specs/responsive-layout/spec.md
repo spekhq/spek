@@ -1,5 +1,8 @@
-## ADDED Requirements
+## Purpose
 
+規範前端在不同視窗寬度下的響應式版面行為。
+
+## Requirements
 ### Requirement: Mobile breakpoint detection
 The system SHALL detect whether the viewport width is below 768px and adapt the layout accordingly. The detection MUST use `window.matchMedia` and respond to runtime viewport changes (e.g., device rotation).
 

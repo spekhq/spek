@@ -1,3 +1,9 @@
+## Purpose
+
+提供 tag 觸發的 GitHub Actions workflow，自動建置並發佈 VS Code extension 至 Marketplace 與 Open VSX。
+
+## Requirements
+
 ### Requirement: Tag-triggered publish workflow
 系統 SHALL 提供 GitHub Actions workflow，於 push 符合 `v*` pattern 的 tag 時自動觸發 VS Code extension 的 build 與 publish 流程。
 

@@ -1,3 +1,9 @@
+## Purpose
+
+在 IntelliJ sidebar 提供 specs TreeView，每個 spec 可展開其 h2/h3 heading 並跳至對應錨點。
+
+## Requirements
+
 ### Requirement: Specs tree listing
 The IntelliJ plugin SHALL display a tree listing of all specs from the OpenSpec repository. Each item SHALL display the spec topic name. Items SHALL be sorted alphabetically.
 

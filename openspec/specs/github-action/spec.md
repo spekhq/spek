@@ -1,3 +1,9 @@
+## Purpose
+
+提供對外發佈的 composite GitHub Action，於 CI 中將 repo 的 OpenSpec 內容建置為靜態 HTML 檢視站。
+
+## Requirements
+
 ### Requirement: Composite Action definition
 The repository SHALL provide an `action.yml` at the root that defines a composite GitHub Action for building OpenSpec static sites.
 

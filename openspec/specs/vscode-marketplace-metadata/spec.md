@@ -1,3 +1,9 @@
+## Purpose
+
+規範 VS Code extension 的 Marketplace 中繼資料（icon、描述、關鍵字、CHANGELOG 同步）。
+
+## Requirements
+
 ### Requirement: Marketplace-ready package.json
 Extension 的 `package.json` SHALL 包含所有 VS Code Marketplace 發佈所需的欄位。
 

@@ -1,3 +1,9 @@
+## Purpose
+
+以水平甘特圖呈現各 change 的生命週期時間軸。
+
+## Requirements
+
 ### Requirement: Timeline page route
 
 The system SHALL expose a `/timeline` route in the web app that renders a horizontal Gantt-style timeline of all OpenSpec changes for the active repo.

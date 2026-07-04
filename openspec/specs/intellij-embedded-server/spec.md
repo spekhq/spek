@@ -1,3 +1,7 @@
+## Purpose
+
+以 IntelliJ 內建 HTTP server 提供 REST API，供 JCEF 內嵌前端讀取 OpenSpec 資料。
+
 ## Requirements
 
 ### Requirement: HTTP request handler registration

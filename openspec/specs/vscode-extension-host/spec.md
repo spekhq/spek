@@ -1,5 +1,8 @@
-## ADDED Requirements
+## Purpose
 
+定義 VS Code extension 主體（commands、activation、Webview panel），並直接呼叫 @spek/core 處理請求。
+
+## Requirements
 ### Requirement: Extension activation
 The extension SHALL activate when a workspace containing an `openspec/` directory is opened, or when the user explicitly invokes a spek command. Upon activation, the extension SHALL register TreeView providers for the sidebar and display the Activity Bar icon.
 

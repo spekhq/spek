@@ -1,3 +1,9 @@
+## Purpose
+
+提供搜尋介面與結果呈現，串接搜尋 API 與 Fuse.js。
+
+## Requirements
+
 ### Requirement: Search dialog activation
 The system SHALL provide a search dialog that can be opened via keyboard shortcut or UI interaction.
 
