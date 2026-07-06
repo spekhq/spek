@@ -51,7 +51,7 @@ export function TabView({ tabs, header, sticky, activeId: controlledId, onChange
   return (
     <div>
       {sticky ? (
-        <div className="sticky top-14 z-[5] bg-bg-primary -mx-6 px-6 pb-px">
+        <div data-spek-scroll-offset className="sticky top-14 z-[5] bg-bg-primary -mx-6 px-6 pb-px">
           {tabBar}
         </div>
       ) : (

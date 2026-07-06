@@ -7,6 +7,7 @@ import { MarkdownRenderer } from "../components/MarkdownRenderer";
 import { SpecDiffViewer } from "../components/SpecDiffViewer";
 import { SpecToc } from "../components/SpecToc";
 import { formatRelativeTime } from "../utils/formatRelativeTime";
+import { scrollToAnchorId } from "../utils/scrollOffset";
 
 const TOC_MIN_HEADINGS = 3;
 
@@ -60,17 +61,11 @@ export function SpecDetail() {
     const hash = location.hash.replace(/^#/, "");
     if (!hash) return;
 
-    const HEADER_OFFSET = 80;
     let attempts = 0;
     let rafId: number | null = null;
 
     const tryScroll = () => {
-      const el = document.getElementById(hash);
-      if (el) {
-        const top = el.getBoundingClientRect().top + window.scrollY - HEADER_OFFSET;
-        window.scrollTo({ top, behavior: "smooth" });
-        return;
-      }
+      if (scrollToAnchorId(hash)) return;
       // Markdown 尚未 commit 時 retry 幾次（最多 ~300ms）
       if (attempts++ < 10) {
         rafId = requestAnimationFrame(tryScroll);

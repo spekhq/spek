@@ -12,6 +12,7 @@ import { SchemaBadge } from "../components/SchemaBadge";
 import { formatLifecycleBanner, todayIso } from "../utils/lifecycle";
 import { useArtifactSort } from "../hooks/useArtifactSort";
 import { sortArtifacts, type ArtifactSortMode } from "../utils/artifact-sort";
+import { scrollToAnchorId } from "../utils/scrollOffset";
 
 const TOC_MIN_HEADINGS = 3;
 
@@ -185,17 +186,11 @@ export function ChangeDetail() {
     const hash = location.hash.replace(/^#/, "");
     if (!hash) return;
 
-    const HEADER_OFFSET = 80;
     let attempts = 0;
     let rafId: number | null = null;
 
     const tryScroll = () => {
-      const el = document.getElementById(hash);
-      if (el) {
-        const top = el.getBoundingClientRect().top + window.scrollY - HEADER_OFFSET;
-        window.scrollTo({ top, behavior: "smooth" });
-        return;
-      }
+      if (scrollToAnchorId(hash)) return;
       if (attempts++ < 10) {
         rafId = requestAnimationFrame(tryScroll);
       }
