@@ -121,7 +121,8 @@ The timeline SHALL gracefully degrade for changes missing `createdDate` rather t
 #### Scenario: All changes missing createdDate
 
 - **WHEN** every change has `createdDate === null`
-- **THEN** the page shows an empty-state message instructing the user to add `created:` to change frontmatter
+- **THEN** the page shows a neutral empty-state message stating that no created dates are available for these changes
+- **AND** the message SHALL NOT assert that the user omitted `created:` frontmatter, since the field may be present in the file but not surfaced by the backend
 
 ### Requirement: Theme and responsive behavior
 

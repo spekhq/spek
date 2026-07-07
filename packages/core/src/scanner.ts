@@ -41,7 +41,8 @@ function safeReadDir(dirPath: string): string[] {
 // 讀取 .openspec.yaml 的頂層 key:value 欄位（不支援 nested 結構，目前需求內僅有 schema/created）
 export function parseChangeYaml(content: string): Record<string, string> {
   const parsed: Record<string, string> = {};
-  for (const line of content.split("\n")) {
+  // 以 /\r?\n/ 切行，讓 CRLF 檔案不會在行尾留下 \r 而導致 created: 整行 match 失敗
+  for (const line of content.split(/\r?\n/)) {
     const m = line.match(/^(\w+):\s*(.+)$/);
     if (m) parsed[m[1]] = m[2].trim();
   }

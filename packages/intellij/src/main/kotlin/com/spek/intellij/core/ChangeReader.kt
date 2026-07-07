@@ -9,8 +9,10 @@ object ChangeReader {
 
         // 在 active 和 archive 中尋找
         var changeDir = File(base, slug)
+        var status = "active"
         if (!changeDir.exists()) {
             changeDir = File(base, "archive/$slug")
+            status = "archived"
         }
         if (!changeDir.exists()) return null
 
@@ -36,8 +38,14 @@ object ChangeReader {
         // 讀取 .openspec.yaml metadata
         val metadata = readMetadata(File(changeDir, ".openspec.yaml"))
 
+        // 重用 scanner 的 createdDate 解析；archivedDate 依 change 位於 changes/ 或 archive/<slug> 判定
+        val createdDate = OpenSpecScanner.readCreatedDate(changeDir)
+        val archivedDate = if (status == "archived") parseSlug(slug).first else null
+
         return ChangeDetail(
             slug = slug,
+            createdDate = createdDate,
+            archivedDate = archivedDate,
             proposal = proposal,
             design = design,
             tasks = tasks,

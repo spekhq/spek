@@ -56,6 +56,8 @@ data class ChangeInfo(
     val slug: String,
     val date: String?,
     val timestamp: String?,
+    val createdDate: String? = null,
+    val archivedDate: String? = null,
     val description: String,
     val status: String, // "active" | "archived"
     val hasProposal: Boolean,
@@ -68,6 +70,8 @@ data class ChangeInfo(
 @Serializable
 data class ChangeDetail(
     val slug: String,
+    val createdDate: String? = null,
+    val archivedDate: String? = null,
     val proposal: String?,
     val design: String?,
     val tasks: ParsedTasks?,

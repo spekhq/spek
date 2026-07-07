@@ -66,10 +66,16 @@ object OpenSpecScanner {
             TaskStats(parsed.total, parsed.completed)
         } else null
 
+        val createdDate = readCreatedDate(dir)
+        // archive folder 強制 YYYY-MM-DD-slug 命名（parseSlug 已處理），active 一律 null
+        val archivedDate = if (status == "archived") date else null
+
         return ChangeInfo(
             slug = slug,
             date = date,
             timestamp = null,
+            createdDate = createdDate,
+            archivedDate = archivedDate,
             description = description,
             status = status,
             hasProposal = hasProposal,
@@ -78,6 +84,19 @@ object OpenSpecScanner {
             hasSpecs = hasSpecs,
             taskStats = taskStats,
         )
+    }
+
+    // 從 change 目錄的 .openspec.yaml 解出 createdDate；缺檔或格式不符（非 YYYY-MM-DD）回 null。
+    // readLines() 會吃掉 CRLF/LF，故不受換行風格影響，行為對齊 TS scanner.ts 的 readCreatedDate。
+    fun readCreatedDate(changeDir: File): String? {
+        val yamlFile = File(changeDir, ".openspec.yaml")
+        if (!yamlFile.exists()) return null
+        for (line in yamlFile.readLines()) {
+            val match = Regex("""^created:\s*(.+)$""").find(line) ?: continue
+            val value = match.groupValues[1].trim()
+            return if (Regex("""^\d{4}-\d{2}-\d{2}$""").matches(value)) value else null
+        }
+        return null
     }
 
     private fun safeListDirs(dir: File): List<File> {

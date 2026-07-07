@@ -112,13 +112,7 @@ export function TimelinePage() {
 
       {totalChanges > 0 && everyChangeMissingDate && (
         <div className="rounded border border-border bg-bg-secondary p-6 text-text-muted text-sm">
-          No timeline data — add{" "}
-          <code className="bg-bg-tertiary px-1 py-0.5 rounded text-text-secondary">created:</code>{" "}
-          to each change&apos;s{" "}
-          <code className="bg-bg-tertiary px-1 py-0.5 rounded text-text-secondary">
-            .openspec.yaml
-          </code>{" "}
-          frontmatter.
+          No created dates are available for these changes, so there&apos;s nothing to place on the timeline.
         </div>
       )}
 
