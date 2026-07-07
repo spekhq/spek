@@ -41,6 +41,17 @@ The scanner SHALL be an async function in the `@spek/core` package that reads an
 - **WHEN** an active change is scanned (under `openspec/changes/` not in `archive/`)
 - **THEN** `ChangeInfo.archivedDate` SHALL be null
 
+### Requirement: YAML frontmatter parsing tolerates line-ending styles
+The scanner's `.openspec.yaml` frontmatter parser SHALL correctly extract the `created` field regardless of the file's line-ending style, so that `createdDate` is not lost for files using CRLF (`\r\n`) line endings. Parsing SHALL split content on both `\r\n` and `\n`, leaving no trailing carriage return that would prevent the `created` value from matching.
+
+#### Scenario: CRLF line endings preserve createdDate
+- **WHEN** a change's `.openspec.yaml` uses CRLF (`\r\n`) line endings and contains `created: 2026-07-05`
+- **THEN** the corresponding `ChangeInfo.createdDate` SHALL equal the string `"2026-07-05"`
+
+#### Scenario: LF line endings remain unaffected
+- **WHEN** a change's `.openspec.yaml` uses LF (`\n`) line endings and contains `created: 2026-07-05`
+- **THEN** the corresponding `ChangeInfo.createdDate` SHALL equal the string `"2026-07-05"`
+
 ### Requirement: Parse change artifacts
 The scanner SHALL read individual change directories and dynamically discover their artifacts rather than detecting a fixed set of files. It SHALL discover every regular `*.md` file at the change root and a non-empty `specs/` delta tree, classify each by kind (`tasks`, `specs`, or `markdown`), optionally enrich ordering/title/description from the change's resolved schema, and return them as an ordered `artifacts` array on `ChangeDetail`. The returned `ChangeDetail` SHALL continue to include the same `createdDate` and `archivedDate` fields as `ChangeInfo`, sourced from the same locations (`.openspec.yaml` frontmatter and archive folder name prefix respectively). `ChangeInfo` SHALL continue to expose lightweight presence flags so list views need not read full artifact content.
 

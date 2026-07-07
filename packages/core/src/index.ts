@@ -24,6 +24,7 @@ export {
 export { extractHeadings, slugifyHeading } from "./headings.js";
 export type { Heading } from "./headings.js";
 export { listChangeMarkdownFiles } from "./artifacts.js";
+export { shouldUsePolling, pollingInterval, withAuthoritativeChokidarEnv } from "./watch-polling.js";
 
 export type {
   TaskItem,

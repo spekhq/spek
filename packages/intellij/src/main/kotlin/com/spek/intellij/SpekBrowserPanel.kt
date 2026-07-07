@@ -8,6 +8,7 @@ import com.intellij.openapi.util.Disposer
 import com.intellij.ui.jcef.JBCefApp
 import com.intellij.ui.jcef.JBCefBrowser
 import com.spek.intellij.core.SchemaOrder
+import com.spek.intellij.core.WatchPolling
 import java.io.File
 import java.net.HttpURLConnection
 import java.net.URI
@@ -169,6 +170,16 @@ class SpekBrowserPanel(private val project: Project) : Disposable {
         val openspecDir = File(basePath, "openspec")
         if (!openspecDir.isDirectory) return
 
+        // inotify（Java NIO WatchService 在 Linux 的底層）在 9p/drvfs/NFS 等掛載上收不到事件
+        // （devcontainer/WSL 常見）。這類路徑改用輪詢掃描；其餘維持原生 WatchService。
+        if (WatchPolling.shouldUsePolling(openspecDir.absolutePath)) {
+            setupPollingWatcher(openspecDir)
+        } else {
+            setupWatchServiceWatcher(openspecDir)
+        }
+    }
+
+    private fun setupWatchServiceWatcher(openspecDir: File) {
         val ws = FileSystems.getDefault().newWatchService()
         watchService = ws
 
@@ -228,8 +239,35 @@ class SpekBrowserPanel(private val project: Project) : Disposable {
         }
     }
 
+    private fun setupPollingWatcher(openspecDir: File) {
+        val intervalMs = WatchPolling.pollingIntervalMs()
+        var snapshot = WatchPolling.scanSnapshot(openspecDir)
+        watchThread = thread(isDaemon = true, name = "spek-file-watcher-poll") {
+            try {
+                while (!disposed) {
+                    Thread.sleep(intervalMs)
+                    if (disposed) break
+                    val current = WatchPolling.scanSnapshot(openspecDir)
+                    if (current != snapshot) {
+                        snapshot = current
+                        scheduleRefresh()
+                    }
+                }
+            } catch (_: InterruptedException) {
+                // 正常關閉（dispose 時 interrupt）
+            } catch (e: Exception) {
+                if (!disposed) {
+                    log.warn("Polling file watcher error", e)
+                }
+            }
+        }
+    }
+
     private fun scheduleRefresh() {
         synchronized(this) {
+            // dispose() 在同一把鎖內把 disposed 設為 true，故通過此檢查即保證尚未 dispose，
+            // 不會再排程一個會在 dispose 後才觸發的 Timer（避免對已釋放的 JCEF browser 動作）。
+            if (disposed) return
             debounceTimer?.cancel()
             debounceTimer = Timer().apply {
                 schedule(object : TimerTask() {
@@ -242,6 +280,8 @@ class SpekBrowserPanel(private val project: Project) : Disposable {
     }
 
     private fun notifyWebviewFileChanged() {
+        // Timer 觸發時 browser 可能已被 dispose，二次防護避免對已釋放物件呼叫 executeJavaScript
+        if (disposed) return
         // 檔案有變動 → 先清掉 schema 順序快取，「再」通知 webview 重新抓取；順序不可顛倒：若先派發
         // spek:fileChanged，webview 的 re-fetch 可能搶在 clearCache 之前打到 server 而拿到舊順序。
         SchemaOrder.clearCache()
@@ -315,9 +355,13 @@ class SpekBrowserPanel(private val project: Project) : Disposable {
     }
 
     override fun dispose() {
-        disposed = true
-        debounceTimer?.cancel()
-        debounceTimer = null
+        // 與 scheduleRefresh 共用同一把鎖設定 disposed 並取消 debounce，關閉「掃描剛結束→排程新 Timer
+        //→dispose」的競態窗口；watchService/watchThread 的關閉不需持鎖，留在鎖外避免不必要的阻塞。
+        synchronized(this) {
+            disposed = true
+            debounceTimer?.cancel()
+            debounceTimer = null
+        }
         watchService?.close()
         watchThread?.interrupt()
     }

@@ -27,6 +27,9 @@ object ChangeReader {
         // archived change 無 planningArtifacts，直接為 null（前端顯示 archived 退回訊息）
         val refs = if (status == "active") SchemaOrder.cli.order(projectPath, slug) else null
         val schemaOrder = SchemaOrder.resolveSchemaOrder(refs, artifacts.map { it.id })
+        // Timeline 生命週期：重用 scanner 的 createdDate 解析；archivedDate 依 status 判定
+        val createdDate = OpenSpecScanner.readCreatedDate(changeDir)
+        val archivedDate = if (status == "archived") parseSlug(slug).first else null
 
         return ChangeDetail(
             slug = slug,
@@ -34,6 +37,8 @@ object ChangeReader {
             schema = schema,
             artifacts = artifacts,
             schemaOrder = schemaOrder,
+            createdDate = createdDate,
+            archivedDate = archivedDate,
             metadata = metadata,
         )
     }

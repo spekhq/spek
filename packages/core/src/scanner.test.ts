@@ -37,6 +37,28 @@ test("parseChangeYaml: ignores comments and blank lines", () => {
   assert.equal(result.created, "2026-04-20");
 });
 
+test("parseChangeYaml: CRLF line endings do not leave trailing \\r on values", () => {
+  const result = parseChangeYaml("schema: spec-driven\r\ncreated: 2026-07-05\r\n");
+  assert.equal(result.schema, "spec-driven");
+  assert.equal(result.created, "2026-07-05");
+});
+
+test("scanOpenSpec: CRLF .openspec.yaml still reads createdDate", async () => {
+  const repo = mkRepo();
+  writeChange(repo, "active", "crlf-foo", "schema: spec-driven\r\ncreated: 2026-07-05\r\n");
+  const result = await scanOpenSpec(repo);
+  assert.equal(result.activeChanges.length, 1);
+  assert.equal(result.activeChanges[0].createdDate, "2026-07-05");
+});
+
+test("scanOpenSpec: LF .openspec.yaml still reads createdDate (regression guard)", async () => {
+  const repo = mkRepo();
+  writeChange(repo, "active", "lf-foo", "schema: spec-driven\ncreated: 2026-07-05\n");
+  const result = await scanOpenSpec(repo);
+  assert.equal(result.activeChanges.length, 1);
+  assert.equal(result.activeChanges[0].createdDate, "2026-07-05");
+});
+
 test("scanOpenSpec: active change reads createdDate from .openspec.yaml", async () => {
   const repo = mkRepo();
   writeChange(repo, "active", "add-foo", "schema: spec-driven\ncreated: 2026-04-20\n");

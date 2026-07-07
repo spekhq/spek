@@ -56,6 +56,8 @@ data class ChangeInfo(
     val slug: String,
     val date: String?,
     val timestamp: String?,
+    val createdDate: String? = null,
+    val archivedDate: String? = null,
     val description: String,
     val status: String, // "active" | "archived"
     val hasProposal: Boolean,
@@ -86,6 +88,9 @@ data class ChangeDetail(
     val artifacts: List<ChangeArtifact>,
     /** schema 權威順序（artifact id 清單）；CLI 不可用 / archived 時為 null */
     val schemaOrder: List<String>? = null,
+    // Timeline 生命週期：createdDate 供 change-detail banner，archivedDate 由 archive/<slug> 判定
+    val createdDate: String? = null,
+    val archivedDate: String? = null,
     val metadata: Map<String, String>?,
 )
 

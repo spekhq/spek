@@ -14,6 +14,9 @@ import {
   listWorktrees,
   toWorktreeSource,
   listChangeMarkdownFiles,
+  shouldUsePolling,
+  pollingInterval,
+  withAuthoritativeChokidarEnv,
 } from "@spek/core";
 
 // --- File watcher 共享管理 ---
@@ -32,17 +35,28 @@ function getOrCreateWatcher(key: string, watchDirs: string[]): WatcherEntry {
   if (existing) return existing;
 
   const watchPaths = watchDirs.map((d) => path.join(d, "openspec"));
-  const watcher = chokidar.watch(watchPaths, {
-    ignored: (filePath: string) => {
-      // 只監聽 .md 和 .yaml 檔案（以及目錄）
-      if (fs.existsSync(filePath) && fs.statSync(filePath).isFile()) {
-        return !filePath.endsWith(".md") && !filePath.endsWith(".yaml");
-      }
-      return false;
-    },
-    ignoreInitial: true,
-    persistent: true,
-  });
+  // 任一監看路徑落在不傳遞原生事件的掛載（9p/drvfs/NFS/CIFS 等，常見於 devcontainer/WSL）
+  // 時改用 polling，否則 inotify 收不到事件、live-reload 靜默失效。
+  const usePolling = watchPaths.some((p) => shouldUsePolling(p));
+  const interval = pollingInterval();
+  // chokidar 5.x 建構時會事後重讀 CHOKIDAR_USEPOLLING / CHOKIDAR_INTERVAL 覆寫我們傳入的
+  // usePolling / interval，因此在建立期間把 env 對齊到權威決定，讓 @spek/core 判定為準。
+  const watcher = withAuthoritativeChokidarEnv(usePolling, interval, () =>
+    chokidar.watch(watchPaths, {
+      ignored: (filePath: string) => {
+        // 只監聽 .md 和 .yaml 檔案（以及目錄）
+        if (fs.existsSync(filePath) && fs.statSync(filePath).isFile()) {
+          return !filePath.endsWith(".md") && !filePath.endsWith(".yaml");
+        }
+        return false;
+      },
+      ignoreInitial: true,
+      persistent: true,
+      usePolling,
+      interval,
+      binaryInterval: interval,
+    }),
+  );
 
   const entry: WatcherEntry = { watcher, clients: new Set(), debounceTimer: null };
 
