@@ -187,3 +187,59 @@ test("readChange: an archived change never consults the provider", async () => {
   assert.equal(called, 0);
   assert.equal(detail.schemaOrder, undefined);
 });
+
+// 合併縫合守衛：單一 ChangeDetail 需同時帶著 #6 的 artifacts 與 Timeline 的 created/archived。
+// 既有測試各自只驗一半（日期測試不碰 artifacts，schemaOrder 測試不碰日期），故補這兩個同物件斷言。
+test("readChange: archived change carries artifacts, dates and schema on one object", async () => {
+  const repo = mkRepo();
+  const base = path.join(repo, "openspec", "changes", "archive", "2026-03-01-add-widget");
+  fs.mkdirSync(path.join(base, "specs", "topic-a"), { recursive: true });
+  fs.writeFileSync(path.join(base, ".openspec.yaml"), "schema: spec-driven\ncreated: 2026-02-25\n");
+  fs.writeFileSync(path.join(base, "proposal.md"), "## Why\n");
+  fs.writeFileSync(path.join(base, "tasks.md"), "## Tasks\n- [x] a\n- [ ] b\n");
+  fs.writeFileSync(path.join(base, "specs", "topic-a", "spec.md"), "## ADDED\nx\n");
+  const detail = await readChange(repo, "2026-03-01-add-widget", noOrder);
+  assert.ok(detail);
+  assert.equal(detail.status, "archived");
+  assert.equal(detail.schema, "spec-driven");
+  assert.equal(detail.createdDate, "2026-02-25");
+  assert.equal(detail.archivedDate, "2026-03-01");
+  assert.equal(detail.schemaOrder, undefined);
+  assert.deepEqual(
+    detail.artifacts.map((a) => a.id).sort(),
+    ["proposal", "specs", "tasks"],
+  );
+  const tasks = detail.artifacts.find((a) => a.id === "tasks");
+  assert.equal(tasks?.kind, "tasks");
+  assert.equal(tasks?.tasks?.total, 2);
+  assert.equal(detail.metadata?.created, "2026-02-25");
+});
+
+test("readChange: active change co-asserts schemaOrder, createdDate and artifacts together", async () => {
+  const repo = mkRepo();
+  // slug 帶日期前綴但仍在 changes/（非 archive/）→ status 為 active，archivedDate 必須為 null，
+  // 用以釘住 status==="archived" 判定（而非只看 slug 形狀）
+  const base = path.join(repo, "openspec", "changes", "2026-05-10-add-bridge");
+  fs.mkdirSync(base, { recursive: true });
+  fs.writeFileSync(path.join(base, ".openspec.yaml"), "schema: superpowers-bridge\ncreated: 2026-05-10\n");
+  fs.writeFileSync(path.join(base, "proposal.md"), "## Why\n");
+  fs.writeFileSync(path.join(base, "plan.md"), "plan\n");
+  const provider = () => [
+    { id: "proposal", outputPath: "proposal.md" },
+    { id: "plan", outputPath: "plan.md" },
+  ];
+  const detail = await readChange(repo, "2026-05-10-add-bridge", provider);
+  assert.ok(detail);
+  assert.equal(detail.status, "active");
+  assert.equal(detail.createdDate, "2026-05-10");
+  assert.equal(detail.archivedDate, null);
+  assert.equal(detail.schema, "superpowers-bridge");
+  assert.deepEqual(detail.schemaOrder, ["proposal", "plan"]);
+  assert.deepEqual(detail.artifacts.map((a) => a.id).sort(), ["plan", "proposal"]);
+});
+
+test("readChange: returns null for a change that does not exist", async () => {
+  const repo = mkRepo();
+  const detail = await readChange(repo, "no-such-change", noOrder);
+  assert.equal(detail, null);
+});

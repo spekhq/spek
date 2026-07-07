@@ -68,4 +68,13 @@ class OpenSpecScannerTest {
         assertEquals(1, result.activeChanges.size)
         assertEquals("2026-07-05", result.activeChanges[0].createdDate)
     }
+
+    // 與 change-detail badge 一致：list badge 也需經 cleanScalar 去引號 / 行內註解
+    @Test
+    fun `quoted schema is cleaned on the changes-list badge`() {
+        writeChange("active", "add-thing", "schema: \"custom-1.0\"  # note\ncreated: 2026-07-05\n")
+        val result = OpenSpecScanner.scan(repo.absolutePath)
+        assertEquals(1, result.activeChanges.size)
+        assertEquals("custom-1.0", result.activeChanges[0].schema)
+    }
 }
