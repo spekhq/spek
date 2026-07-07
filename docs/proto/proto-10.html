@@ -1,36 +1,29 @@
 <!DOCTYPE html>
 <!--
-  spek workspace 多 session 雛型 — proto-10「OpenSpec / Files 並存切換」
+  spek workspace 多 session layout — 互動雛型
 
-  設計主張（使用者親口拍板）：
-  proto-9 右側只有 OpenSpec 一個面板，Files 還只是 header 上的占位鈕。
-  proto-10 把兩者做成「同層級的 peer」——右側 side panel 一次只顯示一個身分，
-  在 OpenSpec ↔ Files 之間切換；不論哪個身分，都與 terminal 並存（不是像
-  proto-8 那樣切走 terminal 整個換掉）。
+  spek 定位為 agent 開發工作台：把多個「一個 repo/資料夾各自一個 claude
+  session」的 terminal 包在一個殼裡，加上看得懂 OpenSpec 結構與檔案的輕量瀏覽器。
 
-  關鍵改動：proto-9 header 右側原本是 `⌘P Files` 占位鈕，這裡換成一組並列的
-  segmented control `[◈ OpenSpec] [▤ Files]`（同層級、互斥、一次一個 active）。
-  樣式沿用 proto-8 的 .dest-tabs／.dtab（repo 目的地切換的既有配色與間距），
-  不另外發明新配色。
+  版面：
+  - 左側 activity bar + workspace rail：列出各 repo/資料夾，選中的 repo 展開露出
+    它底下的 session（同一 repo 可多開，如 project-a 的 master / feat/term）。
+  - 主舞台只屬於當前選中的 repo：上方 session 分頁，下方左右 split。
+    - 左：純 terminal（pty 跑 claude）。結尾是 claude 自己的 `>` prompt 行 + 游標，
+      那一行就是輸入，spek 不另外畫輸入框。刻意不重做 diff review / task tracking，
+      那些 Claude Code 在 terminal 裡本來就有。
+    - 右：side panel，一次只顯示一個身分，在 OpenSpec ↔ Files 之間用 header 的
+      segmented control `[◈ OpenSpec] [▤ Files]` 切換；不論哪個都與 terminal 並存，
+      可收合讓 terminal 佔滿。
+      · OpenSpec（spek 的賣點）：自動跟隨 focused session 正在做的 change，顯示
+        breadcrumb、nav（本 change／Specs／Changes／Graph）、Tasks 進度、BDD spec
+        deltas。tasks 就長在 change 裡，不另外抽出。
+      · Files：當前 repo 的檔案樹（name + git M/A badge + 淡化修改時間）。
+      · 條件式：Files 一定在，OpenSpec 只有 repo 有 openspec/ 且有 active change
+        才可用（無 openspec/ 的 repo，如 spek-web，OpenSpec 鈕會 disabled）。
 
-  條件式規則：Files 一定存在，OpenSpec 才是條件式（repo 要有 openspec/ 且有
-  active change 才可用）。這裡不真的切 repo 展示，改用 hint-bar-sub 底下一個
-  「不可互動的示意 segmented control」讓 disabled／dim 樣式看得到——呼應 rail
-  裡 spek-web（無 openspec/）的情境。
-
-  沿用 proto-9：workspace rail、repo header 身分、session 分頁列、純 terminal
-  （結尾是 claude 自己的 `>` prompt 行 + 游標，不另外畫輸入框）、左右 split，
-  以及右側 OpenSpec 面板「自動跟隨 focused session 正在做的 change」的全部內容
-  （breadcrumb、nav switch：本 change／Specs／Changes／Graph、Tasks 3/9、
-  BDD spec deltas）。
-
-  Files 身分的檔案樹素材抄自 proto-8（project-a 的 packages/@spek/core 底下
-  scanner.ts／types.ts、docs/、openspec/、CLAUDE.md、package.json、README.md
-  等），但從「多欄表格」壓縮成適合 ~42% 側欄寬度的縮排 tree：name + 可選 git
-  M/A badge，右側視空間放很淡的修改時間，不做 size 欄位。
-
-  <head> 與 .titlebar / .activity / .statusbar 結構、CSS 完全沿用 base.html，
-  不另外修改。本檔案專屬 CSS 集中在 <style id="proto-10-style"> 區塊。
+  單一 self-contained HTML：design token、視窗外框、terminal 渲染、共用 primitives
+  都內嵌在下方 <style>，專屬版面 CSS 集中在 <style id="proto-10-style"> 區塊。
 -->
 <html lang="zh-Hant">
 <head>
