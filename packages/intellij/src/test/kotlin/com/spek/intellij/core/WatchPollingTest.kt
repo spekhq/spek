@@ -178,6 +178,21 @@ class WatchPollingTest {
     }
 
     @Test
+    fun scanSnapshot_detectsSizeChangeWithUnchangedMtime() {
+        val dir = mkTempOpenspec()
+        val f = File(dir, "spec.md")
+        f.writeText("# hi")
+        // 釘住 mtime 到固定整秒，模擬 9p / NFS 上就地 append 時 mtime 不進位的情境
+        val fixedMtime = 1_700_000_000_000L
+        f.setLastModified(fixedMtime)
+        val before = WatchPolling.scanSnapshot(dir)
+        f.appendText(" appended, size grew")
+        f.setLastModified(fixedMtime)
+        val after = WatchPolling.scanSnapshot(dir)
+        assertNotEquals(before, after, "mtime 不變但 size 改變時仍應偵測到（快照值需納入 size）")
+    }
+
+    @Test
     fun scanSnapshot_onlyMdAndYaml_skipsDotDirs() {
         val dir = mkTempOpenspec()
         File(dir, "keep.md").writeText("a")

@@ -7,6 +7,8 @@ import {
   hasRemoteEnvIndicator,
   decidePolling,
   pollingInterval,
+  shouldUsePolling,
+  withAuthoritativeChokidarEnv,
 } from "./watch-polling.js";
 
 // --- fsTypeNeedsPolling ---
@@ -152,4 +154,93 @@ test("pollingInterval: 預設 1000ms；CHOKIDAR_INTERVAL 覆寫；無效值退�
   assert.equal(pollingInterval({ CHOKIDAR_INTERVAL: "500" }), 500);
   assert.equal(pollingInterval({ CHOKIDAR_INTERVAL: "abc" }), 1000);
   assert.equal(pollingInterval({ CHOKIDAR_INTERVAL: "-5" }), 1000);
+  assert.equal(pollingInterval({ CHOKIDAR_INTERVAL: "0" }), 1000);
+});
+
+// --- shouldUsePolling ---
+
+test("shouldUsePolling: 明確覆寫短路，回傳覆寫值且與路徑無關", () => {
+  const p = "/definitely/not/a/real/path/openspec";
+  assert.equal(shouldUsePolling(p, { env: { SPEK_WATCH_POLLING: "on" } }), true);
+  assert.equal(shouldUsePolling(p, { env: { SPEK_WATCH_POLLING: "off" } }), false);
+  assert.equal(shouldUsePolling(p, { env: { CHOKIDAR_USEPOLLING: "1" } }), true);
+  // 短路 bug 會讓無覆寫時直接回傳 null 覆寫值；斷言型別可捕捉，且不受平台 / 掛載影響
+  assert.equal(typeof shouldUsePolling(p, { env: {} }), "boolean");
+});
+
+test("shouldUsePolling: 覆寫優先於 extraRemoteIndicator 保底", () => {
+  const p = "/definitely/not/a/real/path/openspec";
+  assert.equal(
+    shouldUsePolling(p, { env: { SPEK_WATCH_POLLING: "off" }, extraRemoteIndicator: true }),
+    false,
+  );
+});
+
+// --- withAuthoritativeChokidarEnv ---
+
+test("withAuthoritativeChokidarEnv: callback 執行期間 env 對齊到權威值", () => {
+  const env: NodeJS.ProcessEnv = { CHOKIDAR_USEPOLLING: "true", CHOKIDAR_INTERVAL: "0" };
+  let seenUse: string | undefined;
+  let seenInterval: string | undefined;
+  withAuthoritativeChokidarEnv(
+    false,
+    1000,
+    () => {
+      seenUse = env.CHOKIDAR_USEPOLLING;
+      seenInterval = env.CHOKIDAR_INTERVAL;
+    },
+    env,
+  );
+  assert.equal(seenUse, "false");
+  assert.equal(seenInterval, "1000");
+});
+
+test("withAuthoritativeChokidarEnv: usePolling=true 時 env 設為字串 \"true\"", () => {
+  const env: NodeJS.ProcessEnv = { CHOKIDAR_USEPOLLING: "false" };
+  let seenUse: string | undefined;
+  withAuthoritativeChokidarEnv(
+    true,
+    250,
+    () => {
+      seenUse = env.CHOKIDAR_USEPOLLING;
+    },
+    env,
+  );
+  assert.equal(seenUse, "true");
+});
+
+test("withAuthoritativeChokidarEnv: 結束後還原原有 env 值", () => {
+  const env: NodeJS.ProcessEnv = { CHOKIDAR_USEPOLLING: "true", CHOKIDAR_INTERVAL: "250" };
+  withAuthoritativeChokidarEnv(true, 500, () => {}, env);
+  assert.equal(env.CHOKIDAR_USEPOLLING, "true");
+  assert.equal(env.CHOKIDAR_INTERVAL, "250");
+});
+
+test("withAuthoritativeChokidarEnv: 原本未設定時結束後刪除（不留 undefined 字串）", () => {
+  const env: NodeJS.ProcessEnv = {};
+  withAuthoritativeChokidarEnv(true, 1000, () => {}, env);
+  assert.equal("CHOKIDAR_USEPOLLING" in env, false);
+  assert.equal("CHOKIDAR_INTERVAL" in env, false);
+});
+
+test("withAuthoritativeChokidarEnv: callback 拋錯仍還原 env 並向外拋出", () => {
+  const env: NodeJS.ProcessEnv = { CHOKIDAR_USEPOLLING: "false" };
+  assert.throws(() =>
+    withAuthoritativeChokidarEnv(
+      true,
+      1000,
+      () => {
+        throw new Error("boom");
+      },
+      env,
+    ),
+  );
+  assert.equal(env.CHOKIDAR_USEPOLLING, "false");
+  assert.equal("CHOKIDAR_INTERVAL" in env, false);
+});
+
+test("withAuthoritativeChokidarEnv: 回傳 callback 的結果", () => {
+  const env: NodeJS.ProcessEnv = {};
+  const result = withAuthoritativeChokidarEnv(true, 1000, () => "watcher", env);
+  assert.equal(result, "watcher");
 });

@@ -163,8 +163,12 @@ export function shouldUsePolling(
   opts: { extraRemoteIndicator?: boolean; env?: NodeJS.ProcessEnv } = {},
 ): boolean {
   const env = opts.env ?? process.env;
+  // 明確覆寫最優先，直接回傳，免去 realpathSync + 讀 /proc/mounts 的 I/O
+  //（聚合時同一 watcher 會對多個 worktree 路徑各呼叫一次，覆寫短路可省去重複讀取）
+  const override = parsePollingOverride(env);
+  if (override !== null) return override;
   return decidePolling({
-    override: parsePollingOverride(env),
+    override: null,
     platform: process.platform,
     fsType: detectMountFsType(path),
     remoteIndicator:
@@ -177,4 +181,43 @@ export function pollingInterval(env: NodeJS.ProcessEnv = process.env): number {
   const raw = env.CHOKIDAR_INTERVAL;
   const n = raw ? Number.parseInt(raw, 10) : NaN;
   return Number.isFinite(n) && n > 0 ? n : 1000;
+}
+
+function restoreEnvVar(env: NodeJS.ProcessEnv, key: string, prev: string | undefined): void {
+  if (prev === undefined) delete env[key];
+  else env[key] = prev;
+}
+
+/**
+ * 讓 @spek/core 算出的 polling 決定成為 chokidar 的權威值。
+ *
+ * chokidar 5.x 在建構 watcher 時會「事後」重讀 `process.env.CHOKIDAR_USEPOLLING` 與
+ * `CHOKIDAR_INTERVAL`，覆寫我們透過 options 傳入的 `usePolling` / `interval`
+ *（見 node_modules/chokidar/index.js: envPoll / envInterval 區塊）。因此當使用者
+ * 於 shell rc 匯出 `CHOKIDAR_USEPOLLING=true`（WSL/Docker 常見 workaround）再依 README
+ * 設 `SPEK_WATCH_POLLING=off` 時，Web / VS Code 仍會輪詢——牴觸 spec「off → SHALL NOT poll」；
+ * 同理 `CHOKIDAR_INTERVAL=0` 會繞過 `pollingInterval()` 的 >0 防呆而 busy poll。
+ *
+ * 此 helper 在 `createWatcher()` 期間把兩個 env 對齊到權威決定（chokidar 於建構時同步讀取），
+ * 建立後立即還原原值，避免污染其它 chokidar 實例或整個 process。
+ *
+ * 前提：`createWatcher()` 必須是同步的（僅呼叫 `chokidar.watch(...)`，不得 `await`）。env 對齊
+ * 只在 set→restore 這段同步窗口內有效；若 callback 內有非同步等待，還原會早於 chokidar 讀取而失效。
+ */
+export function withAuthoritativeChokidarEnv<T>(
+  usePolling: boolean,
+  interval: number,
+  createWatcher: () => T,
+  env: NodeJS.ProcessEnv = process.env,
+): T {
+  const prevUsePolling = env.CHOKIDAR_USEPOLLING;
+  const prevInterval = env.CHOKIDAR_INTERVAL;
+  env.CHOKIDAR_USEPOLLING = usePolling ? "true" : "false";
+  env.CHOKIDAR_INTERVAL = String(interval);
+  try {
+    return createWatcher();
+  } finally {
+    restoreEnvVar(env, "CHOKIDAR_USEPOLLING", prevUsePolling);
+    restoreEnvVar(env, "CHOKIDAR_INTERVAL", prevInterval);
+  }
 }

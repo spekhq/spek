@@ -264,6 +264,9 @@ class SpekBrowserPanel(private val project: Project) : Disposable {
 
     private fun scheduleRefresh() {
         synchronized(this) {
+            // dispose() 在同一把鎖內把 disposed 設為 true，故通過此檢查即保證尚未 dispose，
+            // 不會再排程一個會在 dispose 後才觸發的 Timer（避免對已釋放的 JCEF browser 動作）。
+            if (disposed) return
             debounceTimer?.cancel()
             debounceTimer = Timer().apply {
                 schedule(object : TimerTask() {
@@ -276,6 +279,8 @@ class SpekBrowserPanel(private val project: Project) : Disposable {
     }
 
     private fun notifyWebviewFileChanged() {
+        // Timer 觸發時 browser 可能已被 dispose，二次防護避免對已釋放物件呼叫 executeJavaScript
+        if (disposed) return
         browser?.cefBrowser?.executeJavaScript(
             "window.dispatchEvent(new CustomEvent('spek:fileChanged'));",
             "",
@@ -346,9 +351,13 @@ class SpekBrowserPanel(private val project: Project) : Disposable {
     }
 
     override fun dispose() {
-        disposed = true
-        debounceTimer?.cancel()
-        debounceTimer = null
+        // 與 scheduleRefresh 共用同一把鎖設定 disposed 並取消 debounce，關閉「掃描剛結束→排程新 Timer
+        //→dispose」的競態窗口；watchService/watchThread 的關閉不需持鎖，留在鎖外避免不必要的阻塞。
+        synchronized(this) {
+            disposed = true
+            debounceTimer?.cancel()
+            debounceTimer = null
+        }
         watchService?.close()
         watchThread?.interrupt()
     }
