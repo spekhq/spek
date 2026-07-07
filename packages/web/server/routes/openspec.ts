@@ -13,6 +13,7 @@ import {
   buildGraphDataAggregated,
   listWorktrees,
   toWorktreeSource,
+  listChangeMarkdownFiles,
 } from "@spek/core";
 
 // --- File watcher 共享管理 ---
@@ -214,13 +215,12 @@ openspecRouter.get("/search", (req, res) => {
       const changePath = path.join(baseDir, slug);
       if (!fs.statSync(changePath).isDirectory()) continue;
 
-      for (const entry of fs.readdirSync(changePath, { withFileTypes: true })) {
-        if (!entry.isFile() || entry.name.startsWith(".")) continue;
-        if (!entry.name.toLowerCase().endsWith(".md")) continue;
+      // 沿用 @spek/core 的 listChangeMarkdownFiles，與 discover/count 共用同一 predicate
+      for (const file of listChangeMarkdownFiles(changePath)) {
         documents.push({
           type: "change",
           name: slug,
-          content: fs.readFileSync(path.join(changePath, entry.name), "utf-8"),
+          content: fs.readFileSync(path.join(changePath, file), "utf-8"),
         });
       }
     }

@@ -23,6 +23,7 @@ export {
 } from "./git-cache.js";
 export { extractHeadings, slugifyHeading } from "./headings.js";
 export type { Heading } from "./headings.js";
+export { listChangeMarkdownFiles } from "./artifacts.js";
 
 export type {
   TaskItem,

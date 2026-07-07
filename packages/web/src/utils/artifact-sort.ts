@@ -1,14 +1,9 @@
 import type { ChangeArtifact } from "@spek/core";
+// 從無 node 依賴的 subpath 匯入（非主 entry），避免把 server-only 的 @spek/core 模組拉進
+// webview bundle；DEFAULT_ORDER 為 core / 前端共用的單一事實來源，不再於此重複定義。
+import { defaultRank } from "@spek/core/artifact-order";
 
 export type ArtifactSortMode = "modified" | "schema" | "alpha";
-
-// schemaOrder 不可用時的 fallback：預設 spec-driven 敘事順序，其餘依 id 字母序
-const DEFAULT_ORDER = ["proposal", "design", "specs", "tasks"];
-
-function defaultRank(id: string): number {
-  const i = DEFAULT_ORDER.indexOf(id);
-  return i === -1 ? Number.POSITIVE_INFINITY : i;
-}
 
 function byDefaultOrder(a: ChangeArtifact, b: ChangeArtifact): number {
   const ra = defaultRank(a.id);

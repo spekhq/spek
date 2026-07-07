@@ -60,12 +60,22 @@ function readCreatedDate(changePath: string): string | null {
   return /^\d{4}-\d{2}-\d{2}$/.test(value) ? value : null;
 }
 
+// 清理 YAML scalar 值供顯示：外層成對引號取其內容（引號內的 # 屬資料，保留），非引號值則去除
+// 尾端行內註解（YAML 要求 # 前需空白）。schema 名稱為單純 slug，此處只移除 `schema: "x"  # note`
+// 這類格式雜訊，不改變真正的 schema 值。
+function cleanScalar(value: string): string {
+  const v = value.trim();
+  const quoted = v.match(/^"([^"]*)"/) || v.match(/^'([^']*)'/);
+  if (quoted) return quoted[1];
+  return v.replace(/\s+#.*$/, "").trim();
+}
+
 // 讀取 repo openspec/config.yaml 的 schema（change 未宣告 schema 時的 fallback）
 function readRepoSchema(repoDir: string): string | null {
   const configPath = path.join(openspecDir(repoDir), "config.yaml");
   if (!fs.existsSync(configPath)) return null;
   const m = fs.readFileSync(configPath, "utf-8").match(/^schema:\s*(.+)$/m);
-  return m ? m[1].trim() : null;
+  return m ? cleanScalar(m[1]) : null;
 }
 
 // change 的 schema：優先取 change .openspec.yaml 的 schema，否則 fallback 回 repo config.yaml
@@ -73,7 +83,7 @@ function readChangeSchema(repoDir: string, changePath: string): string | null {
   const yamlPath = path.join(changePath, ".openspec.yaml");
   if (fs.existsSync(yamlPath)) {
     const meta = parseChangeYaml(fs.readFileSync(yamlPath, "utf-8"));
-    if (meta["schema"]) return meta["schema"];
+    if (meta["schema"]) return cleanScalar(meta["schema"]);
   }
   return readRepoSchema(repoDir);
 }

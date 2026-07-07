@@ -12,6 +12,7 @@ import {
   buildGraphDataAggregated,
   listWorktrees,
   toWorktreeSource,
+  listChangeMarkdownFiles,
 } from "@spek/core";
 
 export class MessageHandler {
@@ -141,14 +142,13 @@ export class MessageHandler {
         if (slug === "archive") continue;
         const changePath = path.join(baseDir, slug);
         if (!fs.statSync(changePath).isDirectory()) continue;
-        // 索引每個 change 內所有 root *.md artifact（含自訂 schema 的 brainstorm/plan/verify 等）
-        for (const entry of fs.readdirSync(changePath, { withFileTypes: true })) {
-          if (!entry.isFile() || entry.name.startsWith(".")) continue;
-          if (!entry.name.toLowerCase().endsWith(".md")) continue;
+        // 索引每個 change 內所有 root *.md artifact（含自訂 schema 的 brainstorm/plan/verify 等）；
+        // 沿用 @spek/core 的 listChangeMarkdownFiles，與 discover/count 共用同一 predicate
+        for (const file of listChangeMarkdownFiles(changePath)) {
           documents.push({
             type: "change",
             name: slug,
-            content: fs.readFileSync(path.join(changePath, entry.name), "utf-8"),
+            content: fs.readFileSync(path.join(changePath, file), "utf-8"),
           });
         }
       }

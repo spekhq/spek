@@ -32,7 +32,8 @@ class ArtifactDiscoveryTest {
         File(changeDir, rel).setLastModified(seconds * 1000L)
     }
 
-    // 讓 change 內所有 *.md（含 specs 內）共用同一 mtime，模擬剛 clone/checkout 的狀態
+    // 讓 change 內所有 *.md（含 specs 內）共用同一 mtime，以觸發「mtime 完全相同」的 tiebreak
+    // （非模擬 clone —— 實際 clone/checkout 會寫出各異的 mtime；此處刻意壓平以測 tiebreak 分支）
     private fun levelMtimes(dir: File, seconds: Long) {
         dir.listFiles()?.forEach { f ->
             if (f.isDirectory) levelMtimes(f, seconds)
@@ -119,9 +120,73 @@ class ArtifactDiscoveryTest {
                 "specs/foo/spec.md" to "x\n",
             ),
         )
-        levelMtimes(changeDir, 1000) // everything shares one mtime, as after a fresh clone
+        levelMtimes(changeDir, 1000) // force identical mtimes to exercise the equal-mtime tiebreak
         val arts = ArtifactDiscovery.discover(changeDir)
         assertEquals(listOf("proposal", "specs", "tasks", "apple", "zebra"), arts.map { it.id })
+    }
+
+    @Test
+    fun rootSpecsMdCoexistsWithSpecsTreeWithoutLosingContent() {
+        val repo = mkRepo()
+        val changeDir = writeChange(
+            repo, "c",
+            mapOf(
+                "proposal.md" to "## Why\n",
+                "specs.md" to "## Root specs doc\n",
+                "specs/foo/spec.md" to "## ADDED\n",
+            ),
+        )
+        // distinct mtimes so order is deterministic and independent of the equal-mtime tiebreak
+        setMtime(changeDir, "proposal.md", 3000)
+        setMtime(changeDir, "specs.md", 2000)
+        setMtime(changeDir, "specs/foo/spec.md", 1000)
+        val arts = ArtifactDiscovery.discover(changeDir)
+        // the delta tree keeps the canonical id "specs"; root specs.md is disambiguated to "specs-2"
+        val tree = arts.first { it.kind == "specs" }
+        assertEquals("specs", tree.id)
+        val rootDoc = arts.first { it.kind == "markdown" && it.content == "## Root specs doc\n" }
+        assertEquals("specs-2", rootDoc.id) // content preserved, not overwritten by the tree
+        assertEquals(3, arts.size)
+        assertEquals(3, ArtifactDiscovery.count(changeDir))
+        // mtime keyed by the ALLOCATED id: root specs.md (2000) must sort above the tree (1000)
+        assertEquals(listOf("proposal", "specs-2", "specs"), arts.map { it.id })
+    }
+
+    @Test
+    fun loneRootSpecsMdKeepsCanonicalId() {
+        val repo = mkRepo()
+        val changeDir = writeChange(
+            repo, "c",
+            mapOf(
+                "proposal.md" to "## Why\n",
+                "specs.md" to "## Root specs doc\n",
+            ),
+        )
+        val arts = ArtifactDiscovery.discover(changeDir)
+        val specsDoc = arts.first { it.content == "## Root specs doc\n" }
+        assertEquals("specs", specsDoc.id) // no tree to collide with → no disambiguating suffix
+        assertEquals(2, arts.size)
+        assertEquals(2, ArtifactDiscovery.count(changeDir))
+    }
+
+    @Test
+    fun idDisambiguationLoopsPastTakenSuffix() {
+        val repo = mkRepo()
+        val changeDir = writeChange(
+            repo, "c",
+            mapOf(
+                "specs.md" to "root\n",
+                "specs-2.md" to "sibling\n",
+                "specs/foo/spec.md" to "## ADDED\n",
+            ),
+        )
+        val arts = ArtifactDiscovery.discover(changeDir)
+        // tree = "specs"; the two root files take "specs-2" and "specs-3" — no collision, no loss
+        assertEquals(listOf("specs", "specs-2", "specs-3"), arts.map { it.id }.sorted())
+        assertEquals(3, arts.size)
+        assertEquals(3, ArtifactDiscovery.count(changeDir))
+        val contents = arts.filter { it.kind == "markdown" }.mapNotNull { it.content }.sorted()
+        assertEquals(listOf("root\n", "sibling\n"), contents)
     }
 
     @Test

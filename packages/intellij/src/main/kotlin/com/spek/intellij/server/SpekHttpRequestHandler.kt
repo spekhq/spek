@@ -1,5 +1,6 @@
 package com.spek.intellij.server
 
+import com.intellij.openapi.application.ApplicationManager
 import com.intellij.openapi.diagnostic.Logger
 import com.spek.intellij.core.*
 import io.netty.buffer.Unpooled
@@ -47,15 +48,36 @@ class SpekHttpRequestHandler : HttpRequestHandler() {
             return sendError(context, HttpResponseStatus.BAD_REQUEST, "Missing projectPath parameter")
         }
 
+        // 把 API 路由（含檔案掃描與 openspec CLI 子行程）移出內建 server 的 Netty 執行緒——該執行緒
+        // 池為整個 IDE 內建 server 共用，若在此同步等待 CLI（至多 10s）會拖累其他平台功能。改丟到
+        // pooled thread 處理；Netty 的 writeAndFlush 可安全跨執行緒呼叫，故 handler 立即回 true。
+        ApplicationManager.getApplication().executeOnPooledThread {
+            dispatchApiRequest(apiPath, projectPath, params, path, context)
+        }
+        return true
+    }
+
+    // 於 pooled thread 執行實際路由並寫回回應；回傳 Unit，寫入前檢查 channel 是否仍連線。
+    private fun dispatchApiRequest(
+        apiPath: String,
+        projectPath: String?,
+        params: Map<String, List<String>>,
+        path: String,
+        context: ChannelHandlerContext,
+    ) {
         try {
             val result = routeRequest(apiPath, projectPath ?: "", params)
+            if (!context.channel().isActive) return // client 已斷線
             if (result != null) {
-                return sendJson(context, result)
+                sendJson(context, result)
+            } else {
+                sendError(context, HttpResponseStatus.NOT_FOUND, "Endpoint not found: $apiPath")
             }
-            return sendError(context, HttpResponseStatus.NOT_FOUND, "Endpoint not found: $apiPath")
         } catch (e: Exception) {
             log.error("Error handling request: $path", e)
-            return sendError(context, HttpResponseStatus.INTERNAL_SERVER_ERROR, e.message ?: "Internal error")
+            if (context.channel().isActive) {
+                sendError(context, HttpResponseStatus.INTERNAL_SERVER_ERROR, e.message ?: "Internal error")
+            }
         }
     }
 

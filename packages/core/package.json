@@ -13,6 +13,10 @@
     "./headings": {
       "import": "./dist/headings.js",
       "types": "./dist/headings.d.ts"
+    },
+    "./artifact-order": {
+      "import": "./dist/artifact-order.js",
+      "types": "./dist/artifact-order.d.ts"
     }
   },
   "scripts": {

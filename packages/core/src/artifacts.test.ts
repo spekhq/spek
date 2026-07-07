@@ -25,7 +25,8 @@ function setMtime(changePath: string, rel: string, seconds: number): void {
   fs.utimesSync(path.join(changePath, rel), seconds, seconds);
 }
 
-// 讓 change 內所有 *.md（含 specs 內）共用同一個 mtime，模擬剛 clone/checkout 的狀態
+// 讓 change 內所有 *.md（含 specs 內）共用同一個 mtime，以觸發「mtime 完全相同」的 tiebreak
+// 分支（注意這並非模擬 clone —— 實際 clone/checkout 會寫出各異的 mtime；此處刻意壓平以測 tiebreak）
 function levelMtimes(changePath: string, seconds: number): void {
   const walk = (dir: string) => {
     for (const e of fs.readdirSync(dir, { withFileTypes: true })) {
@@ -102,12 +103,69 @@ test("discoverArtifacts: equal mtimes fall back to the stable default order", ()
     "proposal.md": "x\n",
     "specs/foo/spec.md": "x\n",
   });
-  levelMtimes(changePath, 1000); // everything shares one mtime, as after a fresh clone
+  levelMtimes(changePath, 1000); // force identical mtimes to exercise the equal-mtime tiebreak
   const arts = discoverArtifacts(changePath);
   // DEFAULT_ORDER first (proposal, design, specs, tasks) — note `design` ranks ahead of the
   // alphabetical remainder `apple`, so this depends on DEFAULT_ORDER, not plain alpha — then
   // the remainder alphabetically (apple, zebra).
   assert.deepEqual(arts.map((a) => a.id), ["proposal", "design", "specs", "tasks", "apple", "zebra"]);
+});
+
+test("discoverArtifacts: root specs.md coexists with the specs/ tree without losing content", () => {
+  const repo = mkRepo();
+  const changePath = writeChange(repo, "c", {
+    "proposal.md": "## Why\n",
+    "specs.md": "## Root specs doc\n",
+    "specs/foo/spec.md": "## ADDED\n",
+  });
+  // distinct mtimes so order is deterministic and independent of the equal-mtime tiebreak
+  setMtime(changePath, "proposal.md", 3000);
+  setMtime(changePath, "specs.md", 2000);
+  setMtime(changePath, "specs/foo/spec.md", 1000);
+  const arts = discoverArtifacts(changePath);
+  // the delta tree keeps the canonical id "specs"; the root specs.md is disambiguated to "specs-2"
+  const tree = arts.find((a) => a.kind === "specs")!;
+  assert.equal(tree.id, "specs");
+  const rootDoc = arts.find((a) => a.kind === "markdown" && a.content === "## Root specs doc\n")!;
+  assert.equal(rootDoc.id, "specs-2"); // content preserved, not overwritten by the tree
+  // no data loss; discover and count agree
+  assert.equal(arts.length, 3);
+  assert.equal(countArtifacts(changePath), 3);
+  // mtime is keyed by the ALLOCATED id: root specs.md (2000) must sort above the tree (1000).
+  // If mtime were keyed by the raw stem "specs", the root doc would read 0 and sink last.
+  assert.deepEqual(arts.map((a) => a.id), ["proposal", "specs-2", "specs"]);
+});
+
+test("discoverArtifacts: a lone root specs.md (no specs/ tree) keeps the canonical id 'specs'", () => {
+  const repo = mkRepo();
+  const changePath = writeChange(repo, "c", {
+    "proposal.md": "## Why\n",
+    "specs.md": "## Root specs doc\n",
+  });
+  const arts = discoverArtifacts(changePath);
+  const specsDoc = arts.find((a) => a.content === "## Root specs doc\n")!;
+  assert.equal(specsDoc.id, "specs"); // no tree to collide with → no disambiguating suffix
+  assert.equal(arts.length, 2);
+  assert.equal(countArtifacts(changePath), 2);
+});
+
+test("discoverArtifacts: id disambiguation loops past an already-taken suffix", () => {
+  const repo = mkRepo();
+  const changePath = writeChange(repo, "c", {
+    "specs.md": "root\n",
+    "specs-2.md": "sibling\n",
+    "specs/foo/spec.md": "## ADDED\n",
+  });
+  const arts = discoverArtifacts(changePath);
+  // tree = "specs"; the two root files take "specs-2" and "specs-3" — no collision, no loss
+  assert.deepEqual(arts.map((a) => a.id).sort(), ["specs", "specs-2", "specs-3"]);
+  assert.equal(arts.length, 3);
+  assert.equal(countArtifacts(changePath), 3);
+  const contents = arts
+    .filter((a) => a.kind === "markdown")
+    .map((a) => a.content)
+    .sort();
+  assert.deepEqual(contents, ["root\n", "sibling\n"]);
 });
 
 test("discoverArtifacts: custom-schema files all surface, ordered by mtime, no CLI involved", () => {

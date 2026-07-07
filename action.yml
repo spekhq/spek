@@ -68,7 +68,10 @@ runs:
     # if the install fails, the build still succeeds with default (filename) ordering.
     - name: Install OpenSpec CLI (optional, for authoritative artifact ordering)
       shell: bash
-      run: npm install -g @fission-ai/openspec || echo "openspec unavailable; using default artifact order"
+      # Pinned for reproducible static-site output: an unpinned install would silently track
+      # whatever is latest at build time, so a future CLI JSON change could flip artifact order.
+      # Bump this deliberately. If the install fails, the build falls back to default ordering.
+      run: npm install -g @fission-ai/openspec@1.5.0 || echo "openspec unavailable; using default artifact order"
       env:
         OPENSPEC_TELEMETRY: "0"
         DO_NOT_TRACK: "1"

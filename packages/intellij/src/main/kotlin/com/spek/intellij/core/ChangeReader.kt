@@ -50,12 +50,22 @@ object ChangeReader {
         return result
     }
 
+    // 清理 YAML scalar 值供顯示：外層成對引號取其內容（引號內的 # 屬資料，保留），非引號值則去除
+    // 尾端行內註解（YAML 要求 # 前需空白）。只用於 schema badge，不放進共用的 readMetadata（其亦
+    // 供 created 等欄位，避免副作用）。
+    private fun cleanScalar(value: String): String {
+        val v = value.trim()
+        Regex("""^"([^"]*)"""").find(v)?.let { return it.groupValues[1] }
+        Regex("""^'([^']*)'""").find(v)?.let { return it.groupValues[1] }
+        return v.replace(Regex("""\s+#.*$"""), "").trim()
+    }
+
     /** change schema：change .openspec.yaml 的 schema → repo openspec/config.yaml 的 schema → null */
     private fun readChangeSchema(projectPath: String, changeDir: File): String? {
         val changeYaml = File(changeDir, ".openspec.yaml")
         if (changeYaml.exists()) {
             val meta = readMetadata(changeYaml)
-            meta?.get("schema")?.let { return it }
+            meta?.get("schema")?.let { return cleanScalar(it) }
         }
         return readRepoSchema(projectPath)
     }
@@ -64,6 +74,6 @@ object ChangeReader {
         val config = File(projectPath, "openspec/config.yaml")
         if (!config.exists()) return null
         val m = Regex("""^schema:\s*(.+)$""", RegexOption.MULTILINE).find(config.readText())
-        return m?.groupValues?.get(1)?.trim()
+        return m?.groupValues?.get(1)?.let { cleanScalar(it) }
     }
 }

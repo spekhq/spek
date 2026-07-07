@@ -221,10 +221,12 @@ export function ChangeDetail() {
 
   // schema-order 模式但 schemaOrder 不可用 → 退回預設順序，並向使用者說明原因
   const schemaFallback = sortMode === "schema" && (!schemaOrder || schemaOrder.length === 0);
+  // active change 的 schemaOrder 可能因多種原因為空（CLI 未安裝、無 planningArtifacts、outputPath
+  // 對不上、逾時、非 0 結束），故此處不指定單一成因，與 * tooltip 的「Schema order unavailable」一致
   const fallbackMessage =
     data.status === "archived"
       ? "Schema order isn't tracked for archived changes — showing default order."
-      : "OpenSpec CLI not available — showing default spec-driven order.";
+      : "Schema order unavailable — showing default spec-driven order.";
 
   const headerEl = (
     <div className="pt-2 pb-3">

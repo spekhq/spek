@@ -56,6 +56,24 @@ class SchemaOrderTest {
         )
     }
 
+    @Test
+    fun parseSkipsNonStringElementsInsteadOfAborting() {
+        // 一個非字串（物件 / 數字）的 planningArtifacts 元素、以及一個非字串 outputPath，都應被「略過」，
+        // 而非讓整份解析回 null —— 保留其餘有效 refs（對齊 TS 版逐一 skip、單一壞元素不致命的行為）。
+        val refs = SchemaOrder.parseOrderFromStatus(
+            """
+            {
+              "actionContext": { "planningArtifacts": ["proposal", { "nested": true }, 42, "specs"] },
+              "artifactPaths": {
+                "proposal": { "outputPath": "proposal.md" },
+                "specs": { "outputPath": { "not": "a string" } }
+              }
+            }
+            """.trimIndent(),
+        )
+        assertEquals(listOf(SchemaArtifactRef("proposal", "proposal.md")), refs)
+    }
+
     // --- resolveSchemaOrder ---
 
     private fun refs(vararg pairs: Pair<String, String>) =

@@ -78,12 +78,22 @@ export function resolveSchemaOrder(
   return ordered.length > 0 ? ordered : null;
 }
 
-// 同一次掃描內以 (repoRoot, slug) 記憶結果（存 Promise，順帶去重同時併發的呼叫），
-// 避免對同一 change 重複 spawn CLI
-const cache = new Map<string, Promise<SchemaArtifactRef[] | null>>();
-
 // Stryker disable all: 對 openspec CLI 的薄整合層（非阻塞 spawn 子行程）；以整合而非單元測試覆蓋。
-// 萃取邏輯在 parseOrderFromStatus（已單元測試）；此處只負責呼叫與容錯。
+// 萃取邏輯在 parseOrderFromStatus（已單元測試）；此處只負責呼叫、快取與容錯。
+
+// 以 (repoRoot, slug) 記憶結果並附建立時間戳（存 Promise，順帶去重同時併發的呼叫）。
+// 過去的版本永久快取（含 null），導致：openspec 之後才安裝也永遠拿不到順序、artifact 順序
+// 變更後仍供舊值、且條目無上限累積。改為短 TTL：
+//   - TTL 必須 ≥ CLI timeout（10s），使進行中的 spawn 永遠不會被判為過期而觸發第二次 spawn；
+//   - 過期後自動重查，讓 null / 舊順序在數十秒內自我修復；
+//   - 另設 size cap，長時間執行的 server 不致無限成長。
+const CACHE_TTL_MS = 30_000;
+const CACHE_MAX = 256;
+interface CacheEntry {
+  at: number;
+  promise: Promise<SchemaArtifactRef[] | null>;
+}
+const cache = new Map<string, CacheEntry>();
 /**
  * 預設 SchemaOrderProvider：非阻塞地呼叫 openspec CLI 取得權威順序（回 Promise）。
  * 以 async spawn 取代同步呼叫，避免在 change detail 讀取時卡住 Node event loop。
@@ -91,8 +101,10 @@ const cache = new Map<string, Promise<SchemaArtifactRef[] | null>>();
  */
 export const cliSchemaOrderProvider: SchemaOrderProvider = (repoRoot, slug) => {
   const cacheKey = `${repoRoot}::${slug}`;
-  const cached = cache.get(cacheKey);
-  if (cached) return cached;
+  const hit = cache.get(cacheKey);
+  // TTL ≥ CLI timeout，故 hit 若仍在 TTL 內必尚未過期即安全復用（含仍進行中的 Promise，不重複 spawn）
+  if (hit && Date.now() - hit.at <= CACHE_TTL_MS) return hit.promise;
+  if (hit) cache.delete(cacheKey);
 
   // 以 argv 陣列（非 shell 字串）呼叫：slug 自成一個引數，結構上即無 shell injection 之虞，
   // 毋須對 slug 另做過濾。cross-spawn 一併處理 Windows 上 openspec.cmd 的解析（無需 shell，
@@ -140,7 +152,12 @@ export const cliSchemaOrderProvider: SchemaOrderProvider = (repoRoot, slug) => {
     });
   });
 
-  cache.set(cacheKey, promise);
+  // size cap：滿了先淘汰最舊插入的條目（Map 保留插入序）
+  if (cache.size >= CACHE_MAX) {
+    const oldest = cache.keys().next().value;
+    if (oldest !== undefined) cache.delete(oldest);
+  }
+  cache.set(cacheKey, { at: Date.now(), promise });
   return promise;
 };
 // Stryker restore all
