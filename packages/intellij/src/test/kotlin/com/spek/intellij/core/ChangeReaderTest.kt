@@ -52,6 +52,18 @@ class ChangeReaderTest {
     }
 
     @Test
+    fun `defaultSchema is the repo default even when the change declares another schema`() {
+        File(repo, "openspec").mkdirs()
+        File(repo, "openspec/config.yaml").writeText("schema: spec-driven\n")
+        writeArchived("2026-03-03-add-bridge", "schema: superpowers-bridge\ncreated: 2026-03-01\n")
+        val detail = ChangeReader.read(repo.absolutePath, "2026-03-03-add-bridge")
+        assertNotNull(detail)
+        detail!!
+        assertEquals("superpowers-bridge", detail.schema)
+        assertEquals("spec-driven", detail.defaultSchema)
+    }
+
+    @Test
     fun `missing change returns null`() {
         assertNull(ChangeReader.read(repo.absolutePath, "does-not-exist"))
     }

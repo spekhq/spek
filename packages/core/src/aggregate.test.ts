@@ -100,6 +100,21 @@ test("scanOpenSpecAggregated: same active slug in two worktrees kept separately"
   assert.notEqual(shared[0].source?.key, shared[1].source?.key);
 });
 
+test("scanOpenSpecAggregated: carries the main worktree's defaultSchema", async () => {
+  // config.yaml 於建立 worktree 前 commit，故各 worktree 皆繼承同一份；聚合結果的
+  // defaultSchema 取主 worktree（見 scanner），供 list badge 的隱藏基準。
+  const repo = initRepo("spek-agg-schema-");
+  writeFile(path.join(repo, "openspec", "config.yaml"), "schema: spec-driven\n");
+  commitAll(repo, "init");
+  const wtA = repo + "-a";
+  git(repo, "worktree", "add", "-q", "-b", "wa", wtA);
+  addActiveChange(wtA, "add-a");
+  commitAll(wtA, "a");
+  const r = await scanOpenSpecAggregated(repo);
+  assert.equal(r.aggregated, true);
+  assert.equal(r.defaultSchema, "spec-driven");
+});
+
 test("scanOpenSpecAggregated: single worktree falls back without source", async () => {
   const repo = initRepo("spek-agg-single-");
   addActiveChange(repo, "only-one");

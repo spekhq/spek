@@ -121,6 +121,7 @@ openspecRouter.get("/overview", async (req, res) => {
       archived: scan.archivedChanges.length,
     },
     taskStats: { total: totalTasks, completed: completedTasks },
+    defaultSchema: scan.defaultSchema,
   });
 });
 
@@ -159,6 +160,7 @@ openspecRouter.get("/changes", async (req, res) => {
     archived: scan.archivedChanges,
     worktrees: scan.worktrees,
     aggregated: scan.aggregated,
+    defaultSchema: scan.defaultSchema,
   });
 });
 

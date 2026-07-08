@@ -85,6 +85,8 @@ data class ChangeDetail(
     val slug: String,
     val status: String,
     val schema: String?,
+    /** repo 預設 schema（openspec/config.yaml schema:），無法判定為 null；供 UI 隱藏與 default 相同的 badge */
+    val defaultSchema: String? = null,
     val artifacts: List<ChangeArtifact>,
     /** schema 權威順序（artifact id 清單）；CLI 不可用 / archived 時為 null */
     val schemaOrder: List<String>? = null,
@@ -104,6 +106,8 @@ data class ChangeSpec(
 data class ChangesData(
     val active: List<ChangeInfo>,
     val archived: List<ChangeInfo>,
+    /** repo 預設 schema（openspec/config.yaml schema:），無法判定為 null；供 list/overview 隱藏與 default 相同的 badge */
+    val defaultSchema: String? = null,
 )
 
 @Serializable
@@ -111,6 +115,8 @@ data class OverviewData(
     val specsCount: Int,
     val changesCount: ChangesCount,
     val taskStats: TaskStats,
+    /** repo 預設 schema（openspec/config.yaml schema:），無法判定為 null；供 specs 頁顯示 repo 預設 schema */
+    val defaultSchema: String? = null,
 )
 
 @Serializable

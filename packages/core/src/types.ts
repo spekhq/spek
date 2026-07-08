@@ -92,6 +92,8 @@ export interface ChangeDetail {
   archivedDate: string | null;
   /** 此 change 採用的 schema 名稱，無法判定為 null */
   schema: string | null;
+  /** repo 預設 schema（openspec/config.yaml schema:），無法判定為 null；供 UI 判斷是否隱藏與 default 相同的 badge */
+  defaultSchema: string | null;
   /** artifacts，預設依 mtime 由新到舊排序 */
   artifacts: ChangeArtifact[];
   /** schema 權威順序（artifact id 清單，供前端 schema-order 排序用）；CLI 不可用 / archived 時為 null */
@@ -108,18 +110,24 @@ export interface ChangesData {
   worktrees?: WorktreeInfo[];
   /** 本次回應是否為跨 worktree 聚合結果 */
   aggregated?: boolean;
+  /** repo 預設 schema（openspec/config.yaml schema:），無法判定為 null；供 list 判斷是否隱藏與 default 相同的 badge */
+  defaultSchema: string | null;
 }
 
 export interface OverviewData {
   specsCount: number;
   changesCount: { active: number; archived: number };
   taskStats: TaskStats;
+  /** repo 預設 schema（openspec/config.yaml schema:），無法判定為 null；供 specs 頁顯示 repo 預設 schema */
+  defaultSchema: string | null;
 }
 
 export interface ScanResult {
   specs: SpecInfo[];
   activeChanges: ChangeInfo[];
   archivedChanges: ChangeInfo[];
+  /** repo 預設 schema（openspec/config.yaml schema:），無法判定為 null */
+  defaultSchema: string | null;
 }
 
 /** scanOpenSpecAggregated 的回傳：ScanResult 外加 worktree 清單與是否聚合。 */

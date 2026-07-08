@@ -188,7 +188,7 @@ export async function scanOpenSpec(repoDir: string): Promise<ScanResult> {
     ).length;
   }
 
-  return { specs, activeChanges, archivedChanges };
+  return { specs, activeChanges, archivedChanges, defaultSchema: readRepoSchema(repoDir) };
 }
 
 export async function readSpec(
@@ -251,6 +251,7 @@ export async function readChange(
   }
 
   const schema = readChangeSchema(repoDir, changePath);
+  const defaultSchema = readRepoSchema(repoDir);
   // artifact 依 mtime 由新到舊排序（見 discoverArtifacts）
   const artifacts = discoverArtifacts(changePath);
 
@@ -268,6 +269,7 @@ export async function readChange(
     createdDate,
     archivedDate,
     schema,
+    defaultSchema,
     artifacts,
     schemaOrder,
     metadata,
@@ -460,6 +462,7 @@ export async function scanOpenSpecAggregated(
     archivedChanges,
     worktrees,
     aggregated: true,
+    defaultSchema: main.scan.defaultSchema,
   };
 }
 

@@ -243,3 +243,35 @@ test("readChange: returns null for a change that does not exist", async () => {
   const detail = await readChange(repo, "no-such-change", noOrder);
   assert.equal(detail, null);
 });
+
+// repo 預設 schema（openspec/config.yaml schema:）寫入輔助
+function writeRepoConfig(repoDir: string, schema: string): void {
+  const dir = path.join(repoDir, "openspec");
+  fs.mkdirSync(dir, { recursive: true });
+  fs.writeFileSync(path.join(dir, "config.yaml"), `schema: ${schema}\n`);
+}
+
+test("scanOpenSpec: defaultSchema reads repo config.yaml schema", async () => {
+  const repo = mkRepo();
+  writeRepoConfig(repo, "spec-driven");
+  writeChange(repo, "active", "add-foo", "schema: spec-driven\n");
+  const result = await scanOpenSpec(repo);
+  assert.equal(result.defaultSchema, "spec-driven");
+});
+
+test("scanOpenSpec: defaultSchema is null when repo has no config.yaml", async () => {
+  const repo = mkRepo();
+  writeChange(repo, "active", "add-foo", "schema: spec-driven\n");
+  const result = await scanOpenSpec(repo);
+  assert.equal(result.defaultSchema, null);
+});
+
+test("readChange: defaultSchema is the repo default even when the change declares another schema", async () => {
+  const repo = mkRepo();
+  writeRepoConfig(repo, "spec-driven");
+  writeChange(repo, "active", "add-bridge", "schema: superpowers-bridge\n");
+  const detail = await readChange(repo, "add-bridge", noOrder);
+  assert.ok(detail);
+  assert.equal(detail.schema, "superpowers-bridge");
+  assert.equal(detail.defaultSchema, "spec-driven");
+});

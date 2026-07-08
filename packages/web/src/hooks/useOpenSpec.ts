@@ -121,6 +121,69 @@ export function useOverview(aggregate?: boolean): FetchState<OverviewData> {
   );
 }
 
+// repo 預設 schema 是 repo 級、極少變動的靜態值，不該每次進頁面都重打 API 造成閃爍。
+// 以 repoPath 為 key 做跨導覽的模組層快取，並記住抓取當下的 refreshKey generation。
+interface DefaultSchemaCacheEntry {
+  refreshKey: number;
+  value: string | null;
+}
+const defaultSchemaCache = new Map<string, DefaultSchemaCacheEntry>();
+
+// 純函式：決定目前快取是否仍新鮮（同 repo 且與快取時的 refreshKey generation 相同）。
+// refreshKey 只要偵測到任何檔案變更就會遞增，故只要 config.yaml（或任何檔案）變過，
+// 下次進頁面就會 miss 而重抓 —— 即使變更發生時 Specs 頁未掛載也能自癒。匯出供測試。
+export function resolveCachedDefaultSchema(
+  cache: Map<string, DefaultSchemaCacheEntry>,
+  repoPath: string,
+  refreshKey: number,
+): { fresh: true; value: string | null } | { fresh: false } {
+  const hit = cache.get(repoPath);
+  if (hit && hit.refreshKey === refreshKey) return { fresh: true, value: hit.value };
+  return { fresh: false };
+}
+
+export function useDefaultSchema(): string | null {
+  const { repoPath } = useRepo();
+  const adapter = useApiAdapter();
+  const refreshKey = useRefreshKey();
+  const [value, setValue] = useState<string | null>(() => {
+    if (!repoPath) return null;
+    const c = resolveCachedDefaultSchema(defaultSchemaCache, repoPath, refreshKey);
+    return c.fresh ? c.value : null;
+  });
+
+  useEffect(() => {
+    if (!repoPath) {
+      setValue(null);
+      return;
+    }
+    const cached = resolveCachedDefaultSchema(defaultSchemaCache, repoPath, refreshKey);
+    if (cached.fresh) {
+      setValue(cached.value);
+      return;
+    }
+
+    let cancelled = false;
+    // repo 預設 schema 與 worktree 聚合無關，用非聚合 overview（較輕）即可
+    adapter
+      .getOverview(false)
+      .then((overview) => {
+        if (cancelled) return;
+        const ds = overview.defaultSchema ?? null;
+        defaultSchemaCache.set(repoPath, { refreshKey, value: ds });
+        setValue(ds);
+      })
+      .catch(() => {
+        // 靜態標示：抓取失敗就維持現值（不顯示錯誤）
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [repoPath, refreshKey, adapter]);
+
+  return value;
+}
+
 export function useSpecs(): FetchState<SpecInfo[]> {
   const { repoPath } = useRepo();
   const adapter = useApiAdapter();

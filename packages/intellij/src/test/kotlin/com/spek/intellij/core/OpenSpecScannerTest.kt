@@ -77,4 +77,26 @@ class OpenSpecScannerTest {
         assertEquals(1, result.activeChanges.size)
         assertEquals("custom-1.0", result.activeChanges[0].schema)
     }
+
+    private fun writeRepoConfig(schema: String) {
+        val dir = File(repo, "openspec")
+        dir.mkdirs()
+        File(dir, "config.yaml").writeText("schema: $schema\n")
+    }
+
+    // defaultSchema 供前端隱藏與 repo 預設相同的 badge，讀自 openspec/config.yaml，對齊 TS scanner
+    @Test
+    fun `defaultSchema reads repo config yaml schema`() {
+        writeRepoConfig("spec-driven")
+        writeChange("active", "add-foo", "schema: spec-driven\n")
+        val result = OpenSpecScanner.scan(repo.absolutePath)
+        assertEquals("spec-driven", result.defaultSchema)
+    }
+
+    @Test
+    fun `defaultSchema is null when repo has no config yaml`() {
+        writeChange("active", "add-foo", "schema: spec-driven\n")
+        val result = OpenSpecScanner.scan(repo.absolutePath)
+        assertNull(result.defaultSchema)
+    }
 }

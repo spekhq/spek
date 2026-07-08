@@ -49,7 +49,7 @@ object OpenSpecScanner {
             specs[i] = specs[i].copy(historyCount = count)
         }
 
-        return ScanResult(specs, activeChanges, archivedChanges)
+        return ScanResult(specs, activeChanges, archivedChanges, readRepoSchema(projectPath))
     }
 
     private fun scanChangeDir(projectPath: String, dir: File, status: String): ChangeInfo {
@@ -95,12 +95,15 @@ object OpenSpecScanner {
             val m = Regex("""^schema:\s*(.+)$""", RegexOption.MULTILINE).find(changeYaml.readText())
             if (m != null) return cleanScalar(m.groupValues[1])
         }
+        return readRepoSchema(projectPath)
+    }
+
+    /** repo 預設 schema：openspec/config.yaml 的 schema → null（純讀 yaml key，不呼叫 CLI） */
+    fun readRepoSchema(projectPath: String): String? {
         val config = File(projectPath, "openspec/config.yaml")
-        if (config.exists()) {
-            val m = Regex("""^schema:\s*(.+)$""", RegexOption.MULTILINE).find(config.readText())
-            if (m != null) return cleanScalar(m.groupValues[1])
-        }
-        return null
+        if (!config.exists()) return null
+        val m = Regex("""^schema:\s*(.+)$""", RegexOption.MULTILINE).find(config.readText())
+        return m?.let { cleanScalar(it.groupValues[1]) }
     }
 
     // 從 change 目錄的 .openspec.yaml 解出 createdDate；缺檔或格式不符（非 YYYY-MM-DD）回 null。
@@ -129,6 +132,7 @@ data class ScanResult(
     val specs: List<SpecInfo>,
     val activeChanges: List<ChangeInfo>,
     val archivedChanges: List<ChangeInfo>,
+    val defaultSchema: String?,
 )
 
 fun parseSlug(slug: String): Pair<String?, String> {

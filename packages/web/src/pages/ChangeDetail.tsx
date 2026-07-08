@@ -8,6 +8,7 @@ import { TaskProgress } from "../components/TaskProgress";
 import { MarkdownRenderer } from "../components/MarkdownRenderer";
 import { SpecsTabContent } from "../components/SpecsTabContent";
 import { SpecToc } from "../components/SpecToc";
+import { SchemaBadge } from "../components/SchemaBadge";
 import { formatLifecycleBanner, todayIso } from "../utils/lifecycle";
 import { useArtifactSort } from "../hooks/useArtifactSort";
 import { sortArtifacts, type ArtifactSortMode } from "../utils/artifact-sort";
@@ -235,14 +236,7 @@ export function ChangeDetail() {
       </Link>
       <h1 className="text-2xl font-bold mt-2" title={slug}>{title}</h1>
       <div className="flex items-center gap-2 mt-2 mb-1">
-        {data.schema && (
-          <span
-            className="inline-flex items-center rounded border border-border bg-bg-tertiary px-1.5 py-0.5 text-[11px] font-medium text-text-secondary"
-            title={`Schema: ${data.schema}`}
-          >
-            {data.schema}
-          </span>
-        )}
+        <SchemaBadge schema={data.schema} defaultSchema={data.defaultSchema} />
         {lifecycleBanner && (
           <p className="text-text-muted text-xs tracking-wide [word-spacing:0.15em]">{lifecycleBanner}</p>
         )}

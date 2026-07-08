@@ -7,6 +7,7 @@ import { formatRelativeTime } from "../utils/formatRelativeTime";
 import { formatLifecycleListRow, todayIso } from "../utils/lifecycle";
 import { getAggregatePref, setAggregatePref } from "../utils/aggregatePref";
 import { WorktreeBadge } from "../components/WorktreeBadge";
+import { SchemaBadge } from "../components/SchemaBadge";
 import { changeKey, changeTo } from "../utils/changeLink";
 
 function changeMetaDisplay(c: ChangeInfo, today: string): { text: string; tooltip: string } | null {
@@ -27,11 +28,12 @@ function changeMetaDisplay(c: ChangeInfo, today: string): { text: string; toolti
   return null;
 }
 
-function ChangeRow({ c, today, accent, showSource }: {
+function ChangeRow({ c, today, accent, showSource, defaultSchema }: {
   c: ChangeInfo;
   today: string;
   accent: boolean;
   showSource: boolean;
+  defaultSchema: string | null | undefined;
 }) {
   const meta = changeMetaDisplay(c, today);
   return (
@@ -47,6 +49,7 @@ function ChangeRow({ c, today, accent, showSource }: {
             {c.description}
           </span>
           {showSource && c.source && <WorktreeBadge source={c.source} />}
+          <SchemaBadge schema={c.schema} defaultSchema={defaultSchema} />
         </span>
         {meta && (
           <span
@@ -75,6 +78,7 @@ export function ChangeList() {
   const archived = data?.archived ?? [];
   const worktrees = data?.worktrees ?? [];
   const showSource = !!data?.aggregated && worktrees.length > 1;
+  const defaultSchema = data?.defaultSchema;
   const today = todayIso();
 
   const handleToggle = () => {
@@ -118,7 +122,7 @@ export function ChangeList() {
           <h2 className="text-lg font-semibold mb-3">Active</h2>
           <div className="space-y-2">
             {active.map((c) => (
-              <ChangeRow key={changeKey(c)} c={c} today={today} accent showSource={showSource} />
+              <ChangeRow key={changeKey(c)} c={c} today={today} accent showSource={showSource} defaultSchema={defaultSchema} />
             ))}
           </div>
         </section>
@@ -129,7 +133,7 @@ export function ChangeList() {
           <h2 className="text-lg font-semibold mb-3">Archived</h2>
           <div className="space-y-2">
             {archived.map((c) => (
-              <ChangeRow key={changeKey(c)} c={c} today={today} accent={false} showSource={showSource} />
+              <ChangeRow key={changeKey(c)} c={c} today={today} accent={false} showSource={showSource} defaultSchema={defaultSchema} />
             ))}
           </div>
         </section>

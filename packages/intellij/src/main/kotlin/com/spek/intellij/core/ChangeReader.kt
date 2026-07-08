@@ -35,6 +35,7 @@ object ChangeReader {
             slug = slug,
             status = status,
             schema = schema,
+            defaultSchema = readRepoSchema(projectPath),
             artifacts = artifacts,
             schemaOrder = schemaOrder,
             createdDate = createdDate,

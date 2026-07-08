@@ -42,6 +42,7 @@ async function main() {
       total: 0,
       completed: 0,
     },
+    defaultSchema: scan.defaultSchema,
   };
 
   // 彙總 task stats
@@ -75,6 +76,7 @@ async function main() {
   const changes: ChangesData = {
     active: scan.activeChanges,
     archived: scan.archivedChanges,
+    defaultSchema: scan.defaultSchema,
   };
 
   // 收集 spec 歷史版本內容（供 diff 檢視）
