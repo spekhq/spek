@@ -64,7 +64,6 @@ export class MessageHandler {
         archived: scan.archivedChanges.length,
       },
       taskStats: { total: totalTasks, completed: completedTasks },
-      defaultSchema: scan.defaultSchema,
     };
   }
 

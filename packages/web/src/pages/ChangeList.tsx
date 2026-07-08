@@ -7,7 +7,7 @@ import { formatRelativeTime } from "../utils/formatRelativeTime";
 import { formatLifecycleListRow, todayIso } from "../utils/lifecycle";
 import { getAggregatePref, setAggregatePref } from "../utils/aggregatePref";
 import { WorktreeBadge } from "../components/WorktreeBadge";
-import { SchemaBadge } from "../components/SchemaBadge";
+import { SchemaBadge, SchemaPill } from "../components/SchemaBadge";
 import { changeKey, changeTo } from "../utils/changeLink";
 
 function changeMetaDisplay(c: ChangeInfo, today: string): { text: string; tooltip: string } | null {
@@ -88,18 +88,26 @@ export function ChangeList() {
   };
 
   const header = (
-    <div className="flex items-center justify-between gap-4">
-      <h1 className="text-2xl font-bold">Changes</h1>
-      {worktrees.length > 1 && (
-        <label className="flex items-center gap-2 text-xs text-text-muted cursor-pointer select-none">
-          <input
-            type="checkbox"
-            checked={aggregate}
-            onChange={handleToggle}
-            className="accent-accent"
-          />
-          Aggregate {worktrees.length} worktrees
-        </label>
+    <div>
+      <div className="flex items-center justify-between gap-4">
+        <h1 className="text-2xl font-bold">Changes</h1>
+        {worktrees.length > 1 && (
+          <label className="flex items-center gap-2 text-xs text-text-muted cursor-pointer select-none">
+            <input
+              type="checkbox"
+              checked={aggregate}
+              onChange={handleToggle}
+              className="accent-accent"
+            />
+            Aggregate {worktrees.length} worktrees
+          </label>
+        )}
+      </div>
+      {defaultSchema && (
+        <p className="flex items-center gap-2 mt-1 text-text-muted text-sm">
+          Default schema:
+          <SchemaPill schema={defaultSchema} title="Repo default OpenSpec schema" />
+        </p>
       )}
     </div>
   );

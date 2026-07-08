@@ -157,7 +157,6 @@ class SpekHttpRequestHandler : HttpRequestHandler() {
             specsCount = scan.specs.size,
             changesCount = ChangesCount(scan.activeChanges.size, scan.archivedChanges.size),
             taskStats = TaskStats(totalTasks, completedTasks),
-            defaultSchema = scan.defaultSchema,
         )
         return json.encodeToString(overview)
     }

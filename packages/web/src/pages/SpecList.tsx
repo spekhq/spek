@@ -1,11 +1,9 @@
 import { useState } from "react";
 import { Link } from "react-router-dom";
-import { useDefaultSchema, useSpecs } from "../hooks/useOpenSpec";
-import { SchemaPill } from "../components/SchemaBadge";
+import { useSpecs } from "../hooks/useOpenSpec";
 
 export function SpecList() {
   const { data, loading, error } = useSpecs();
-  const defaultSchema = useDefaultSchema();
   const [filter, setFilter] = useState("");
 
   if (loading) return <p className="text-text-muted">Loading...</p>;
@@ -18,17 +16,9 @@ export function SpecList() {
 
   return (
     <div className="space-y-4">
-      <div>
+      <div className="flex items-center justify-between">
         <h1 className="text-2xl font-bold">Specs</h1>
-        <div className="flex items-center gap-2 mt-1 text-text-muted text-sm">
-          {defaultSchema && (
-            <span className="flex items-center gap-2">
-              Default schema:
-              <SchemaPill schema={defaultSchema} title="Repo default OpenSpec schema" />
-            </span>
-          )}
-          <span className="ml-auto">{specs.length} topics</span>
-        </div>
+        <span className="text-text-muted text-sm">{specs.length} topics</span>
       </div>
 
       <input

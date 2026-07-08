@@ -115,8 +115,6 @@ data class OverviewData(
     val specsCount: Int,
     val changesCount: ChangesCount,
     val taskStats: TaskStats,
-    /** repo 預設 schema（openspec/config.yaml schema:），無法判定為 null；供 specs 頁顯示 repo 預設 schema */
-    val defaultSchema: String? = null,
 )
 
 @Serializable

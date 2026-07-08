@@ -118,8 +118,6 @@ export interface OverviewData {
   specsCount: number;
   changesCount: { active: number; archived: number };
   taskStats: TaskStats;
-  /** repo 預設 schema（openspec/config.yaml schema:），無法判定為 null；供 specs 頁顯示 repo 預設 schema */
-  defaultSchema: string | null;
 }
 
 export interface ScanResult {

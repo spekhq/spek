@@ -42,7 +42,6 @@ async function main() {
       total: 0,
       completed: 0,
     },
-    defaultSchema: scan.defaultSchema,
   };
 
   // 彙總 task stats
