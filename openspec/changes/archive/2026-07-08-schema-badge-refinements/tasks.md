@@ -29,7 +29,7 @@
 
 - [x] 5.1 `npm run type-check`, `npm run test -w @spek/core` (+ web tests), `npm run build` all green.
 - [x] 5.2 IntelliJ Gradle `test` with freshly synced instrumented classes; confirm Kotlin test counts in the result XML.
-- [ ] 5.3 Manually verify in `npm run dev`: badge hidden for default-schema changes on all surfaces, shown for a differing-schema change; Changes-page default-schema subheading renders with the list.
+- [x] 5.3 Manually verified in `npm run dev`: badge hidden for default-schema changes, shown for a differing-schema change (`superpowers-bridge`); Changes-page default-schema subheading renders with the list.
 - [x] 5.4 Quality gates: LSP references, unused-locals via tsc, reasoned mutation coverage of the badge predicate; clean source-only diff (no bundle/version noise).
 
 ## 6. Adversarial-review follow-ups
