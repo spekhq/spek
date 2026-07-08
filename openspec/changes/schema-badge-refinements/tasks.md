@@ -13,11 +13,11 @@
 
 ## 3. Shared React UI
 
-- [x] 3.1 In `packages/web/src/components/SchemaBadge.tsx`, add a presentational `SchemaPill` (always renders) and make `SchemaBadge` the hide-logic wrapper (nothing when `schema` falsy or `=== defaultSchema`) that composes `SchemaPill`.
+- [x] 3.1 `packages/web/src/components/SchemaBadge.tsx`: a single `SchemaBadge` pill component that renders nothing when `schema` is falsy or `=== defaultSchema`, else a bordered pill.
 - [x] 3.2 Replace the inline badge in `ChangeDetail.tsx` with `<SchemaBadge schema={data.schema} defaultSchema={data.defaultSchema} />`.
-- [x] 3.3 Render `<SchemaBadge>` in `ChangeList.tsx` `ChangeRow`, beside `WorktreeBadge`, using `data.defaultSchema`.
-- [x] 3.4 Render `<SchemaBadge>` in `Dashboard.tsx` active + recently-archived rows, beside `WorktreeBadge`.
-- [x] 3.5 Show a `Default schema: <name>` subheading beneath the Changes page heading (`ChangeList.tsx`), reusing `SchemaPill`, fed by `ChangesData.defaultSchema` (already fetched — no extra request), shown only when non-null. Additive to the header (no relocation of existing elements).
+- [x] 3.3 Render `<SchemaBadge>` in `ChangeList.tsx` `ChangeRow`, on the right of the row grouped with the date/lifecycle metadata, using `data.defaultSchema`.
+- [x] 3.4 Render `<SchemaBadge>` in `Dashboard.tsx` active + recently-archived rows, on the right with the date metadata (consistent with the Changes list).
+- [x] 3.5 Show a plain-text `Default schema: <name>` subheading beneath the Changes page heading (`ChangeList.tsx`), fed by `ChangesData.defaultSchema` (already fetched — no extra request), shown only when non-null. Additive to the header (no relocation of existing elements).
 - [x] 3.6 Tests for `SchemaBadge` (hide predicate → null / SchemaPill) and `SchemaPill` (always renders, honours title).
 
 ## 4. IntelliJ Kotlin core parity
@@ -38,3 +38,4 @@
 - [x] 6.2 Add a core test asserting `scanOpenSpecAggregated` carries the main worktree's `defaultSchema`.
 - [x] 6.3 Document the aggregated cross-worktree baseline asymmetry in design.md (known limitation; the Changes-page label and its row badges read the same `ChangesData.defaultSchema`, so they stay mutually consistent).
 - [x] 6.4 Simplification (post-review, per issue re-read): moved the default-schema label from the Specs page to the Changes page and sourced it from `ChangesData.defaultSchema`, removing the `useDefaultSchema` cache hook, the `OverviewData.defaultSchema` plumbing, and the Specs-header change entirely.
+- [x] 6.5 Communication polish (per visual review): render the default-schema label as plain text so the pill unambiguously signals a non-default schema (folded `SchemaPill` back into a single `SchemaBadge`); moved the row schema badge to the right of the row with the date metadata to keep change titles clean.

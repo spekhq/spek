@@ -77,13 +77,15 @@ export function Dashboard() {
                   <span className="flex items-center gap-2 min-w-0">
                     <span className="text-text-primary font-medium truncate">{c.description}</span>
                     {showSource && c.source && <WorktreeBadge source={c.source} />}
-                    <SchemaBadge schema={c.schema} defaultSchema={defaultSchema} />
                   </span>
-                  {(c.timestamp || c.date) && (
-                    <span className="text-text-muted text-xs whitespace-nowrap shrink-0" title={c.timestamp || undefined}>
-                      {c.timestamp ? formatRelativeTime(c.timestamp) : c.date}
-                    </span>
-                  )}
+                  <span className="flex items-center gap-2 shrink-0">
+                    <SchemaBadge schema={c.schema} defaultSchema={defaultSchema} />
+                    {(c.timestamp || c.date) && (
+                      <span className="text-text-muted text-xs whitespace-nowrap" title={c.timestamp || undefined}>
+                        {c.timestamp ? formatRelativeTime(c.timestamp) : c.date}
+                      </span>
+                    )}
+                  </span>
                 </div>
                 {c.taskStats && (
                   <TaskProgress completed={c.taskStats.completed} total={c.taskStats.total} />
@@ -110,13 +112,15 @@ export function Dashboard() {
                 <span className="flex items-center gap-2 min-w-0">
                   <span className="text-text-primary text-sm truncate">{c.description}</span>
                   {showSource && c.source && <WorktreeBadge source={c.source} />}
-                  <SchemaBadge schema={c.schema} defaultSchema={defaultSchema} />
                 </span>
-                {(c.timestamp || c.date) && (
-                  <span className="text-text-muted text-xs whitespace-nowrap shrink-0" title={c.timestamp || undefined}>
-                    {c.timestamp ? formatRelativeTime(c.timestamp) : c.date}
-                  </span>
-                )}
+                <span className="flex items-center gap-2 shrink-0">
+                  <SchemaBadge schema={c.schema} defaultSchema={defaultSchema} />
+                  {(c.timestamp || c.date) && (
+                    <span className="text-text-muted text-xs whitespace-nowrap" title={c.timestamp || undefined}>
+                      {c.timestamp ? formatRelativeTime(c.timestamp) : c.date}
+                    </span>
+                  )}
+                </span>
               </Link>
             ))}
           </div>

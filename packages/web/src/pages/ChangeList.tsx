@@ -7,7 +7,7 @@ import { formatRelativeTime } from "../utils/formatRelativeTime";
 import { formatLifecycleListRow, todayIso } from "../utils/lifecycle";
 import { getAggregatePref, setAggregatePref } from "../utils/aggregatePref";
 import { WorktreeBadge } from "../components/WorktreeBadge";
-import { SchemaBadge, SchemaPill } from "../components/SchemaBadge";
+import { SchemaBadge } from "../components/SchemaBadge";
 import { changeKey, changeTo } from "../utils/changeLink";
 
 function changeMetaDisplay(c: ChangeInfo, today: string): { text: string; tooltip: string } | null {
@@ -49,16 +49,18 @@ function ChangeRow({ c, today, accent, showSource, defaultSchema }: {
             {c.description}
           </span>
           {showSource && c.source && <WorktreeBadge source={c.source} />}
-          <SchemaBadge schema={c.schema} defaultSchema={defaultSchema} />
         </span>
-        {meta && (
-          <span
-            className="text-text-muted text-xs whitespace-nowrap shrink-0 tracking-wide [word-spacing:0.15em]"
-            title={meta.tooltip}
-          >
-            {meta.text}
-          </span>
-        )}
+        <span className="flex items-center gap-2 shrink-0">
+          <SchemaBadge schema={c.schema} defaultSchema={defaultSchema} />
+          {meta && (
+            <span
+              className="text-text-muted text-xs whitespace-nowrap tracking-wide [word-spacing:0.15em]"
+              title={meta.tooltip}
+            >
+              {meta.text}
+            </span>
+          )}
+        </span>
       </div>
       {accent && c.taskStats && (
         <TaskProgress completed={c.taskStats.completed} total={c.taskStats.total} />
@@ -104,9 +106,8 @@ export function ChangeList() {
         )}
       </div>
       {defaultSchema && (
-        <p className="flex items-center gap-2 mt-1 text-text-muted text-sm">
-          Default schema:
-          <SchemaPill schema={defaultSchema} title="Repo default OpenSpec schema" />
+        <p className="mt-1 text-text-muted text-sm" title="Repo default OpenSpec schema">
+          Default schema: <span className="text-text-secondary">{defaultSchema}</span>
         </p>
       )}
     </div>
