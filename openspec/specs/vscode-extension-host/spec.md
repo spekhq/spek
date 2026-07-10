@@ -1,6 +1,6 @@
 ## Purpose
 
-定義 VS Code extension 主體（commands、activation、Webview panel），並直接呼叫 @spek/core 處理請求。
+定義 VS Code extension 主體（commands、activation、Webview panel），並直接呼叫 @spekjs/core 處理請求。
 
 ## Requirements
 ### Requirement: Extension activation

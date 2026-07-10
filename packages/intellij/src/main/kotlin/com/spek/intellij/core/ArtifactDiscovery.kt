@@ -3,7 +3,7 @@ package com.spek.intellij.core
 import java.io.File
 
 /**
- * 對齊 @spek/core 的 artifacts.ts：以檔案系統為準探索 change artifacts，
+ * 對齊 @spekjs/core 的 artifacts.ts：以檔案系統為準探索 change artifacts，
  * 依檔案 mtime 由新到舊排序（相同 mtime 以預設敘事順序 tiebreak）。不呼叫 openspec CLI。
  */
 object ArtifactDiscovery {

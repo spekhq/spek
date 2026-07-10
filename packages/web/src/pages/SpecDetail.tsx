@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { Link, useLocation, useParams } from "react-router-dom";
-import type { HistoryEntry } from "@spek/core";
-import { extractHeadings } from "@spek/core/headings";
+import type { HistoryEntry } from "@spekjs/core";
+import { extractHeadings } from "@spekjs/core/headings";
 import { useSpec, useSpecAtChange } from "../hooks/useOpenSpec";
 import { MarkdownRenderer } from "../components/MarkdownRenderer";
 import { SpecDiffViewer } from "../components/SpecDiffViewer";

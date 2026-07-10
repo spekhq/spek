@@ -3,7 +3,7 @@ package com.spek.intellij.core
 import java.io.File
 
 /**
- * 判定檔案監看是否需要改用 polling（輪詢）。對齊 @spek/core 的 watch-polling.ts。
+ * 判定檔案監看是否需要改用 polling（輪詢）。對齊 @spekjs/core 的 watch-polling.ts。
  *
  * 背景：Java NIO `WatchService` 在 Linux 走 inotify，但 inotify 事件在 9p / drvfs / NFS /
  * CIFS / FUSE 等網路型或虛擬掛載上不會傳遞（devcontainer / WSL 把 host 目錄掛進容器即如此），

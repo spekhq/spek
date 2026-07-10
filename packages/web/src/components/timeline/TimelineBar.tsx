@@ -1,4 +1,4 @@
-import type { ChangeInfo } from "@spek/core";
+import type { ChangeInfo } from "@spekjs/core";
 
 interface TimelineBarProps {
   change: ChangeInfo;

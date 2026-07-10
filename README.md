@@ -71,7 +71,7 @@ npm run dev
 
 Open http://localhost:5173, enter a path to a repo containing an `openspec/` directory, and start browsing.
 
-> `npm install` compiles the shared `@spek/core` package, and `npm run dev` rebuilds it before launching — so a fresh clone starts with no extra build step.
+> `npm install` compiles the shared `@spekjs/core` package, and `npm run dev` rebuilds it before launching — so a fresh clone starts with no extra build step.
 
 ### VS Code Extension
 
@@ -255,8 +255,8 @@ spek expects the following structure under your repository:
 
 ```
 packages/
-├── core/       # @spek/core — Pure logic (scanner, parser, types)
-├── web/        # @spek/web — Express API + React SPA
+├── core/       # @spekjs/core — Pure logic (scanner, parser, types)
+├── web/        # @spekjs/web — Express API + React SPA
 ├── vscode/     # spek-vscode — VS Code Extension
 └── intellij/   # spek-intellij — IntelliJ Platform Plugin (Kotlin)
 ```
@@ -288,7 +288,7 @@ This allows the same React UI to run in both environments without code changes.
 npm install              # Install all workspace dependencies
 npm run dev              # Start Vite (5173) + Express (3001)
 npm run build            # Build core + web
-npm run build:core       # Build @spek/core only
+npm run build:core       # Build @spekjs/core only
 npm run build:webview    # Build webview assets for VS Code extension
 npm run build:vscode     # Build VS Code extension
 npm run build:intellij   # Build IntelliJ webview assets

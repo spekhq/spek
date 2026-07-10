@@ -3,7 +3,7 @@ import * as fs from "fs";
 import * as path from "path";
 import { MessageHandler } from "./handler";
 import { watchOpenspecDir } from "./watcher";
-import { listWorktrees } from "@spek/core";
+import { listWorktrees } from "@spekjs/core";
 
 export class SpekPanel {
   private static instance: SpekPanel | undefined;

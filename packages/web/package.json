@@ -1,5 +1,5 @@
 {
-  "name": "@spek/web",
+  "name": "@spekjs/web",
   "version": "0.1.0",
   "private": true,
   "type": "module",
@@ -14,7 +14,7 @@
     "format": "prettier --write src server"
   },
   "dependencies": {
-    "@spek/core": "*",
+    "@spekjs/core": "*",
     "@types/diff": "^7.0.2",
     "chokidar": "^5.0.0",
     "cors": "^2.8.5",

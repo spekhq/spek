@@ -9,7 +9,7 @@ import type {
   BrowseData,
   DetectData,
   GraphData,
-} from "@spek/core";
+} from "@spekjs/core";
 
 export interface ApiAdapter {
   getOverview(aggregate?: boolean): Promise<OverviewData>;

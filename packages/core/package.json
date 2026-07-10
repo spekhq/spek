@@ -1,7 +1,30 @@
 {
-  "name": "@spek/core",
-  "version": "0.1.0",
-  "private": true,
+  "name": "@spekjs/core",
+  "version": "1.0.0",
+  "description": "Framework-agnostic engine for reading OpenSpec repositories — scanner, tasks parser, worktree aggregation and shared types.",
+  "keywords": [
+    "openspec",
+    "spec-driven-development",
+    "sdd",
+    "spec",
+    "parser"
+  ],
+  "license": "MIT",
+  "author": "Kewang",
+  "homepage": "https://github.com/kewang/spek#readme",
+  "bugs": "https://github.com/kewang/spek/issues",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/kewang/spek.git",
+    "directory": "packages/core"
+  },
+  "publishConfig": {
+    "access": "public"
+  },
+  "files": [
+    "dist",
+    "CHANGELOG.md"
+  ],
   "type": "module",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
@@ -26,9 +49,7 @@
     "test": "node --import tsx --test src/*.test.ts"
   },
   "dependencies": {
-    "cross-spawn": "^7.0.6",
-    "fuse.js": "^7.0.0",
-    "gray-matter": "^4.0.3"
+    "cross-spawn": "^7.0.6"
   },
   "devDependencies": {
     "@types/cross-spawn": "^6.0.6",

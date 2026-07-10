@@ -2,7 +2,7 @@ import * as vscode from "vscode";
 import * as fs from "fs";
 import * as path from "path";
 import { watch } from "chokidar";
-import { shouldUsePolling, pollingInterval, withAuthoritativeChokidarEnv } from "@spek/core";
+import { shouldUsePolling, pollingInterval, withAuthoritativeChokidarEnv } from "@spekjs/core";
 
 /**
  * 對 `<dir>/openspec` 建立 chokidar 檔案監看，任一相關事件都呼叫 `onChange`。

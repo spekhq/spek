@@ -1,6 +1,6 @@
 import * as vscode from "vscode";
-import { scanOpenSpec, scanOpenSpecAggregated, readSpec, extractHeadings } from "@spek/core";
-import type { SpecInfo, ChangeInfo, Heading } from "@spek/core";
+import { scanOpenSpec, scanOpenSpecAggregated, readSpec, extractHeadings } from "@spekjs/core";
+import type { SpecInfo, ChangeInfo, Heading } from "@spekjs/core";
 import { formatTreeItemDescription } from "./lifecycle";
 
 // --- Specs TreeView ---

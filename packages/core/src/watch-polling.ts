@@ -189,7 +189,7 @@ function restoreEnvVar(env: NodeJS.ProcessEnv, key: string, prev: string | undef
 }
 
 /**
- * 讓 @spek/core 算出的 polling 決定成為 chokidar 的權威值。
+ * 讓 @spekjs/core 算出的 polling 決定成為 chokidar 的權威值。
  *
  * chokidar 5.x 在建構 watcher 時會「事後」重讀 `process.env.CHOKIDAR_USEPOLLING` 與
  * `CHOKIDAR_INTERVAL`，覆寫我們透過 options 傳入的 `usePolling` / `interval`

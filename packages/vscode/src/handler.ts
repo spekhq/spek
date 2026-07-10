@@ -13,7 +13,7 @@ import {
   listWorktrees,
   toWorktreeSource,
   listChangeMarkdownFiles,
-} from "@spek/core";
+} from "@spekjs/core";
 
 export class MessageHandler {
   constructor(private readonly workspacePath: string) {}
@@ -144,7 +144,7 @@ export class MessageHandler {
         const changePath = path.join(baseDir, slug);
         if (!fs.statSync(changePath).isDirectory()) continue;
         // 索引每個 change 內所有 root *.md artifact（含自訂 schema 的 brainstorm/plan/verify 等）；
-        // 沿用 @spek/core 的 listChangeMarkdownFiles，與 discover/count 共用同一 predicate
+        // 沿用 @spekjs/core 的 listChangeMarkdownFiles，與 discover/count 共用同一 predicate
         for (const file of listChangeMarkdownFiles(changePath)) {
           documents.push({
             type: "change",

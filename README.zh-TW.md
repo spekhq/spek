@@ -71,7 +71,7 @@ npm run dev
 
 開啟 http://localhost:5173，輸入包含 `openspec/` 目錄的 repo 路徑，即可開始瀏覽。
 
-> `npm install` 會編譯共用的 `@spek/core` 套件，`npm run dev` 啟動前也會重新 build，因此 fresh clone 不需額外手動 build 即可啟動。
+> `npm install` 會編譯共用的 `@spekjs/core` 套件，`npm run dev` 啟動前也會重新 build，因此 fresh clone 不需額外手動 build 即可啟動。
 
 ### VS Code Extension
 
@@ -255,8 +255,8 @@ spek 預期你的 repo 底下有以下結構：
 
 ```
 packages/
-├── core/       # @spek/core — 純邏輯（掃描器、解析器、型別定義）
-├── web/        # @spek/web — Express API + React SPA
+├── core/       # @spekjs/core — 純邏輯（掃描器、解析器、型別定義）
+├── web/        # @spekjs/web — Express API + React SPA
 ├── vscode/     # spek-vscode — VS Code Extension
 └── intellij/   # spek-intellij — IntelliJ Platform Plugin（Kotlin）
 ```
@@ -288,7 +288,7 @@ packages/
 npm install              # 安裝所有 workspace 依賴
 npm run dev              # 啟動 Vite (5173) + Express (3001)
 npm run build            # Build core + web
-npm run build:core       # 僅 Build @spek/core
+npm run build:core       # 僅 Build @spekjs/core
 npm run build:webview    # Build webview 靜態資源（給 VS Code Extension 用）
 npm run build:vscode     # Build VS Code Extension
 npm run build:intellij   # Build IntelliJ webview 靜態資源

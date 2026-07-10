@@ -1,7 +1,7 @@
 import { useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 import { useChanges, useGraphData } from "../hooks/useOpenSpec";
-import type { ChangeInfo } from "@spek/core";
+import type { ChangeInfo } from "@spekjs/core";
 import { buildLanes, type Lane } from "../components/timeline/grouping";
 import { TimelineChart } from "../components/timeline/TimelineChart";
 import { changeKey, changeTo } from "../utils/changeLink";

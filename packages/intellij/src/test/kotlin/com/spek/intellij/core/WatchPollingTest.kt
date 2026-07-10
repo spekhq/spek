@@ -11,7 +11,7 @@ import kotlin.test.assertNull
 import kotlin.test.assertTrue
 import com.spek.intellij.core.WatchPolling.PollingSignals
 
-/** 對齊 @spek/core watch-polling.test.ts 的判定邏輯測試 */
+/** 對齊 @spekjs/core watch-polling.test.ts 的判定邏輯測試 */
 class WatchPollingTest {
 
     @Test

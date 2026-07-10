@@ -8,7 +8,7 @@ import java.io.File
 
 /**
  * OpenSpecScanner 的純邏輯測試：驗證 createdDate / archivedDate 由 .openspec.yaml 與資料夾名解析，
- * 行為對齊 TS @spek/core 的 scanner。此測試不依賴 IntelliJ platform。
+ * 行為對齊 TS @spekjs/core 的 scanner。此測試不依賴 IntelliJ platform。
  */
 class OpenSpecScannerTest {
 

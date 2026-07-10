@@ -2,7 +2,7 @@ import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import { Link } from "react-router-dom";
 import { type ReactNode } from "react";
-import { slugifyHeading } from "@spek/core/headings";
+import { slugifyHeading } from "@spekjs/core/headings";
 
 // rehype plugin：為 h2/h3 加上 deterministic id（與 extractHeadings 的 slug 演算法一致）。
 // 在 hast 階段處理可避免 React Strict Mode 的 double render 讓 counter 翻倍。

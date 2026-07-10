@@ -59,7 +59,7 @@ runs:
       shell: bash
       run: npm ci --prefix .spek-builder
 
-    - name: Build @spek/core
+    - name: Build @spekjs/core
       shell: bash
       run: npm run build:core --prefix .spek-builder
 

@@ -19,7 +19,7 @@ import type {
   BrowseData,
   DetectData,
   GraphData,
-} from "@spek/core";
+} from "@spekjs/core";
 
 // Re-export types for existing consumers
 export type {
@@ -37,7 +37,7 @@ export type {
   BrowseData,
   DetectData,
 };
-export type { HistoryEntry as SpecHistoryEntry } from "@spek/core";
+export type { HistoryEntry as SpecHistoryEntry } from "@spekjs/core";
 
 interface FetchState<T> {
   data: T | null;

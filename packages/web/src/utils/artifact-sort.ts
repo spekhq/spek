@@ -1,7 +1,7 @@
-import type { ChangeArtifact } from "@spek/core";
-// 從無 node 依賴的 subpath 匯入（非主 entry），避免把 server-only 的 @spek/core 模組拉進
+import type { ChangeArtifact } from "@spekjs/core";
+// 從無 node 依賴的 subpath 匯入（非主 entry），避免把 server-only 的 @spekjs/core 模組拉進
 // webview bundle；DEFAULT_ORDER 為 core / 前端共用的單一事實來源，不再於此重複定義。
-import { defaultRank } from "@spek/core/artifact-order";
+import { defaultRank } from "@spekjs/core/artifact-order";
 
 export type ArtifactSortMode = "modified" | "schema" | "alpha";
 

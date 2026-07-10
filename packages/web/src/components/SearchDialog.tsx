@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef, useCallback, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
 import { useApiAdapter } from "../api/ApiAdapterContext";
-import type { SearchResult } from "@spek/core";
+import type { SearchResult } from "@spekjs/core";
 
 interface SearchDialogProps {
   open: boolean;

@@ -1,7 +1,7 @@
 // Timeline lane / grouping 推導：把 ChangeInfo[] 分成 lanes（含 group by topic 變體），
 // 缺 createdDate 的 change 獨立提出由 caller 渲染。
 
-import type { ChangeInfo, GraphData } from "@spek/core";
+import type { ChangeInfo, GraphData } from "@spekjs/core";
 
 export interface LaneItem {
   change: ChangeInfo;

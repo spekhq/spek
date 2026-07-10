@@ -12,7 +12,7 @@ spek 是一個 OpenSpec 內容檢視器，提供四種使用方式：
 
 ## Tech Stack
 
-- **Core**: `@spek/core` — 共用邏輯（scanner、tasks parser、型別定義），純 Node.js
+- **Core**: `@spekjs/core` — 共用邏輯（scanner、tasks parser、型別定義），純 Node.js。**已發佈至 npm public registry**，有獨立於 root 的版本線；唯一的 runtime 依賴是 `cross-spawn`。repo 內的 `packages/web` / `packages/vscode` 以 `"*"` 由 npm workspaces 解析到本地，不從 registry 抓，因此開發不受 core 發版節奏影響。
 - **Frontend**: React 19 + Vite + TypeScript + Tailwind CSS v4
 - **Backend**: Express.js (Node.js) — 讀取本地檔案系統提供 REST API
 - **VS Code Extension**: Webview Panel + esbuild bundling
@@ -25,9 +25,9 @@ spek 是一個 OpenSpec 內容檢視器，提供四種使用方式：
 
 ```
 packages/
-├── core/       # @spek/core — 純邏輯，無框架依賴
+├── core/       # @spekjs/core — 純邏輯，無框架依賴
 │   └── src/    # scanner.ts, tasks.ts, git-cache.ts, types.ts
-├── web/        # @spek/web — Express + React 應用
+├── web/        # @spekjs/web — Express + React 應用
 │   ├── server/ # Express API server
 │   └── src/    # React SPA + API adapters
 ├── vscode/     # spek-vscode — VS Code Extension
@@ -51,34 +51,34 @@ docs/           # 靜態產出（demo.html，GitHub Pages 部署）
 npm install              # 安裝所有 workspace 依賴
 npm run dev              # 啟動 Web 版：Vite (5173) + Express (3001)
 npm run build            # Build core + web
-npm run build:core       # Build @spek/core
-npm run build:web        # Build @spek/web（web 版 production build）
+npm run build:core       # Build @spekjs/core
+npm run build:web        # Build @spekjs/web（web 版 production build）
 npm run build:webview    # Build webview assets（給 VS Code extension 用）
 npm run build:vscode     # Build VS Code extension
 npm run build:demo       # Build 獨立 demo HTML（docs/demo.html）
 npm run build:intellij   # Build IntelliJ webview assets
 npm run type-check       # TypeScript type check
-npm run test -w @spek/core  # 跑 @spek/core 的 unit test（node:test + tsx）
+npm run test -w @spekjs/core  # 跑 @spekjs/core 的 unit test（node:test + tsx）
 ```
 
 **Web 開發**：`npm run dev` 後存取 http://localhost:5173
 
 **VS Code Extension 打包**：
 ```bash
-npm run build -w @spek/core && npm run build:webview -w @spek/web && npm run build -w spek-vscode
+npm run build -w @spekjs/core && npm run build:webview -w @spekjs/web && npm run build -w spek-vscode
 cd packages/vscode && npx vsce package --no-dependencies
 ```
 
 **IntelliJ Plugin 打包**：
 ```bash
-npm run build -w @spek/core && npm run build:intellij
+npm run build -w @spekjs/core && npm run build:intellij
 cd packages/intellij && ./gradlew buildPlugin
 # 產出: packages/intellij/build/distributions/spek-intellij-*.zip
 ```
 
 ## Architecture
 
-### Core Module (`@spek/core`)
+### Core Module (`@spekjs/core`)
 純函式 + 型別定義，可被 web server 和 extension host 共用：
 - `scanOpenSpec(basePath)` — 掃描單一目錄的 OpenSpec 結構
 - `scanOpenSpecAggregated(basePath, { aggregate })` — 跨 worktree 聚合掃描：探索同 repo 全部 worktree，active changes 聯集並附來源、archived 依 slug 去重、specs 取主 worktree；單一 worktree / 非 git / 關閉聚合時等同 `scanOpenSpec`
@@ -92,7 +92,7 @@ cd packages/intellij && ./gradlew buildPlugin
 - `listWorktrees(basePath)` — 以 `git worktree list --porcelain` 列出同 repo 全部 worktree；非 git / 無 `git` 時回 `[]`
 - `shouldUsePolling(path, opts?)` / `pollingInterval(env?)` — 判定檔案監看是否該改用 polling（`watch-polling.ts`）。原生事件（inotify）在 9p/drvfs/NFS/CIFS 等掛載上不傳遞（devcontainer/WSL），故依「被監看路徑的 fstype」決定：純函式 `decidePolling` 套用優先序「明確覆寫（`SPEK_WATCH_POLLING`/`CHOKIDAR_USEPOLLING`）→ fstype 偵測（讀 `/proc/mounts`）→ remote 環境保底」。Web/VS Code 傳給 chokidar `usePolling`；IntelliJ 以 Kotlin 對齊版（`WatchPolling.kt`）在需要時改走輪詢掃描執行緒
 - `parseTasks(content)` — 解析 tasks.md checkbox
-- `extractHeadings(content)` / `slugifyHeading(text)` — 解析 markdown h2/h3 並產生穩定 slug，給 spec detail TOC 與 VS Code sidebar 共用（從 `@spek/core/headings` subpath 引入，避免 webview bundle 把 server-only 模組打包進去）
+- `extractHeadings(content)` / `slugifyHeading(text)` — 解析 markdown h2/h3 並產生穩定 slug，給 spec detail TOC 與 VS Code sidebar 共用（從 `@spekjs/core/headings` subpath 引入，避免 webview bundle 把 server-only 模組打包進去）
 - 共用型別：`OverviewData`, `SpecInfo`, `ChangeInfo`, `ChangeDetail`, `ChangeArtifact`, `ArtifactKind`, `GraphData`, `WorktreeInfo`, `WorktreeSource`, `Heading` 等。`ChangeDetail.artifacts: ChangeArtifact[]` 是跨 core / API / adapters / 各前端的通用合約，change detail 的 tab、TOC 都由它驅動（markdown / specs 有 TOC、tasks 無）
 
 ### API Adapter Pattern
@@ -123,14 +123,14 @@ GET /api/openspec/search?dir=...&q=...   # 全文搜尋
 - `spek.open` / `spek.search` / `spek.navigateTo` commands（`spek.navigateTo` 接受含 `#hash` 的 route path）
 - `workspaceContains:openspec/config.yaml` activation
 - Webview Panel 載入 IIFE-bundled React app
-- extension host 直接呼叫 `@spek/core` 處理 API requests
+- extension host 直接呼叫 `@spekjs/core` 處理 API requests
 - Sidebar Specs TreeView 每個 spec 項目可展開，子節點為該 spec 的 h2/h3 heading，點擊跳到 webview 對應錨點
 
 ### IntelliJ Plugin
 - Kotlin 開發，使用 IntelliJ Platform SDK
 - JCEF（JetBrains 內建 Chromium）載入 React SPA 前端
 - IntelliJ Built-in Server 提供 REST API（`/api/spek/openspec/*`，`projectPath` query param）
-- Kotlin 重新實作 `@spek/core` 掃描/讀取邏輯（`core/` 目錄），含 artifact 動態探索與 mtime 排序（`ArtifactDiscovery.kt`）及 schema 權威順序（`SchemaOrder.kt`：`parseOrderFromStatus` / `resolveSchemaOrder` + CLI provider，`ChangeReader` 附上 `schemaOrder`），皆對齊 TS 版規則；單元測試見 `src/test/kotlin`
+- Kotlin 重新實作 `@spekjs/core` 掃描/讀取邏輯（`core/` 目錄），含 artifact 動態探索與 mtime 排序（`ArtifactDiscovery.kt`）及 schema 權威順序（`SchemaOrder.kt`：`parseOrderFromStatus` / `resolveSchemaOrder` + CLI provider，`ChangeReader` 附上 `schemaOrder`），皆對齊 TS 版規則；單元測試見 `src/test/kotlin`
 - 前端用 `FetchAdapter`（含自訂 `baseUrl` + `dirParam`）連接內嵌 server
 - Tool Window 在 IDE 右側 sidebar 顯示
 - 主題同步透過 JCEF `executeJavaScript()` 注入 CSS class
@@ -153,7 +153,9 @@ GET /api/openspec/search?dir=...&q=...   # 全文搜尋
 - 程式碼用英文撰寫
 - 註解與文件使用繁體中文（台灣用語）
 - OpenSpec 資料結構詳見 `docs/prd.md` 第 3 節
-- **CHANGELOG 同步**：root `CHANGELOG.md`、`packages/vscode/CHANGELOG.md` 與 `packages/intellij/CHANGELOG.md` 三份內容必須保持一致，更新時三邊同步修改
+- **CHANGELOG（兩條版本線）**：
+  - **spek 產品**（Web / VS Code / IntelliJ 三個發行通道，共用 root `package.json` 的版本）由 root `CHANGELOG.md`、`packages/vscode/CHANGELOG.md`、`packages/intellij/CHANGELOG.md` 三份記錄。三者**共享同一份版本歷史，但各自過濾掉與該發行通道無關的條目**（例如純 Web 的變更不出現在 vscode / intellij 那兩份）。root 那份是超集，更新時以它為準向下過濾。
+  - **`@spekjs/core`** 是獨立發佈到 npm 的套件，有自己的版本線與自己的 `packages/core/CHANGELOG.md`，**不寫進上述三份**。它的讀者是 API 消費者，關心的是函式簽章而非產品 UI 變更。該檔須列在 `packages/core/package.json` 的 `files` 中 —— npm 只會自動打包 `package.json` / `README` / `LICENSE`，不含 `CHANGELOG.md`。
 
 ## Workflow
 

@@ -2,7 +2,7 @@ import { useEffect, useRef, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
 import { useTheme } from "../contexts/ThemeContext";
 import { useGraphData } from "../hooks/useOpenSpec";
-import type { GraphData, GraphNode } from "@spek/core";
+import type { GraphData, GraphNode } from "@spekjs/core";
 import {
   forceSimulation,
   forceLink,

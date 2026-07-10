@@ -17,7 +17,7 @@ import {
   shouldUsePolling,
   pollingInterval,
   withAuthoritativeChokidarEnv,
-} from "@spek/core";
+} from "@spekjs/core";
 
 // --- File watcher 共享管理 ---
 
@@ -40,7 +40,7 @@ function getOrCreateWatcher(key: string, watchDirs: string[]): WatcherEntry {
   const usePolling = watchPaths.some((p) => shouldUsePolling(p));
   const interval = pollingInterval();
   // chokidar 5.x 建構時會事後重讀 CHOKIDAR_USEPOLLING / CHOKIDAR_INTERVAL 覆寫我們傳入的
-  // usePolling / interval，因此在建立期間把 env 對齊到權威決定，讓 @spek/core 判定為準。
+  // usePolling / interval，因此在建立期間把 env 對齊到權威決定，讓 @spekjs/core 判定為準。
   const watcher = withAuthoritativeChokidarEnv(usePolling, interval, () =>
     chokidar.watch(watchPaths, {
       ignored: (filePath: string) => {
@@ -230,7 +230,7 @@ openspecRouter.get("/search", (req, res) => {
       const changePath = path.join(baseDir, slug);
       if (!fs.statSync(changePath).isDirectory()) continue;
 
-      // 沿用 @spek/core 的 listChangeMarkdownFiles，與 discover/count 共用同一 predicate
+      // 沿用 @spekjs/core 的 listChangeMarkdownFiles，與 discover/count 共用同一 predicate
       for (const file of listChangeMarkdownFiles(changePath)) {
         documents.push({
           type: "change",

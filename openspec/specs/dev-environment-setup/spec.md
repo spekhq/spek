@@ -1,6 +1,6 @@
 ## Purpose
 
-規範 monorepo 從 fresh clone 到可執行 dev 環境的建置流程，確保 @spek/core 已編譯且 npm run dev 能成功啟動。
+規範 monorepo 從 fresh clone 到可執行 dev 環境的建置流程，確保 @spekjs/core 已編譯且 npm run dev 能成功啟動。
 
 ## Requirements
 

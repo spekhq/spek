@@ -19,7 +19,7 @@ jobs:
       - run: npm ci
 
       - name: Build core
-        run: npm run build -w @spek/core
+        run: npm run build -w @spekjs/core
 
       - name: Build IntelliJ webview
         run: npm run build:intellij

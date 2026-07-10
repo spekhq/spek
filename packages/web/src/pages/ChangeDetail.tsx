@@ -1,7 +1,7 @@
 import { useEffect, useMemo } from "react";
 import { Link, useLocation, useParams, useSearchParams } from "react-router-dom";
-import { extractHeadings } from "@spek/core/headings";
-import type { ChangeArtifact } from "@spek/core";
+import { extractHeadings } from "@spekjs/core/headings";
+import type { ChangeArtifact } from "@spekjs/core";
 import { useChange, useSpecs } from "../hooks/useOpenSpec";
 import { TabView } from "../components/TabView";
 import { TaskProgress } from "../components/TaskProgress";
@@ -15,7 +15,7 @@ import { sortArtifacts, type ArtifactSortMode } from "../utils/artifact-sort";
 
 const TOC_MIN_HEADINGS = 3;
 
-// 對齊 @spek/core 的 parseSlug：去掉開頭 YYYY-MM-DD- 前綴並把 dash 轉空格
+// 對齊 @spekjs/core 的 parseSlug：去掉開頭 YYYY-MM-DD- 前綴並把 dash 轉空格
 function slugTitle(slug: string): string {
   const m = slug.match(/^\d{4}-\d{2}-\d{2}-(.+)$/);
   return (m ? m[1] : slug).replace(/-/g, " ");

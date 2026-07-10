@@ -8,7 +8,7 @@ import { TimelineTooltip } from "./TimelineTooltip";
 import { todayIso } from "../../utils/lifecycle";
 import { changeTo } from "../../utils/changeLink";
 import { WorktreeBadge } from "../WorktreeBadge";
-import type { ChangeInfo } from "@spek/core";
+import type { ChangeInfo } from "@spekjs/core";
 
 interface TimelineChartProps {
   lanes: Lane[];

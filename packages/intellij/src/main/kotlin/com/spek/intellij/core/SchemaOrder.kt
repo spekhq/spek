@@ -19,7 +19,7 @@ data class SchemaArtifactRef(
 
 /**
  * 提供某個 change 的權威 artifact 順序。回 null 代表無法取得（CLI 不存在、archived change、
- * 或任何錯誤），此時 schemaOrder 為 null。對齊 @spek/core 的 SchemaOrderProvider。
+ * 或任何錯誤），此時 schemaOrder 為 null。對齊 @spekjs/core 的 SchemaOrderProvider。
  */
 fun interface SchemaOrderProvider {
     fun order(repoRoot: String, slug: String): List<SchemaArtifactRef>?

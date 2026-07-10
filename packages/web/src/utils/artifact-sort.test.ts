@@ -1,6 +1,6 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import type { ChangeArtifact } from "@spek/core";
+import type { ChangeArtifact } from "@spekjs/core";
 import { sortArtifacts } from "./artifact-sort.js";
 
 function art(id: string, title?: string): ChangeArtifact {

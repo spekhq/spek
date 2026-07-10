@@ -1,4 +1,4 @@
-import type { ChangeInfo } from "@spek/core";
+import type { ChangeInfo } from "@spekjs/core";
 
 // 聚合時用「來源 worktree key + slug」組唯一 React key，避免同名 slug 衝突
 export function changeKey(c: ChangeInfo): string {

@@ -96,7 +96,7 @@
     "@types/vscode": "^1.85.0",
     "esbuild": "^0.24.0",
     "@vscode/vsce": "^3.0.0",
-    "@spek/core": "*",
+    "@spekjs/core": "*",
     "chokidar": "^5.0.0",
     "fuse.js": "^7.0.0"
   }

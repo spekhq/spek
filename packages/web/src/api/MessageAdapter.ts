@@ -9,7 +9,7 @@ import type {
   BrowseData,
   DetectData,
   GraphData,
-} from "@spek/core";
+} from "@spekjs/core";
 import type { ApiAdapter } from "./types.js";
 
 interface VsCodeApi {

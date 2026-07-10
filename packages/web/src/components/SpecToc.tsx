@@ -1,5 +1,5 @@
 import { useLocation, useNavigate } from "react-router-dom";
-import type { Heading } from "@spek/core/headings";
+import type { Heading } from "@spekjs/core/headings";
 import { useScrollspy } from "../hooks/useScrollspy";
 
 interface SpecTocProps {
