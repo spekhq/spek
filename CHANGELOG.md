@@ -1,5 +1,9 @@
 # Changelog
 
+## 1.6.0
+
+- **Hideable tree navigator (IntelliJ)** — the Specs / Changes tree in the spek tool window can now be hidden from the tool window title bar or its gear (⋮) menu, giving the viewer the full tool window. The choice is remembered per project, and the split ratio is persisted too instead of resetting every time you reopen the project. While hidden, the tree no longer rebuilds on file changes; it refreshes when you bring it back. Thanks to [@deniskrizanovic](https://github.com/deniskrizanovic) for reporting.
+
 ## 1.5.0
 
 - **Custom OpenSpec schemas** — a change's artifacts are now discovered from disk, so a change authored under any schema (not just the built-in `spec-driven`) renders every artifact as its own tab. Previously anything outside `proposal` / `design` / `tasks` / `specs` was silently dropped. Full-text search now indexes every markdown artifact as well.

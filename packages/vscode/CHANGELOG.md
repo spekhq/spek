@@ -1,5 +1,9 @@
 # Changelog
 
+## 1.6.0
+
+- No user-facing changes for the VS Code extension in this release.
+
 ## 1.5.0
 
 - **Custom OpenSpec schemas** — a change's artifacts are now discovered from disk, so a change authored under any schema (not just the built-in `spec-driven`) renders every artifact as its own tab. Previously anything outside `proposal` / `design` / `tasks` / `specs` was silently dropped. Full-text search now indexes every markdown artifact as well.
