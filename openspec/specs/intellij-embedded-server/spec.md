@@ -50,7 +50,7 @@ The server SHALL implement `GET /api/spek/openspec/specs/:topic/at/:slug` that r
 - **THEN** it returns `{ content: "..." }` with the delta spec content
 
 ### Requirement: Changes list endpoint
-The server SHALL implement `GET /api/spek/openspec/changes` that returns active and archived changes. Each returned change SHALL include a `createdDate` field (string in `YYYY-MM-DD` format or null) parsed from the change's `.openspec.yaml` `created` frontmatter field, and an `archivedDate` field (string in `YYYY-MM-DD` format or null) derived from the archive folder name prefix `YYYY-MM-DD-slug` for archived changes and null for active changes, matching the `@spek/core` (TypeScript) contract.
+The server SHALL implement `GET /api/spek/openspec/changes` that returns active and archived changes. Each returned change SHALL include a `createdDate` field (string in `YYYY-MM-DD` format or null) parsed from the change's `.openspec.yaml` `created` frontmatter field, and an `archivedDate` field (string in `YYYY-MM-DD` format or null) derived from the archive folder name prefix `YYYY-MM-DD-slug` for archived changes and null for active changes, matching the `@spekjs/core` (TypeScript) contract.
 
 #### Scenario: Changes list response
 - **WHEN** `GET /api/spek/openspec/changes?projectPath=...` is called

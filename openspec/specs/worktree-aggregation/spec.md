@@ -6,7 +6,7 @@
 
 ### Requirement: Discover git worktrees
 
-The `@spek/core` package SHALL provide an async function `listWorktrees(dir)` that returns all git worktrees belonging to the same repository as `dir`, by executing `git worktree list --porcelain` with `dir` as the working directory. Each returned `WorktreeInfo` SHALL include `path` (absolute), `branch` (branch name or null when detached), `head` (commit hash), `isMain` (true for the main worktree), and `isBare`. When `dir` is not inside a git repository, `git` is unavailable, or the command fails, the function SHALL return an empty array.
+The `@spekjs/core` package SHALL provide an async function `listWorktrees(dir)` that returns all git worktrees belonging to the same repository as `dir`, by executing `git worktree list --porcelain` with `dir` as the working directory. Each returned `WorktreeInfo` SHALL include `path` (absolute), `branch` (branch name or null when detached), `head` (commit hash), `isMain` (true for the main worktree), and `isBare`. When `dir` is not inside a git repository, `git` is unavailable, or the command fails, the function SHALL return an empty array.
 
 #### Scenario: Repo with multiple worktrees
 

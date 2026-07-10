@@ -89,7 +89,7 @@ All timestamps displayed in the UI SHALL use YYYY-MM-DD absolute date format con
 - **THEN** the date field (already YYYY-MM-DD) is displayed as-is
 
 ### Requirement: Heading anchor ids
-The MarkdownRenderer SHALL assign a deterministic, slug-based `id` attribute to every rendered `h2` and `h3` element so they can be targeted by URL hash anchors and TOC links. The slug for a heading SHALL match the slug produced by the shared `slugifyHeading` utility in `@spek/core`.
+The MarkdownRenderer SHALL assign a deterministic, slug-based `id` attribute to every rendered `h2` and `h3` element so they can be targeted by URL hash anchors and TOC links. The slug for a heading SHALL match the slug produced by the shared `slugifyHeading` utility in `@spekjs/core`.
 
 #### Scenario: h2 receives slug id
 - **WHEN** MarkdownRenderer renders an `h2` heading with text `Requirement: Spec list with filtering`
@@ -105,4 +105,4 @@ The MarkdownRenderer SHALL assign a deterministic, slug-based `id` attribute to 
 
 #### Scenario: Slug consistency with core utility
 - **WHEN** any heading is rendered by MarkdownRenderer
-- **THEN** its `id` exactly equals the `slug` produced by `extractHeadings(content)` from `@spek/core` for the same heading
+- **THEN** its `id` exactly equals the `slug` produced by `extractHeadings(content)` from `@spekjs/core` for the same heading

@@ -15,7 +15,7 @@ TBD - created by archiving change add-intellij-publish-ci. Update Purpose after 
 - **THEN** 此 workflow 不被觸發
 
 ### Requirement: Full build chain execution
-Workflow SHALL 依序執行完整 build chain：install npm dependencies → build @spek/core → build IntelliJ webview assets → setup JDK 17 → build IntelliJ Plugin via Gradle。
+Workflow SHALL 依序執行完整 build chain：install npm dependencies → build @spekjs/core → build IntelliJ webview assets → setup JDK 17 → build IntelliJ Plugin via Gradle。
 
 #### Scenario: Build chain completes successfully
 - **WHEN** workflow 被觸發且所有 build 步驟成功

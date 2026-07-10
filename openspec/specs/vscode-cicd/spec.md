@@ -16,7 +16,7 @@
 - **THEN** 此 workflow 不被觸發
 
 ### Requirement: Full build chain execution
-Workflow SHALL 依序執行完整 build chain：install dependencies → build @spek/core → build webview assets → build VS Code extension。
+Workflow SHALL 依序執行完整 build chain：install dependencies → build @spekjs/core → build webview assets → build VS Code extension。
 
 #### Scenario: Build chain completes successfully
 - **WHEN** workflow 被觸發且所有 build 步驟成功

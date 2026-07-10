@@ -4,14 +4,14 @@
 
 ## Requirements
 ### Requirement: Standalone core package
-The core module SHALL be an independent npm package (`@spek/core`) with no framework dependencies, usable by both the web server and the VS Code extension host.
+The core module SHALL be an independent npm package (`@spekjs/core`) with no framework dependencies, usable by both the web server and the VS Code extension host.
 
 #### Scenario: Import from web server
-- **WHEN** the Express server imports `@spek/core`
+- **WHEN** the Express server imports `@spekjs/core`
 - **THEN** it can call scanner and task parser functions directly without additional adapters
 
 #### Scenario: Import from extension host
-- **WHEN** the VS Code extension host imports `@spek/core`
+- **WHEN** the VS Code extension host imports `@spekjs/core`
 - **THEN** it can call scanner and task parser functions directly without additional adapters
 
 ### Requirement: Scanner functions
@@ -31,7 +31,7 @@ The core module SHALL export scanner functions that accept a base path and retur
 
 #### Scenario: Build demo from external repo
 - **WHEN** `build-demo.ts` is called with `--repo-dir` pointing to a different repository
-- **THEN** all `@spek/core` functions receive the external repo path as `basePath`
+- **THEN** all `@spekjs/core` functions receive the external repo path as `basePath`
 - **AND** Vite build still runs from spek's own `packages/web` directory
 
 #### Scenario: List changes
@@ -57,7 +57,7 @@ The core module SHALL export task parsing functions that operate on raw Markdown
 The core module SHALL export all TypeScript type definitions used by both the web app and the extension.
 
 #### Scenario: Type imports
-- **WHEN** the web app or extension imports types from `@spek/core`
+- **WHEN** the web app or extension imports types from `@spekjs/core`
 - **THEN** types such as `OverviewData`, `SpecInfo`, `SpecDetail`, `ChangeInfo`, `ChangeDetail`, `ParsedTasks`, `SearchResult` are available
 
 ### Requirement: Heading extraction utility
@@ -94,3 +94,22 @@ The core module SHALL export `extractHeadings(content: string)` and `slugifyHead
 #### Scenario: Empty content
 - **WHEN** `extractHeadings("")` is called
 - **THEN** it returns an empty array
+
+### Requirement: Published to the public npm registry
+The core package SHALL be published to the public npm registry under the name `@spekjs/core`, so that repositories outside this monorepo can install and import it. The published tarball SHALL contain the compiled `dist/` output together with its type declarations, and SHALL NOT contain source files.
+
+#### Scenario: Install from a repository outside this monorepo
+- **WHEN** a repository that is not a workspace member of this monorepo runs `npm install @spekjs/core`
+- **THEN** the package resolves from the npm registry, and `import { scanOpenSpec } from '@spekjs/core'` succeeds without referencing any local path
+
+#### Scenario: Published tarball contents
+- **WHEN** the package tarball is inspected before publishing
+- **THEN** it contains `dist/` with both `.js` and `.d.ts` files, plus `package.json`, `README.md`, `LICENSE` and `CHANGELOG.md`, and it does not contain `src/`
+
+#### Scenario: Runtime dependencies limited to what core actually imports
+- **WHEN** the published package's `dependencies` are inspected
+- **THEN** they list only the packages that core actually imports, so that consumers are never forced to install dependencies core does not use
+
+#### Scenario: Subpath exports resolve for external consumers
+- **WHEN** an external consumer imports `@spekjs/core/headings` or `@spekjs/core/artifact-order`
+- **THEN** each subpath resolves to its compiled module and type declarations

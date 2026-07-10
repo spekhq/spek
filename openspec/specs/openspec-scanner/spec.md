@@ -5,7 +5,7 @@
 ## Requirements
 
 ### Requirement: Scan OpenSpec directory structure
-The scanner SHALL be an async function in the `@spek/core` package that reads an OpenSpec directory and returns its complete structure including specs, active changes, and archived changes. Each `ChangeInfo` SHALL include a `timestamp` field (ISO 8601 string or null) obtained from the git timestamp cache, a `createdDate` field (string in `YYYY-MM-DD` format or null) parsed from the change's `.openspec.yaml` `created` frontmatter field, and an `archivedDate` field (string in `YYYY-MM-DD` format or null). The `archivedDate` SHALL be derived from the archive folder name prefix `YYYY-MM-DD-slug` for archived changes only, and SHALL be null for active changes. Changes SHALL be sorted by timestamp descending (most recent first), falling back to slug date when timestamp is unavailable. It SHALL use Node.js `fs` directly and have no dependency on Express or any HTTP framework.
+The scanner SHALL be an async function in the `@spekjs/core` package that reads an OpenSpec directory and returns its complete structure including specs, active changes, and archived changes. Each `ChangeInfo` SHALL include a `timestamp` field (ISO 8601 string or null) obtained from the git timestamp cache, a `createdDate` field (string in `YYYY-MM-DD` format or null) parsed from the change's `.openspec.yaml` `created` frontmatter field, and an `archivedDate` field (string in `YYYY-MM-DD` format or null). The `archivedDate` SHALL be derived from the archive folder name prefix `YYYY-MM-DD-slug` for archived changes only, and SHALL be null for active changes. Changes SHALL be sorted by timestamp descending (most recent first), falling back to slug date when timestamp is unavailable. It SHALL use Node.js `fs` directly and have no dependency on Express or any HTTP framework.
 
 #### Scenario: Scan repo with full OpenSpec structure
 - **WHEN** scanner is given a repo path containing `openspec/specs/` and `openspec/changes/`
@@ -84,7 +84,7 @@ The scanner SHALL identify which changes contain delta specs for a given spec to
 
 ### Requirement: Aggregated scan entry point
 
-The `@spek/core` package SHALL provide an async function `scanOpenSpecAggregated(dir, options)` that returns a `ScanResult` aggregated across all worktrees of the repository containing `dir`, following the worktree-aggregation rules. Active changes SHALL be the source-tagged union of all worktrees; archived changes SHALL be the slug-deduplicated union; `specs` SHALL be taken only from the main worktree (the first non-bare worktree). Each aggregated `ChangeInfo` SHALL carry an optional `source` field of type `WorktreeSource`. The existing `scanOpenSpec` function SHALL remain unchanged and continue to scan a single directory with no `source` attached.
+The `@spekjs/core` package SHALL provide an async function `scanOpenSpecAggregated(dir, options)` that returns a `ScanResult` aggregated across all worktrees of the repository containing `dir`, following the worktree-aggregation rules. Active changes SHALL be the source-tagged union of all worktrees; archived changes SHALL be the slug-deduplicated union; `specs` SHALL be taken only from the main worktree (the first non-bare worktree). Each aggregated `ChangeInfo` SHALL carry an optional `source` field of type `WorktreeSource`. The existing `scanOpenSpec` function SHALL remain unchanged and continue to scan a single directory with no `source` attached.
 
 #### Scenario: Aggregated scan over multiple worktrees
 

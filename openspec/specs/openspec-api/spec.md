@@ -155,7 +155,7 @@ The system SHALL extend the `ApiAdapter` interface with a `getGraphData()` metho
 - **AND** returns the response data
 
 ### Requirement: Core graph data builder
-The system SHALL provide a `buildGraphData(repoDir)` function in `@spek/core` that scans the openspec directory and returns structured graph data. The function SHALL reuse the existing scan logic to identify which changes contain delta specs for which topics.
+The system SHALL provide a `buildGraphData(repoDir)` function in `@spekjs/core` that scans the openspec directory and returns structured graph data. The function SHALL reuse the existing scan logic to identify which changes contain delta specs for which topics.
 
 #### Scenario: Build graph data from repo
 - **WHEN** `buildGraphData("/path/to/repo")` is called
@@ -164,7 +164,7 @@ The system SHALL provide a `buildGraphData(repoDir)` function in `@spek/core` th
 
 ### Requirement: Aggregated graph data builder
 
-The `@spek/core` package SHALL provide an async function `buildGraphDataAggregated(dir)` that returns graph data aggregated across all worktrees of the repository, applying the worktree-aggregation rules. Change node ids SHALL be namespaced as `change:<worktreeKey>:<slug>` to prevent collisions between same-slug changes from different worktrees. Spec nodes SHALL be taken from the main worktree only. The existing synchronous `buildGraphData` function SHALL remain unchanged.
+The `@spekjs/core` package SHALL provide an async function `buildGraphDataAggregated(dir)` that returns graph data aggregated across all worktrees of the repository, applying the worktree-aggregation rules. Change node ids SHALL be namespaced as `change:<worktreeKey>:<slug>` to prevent collisions between same-slug changes from different worktrees. Spec nodes SHALL be taken from the main worktree only. The existing synchronous `buildGraphData` function SHALL remain unchanged.
 
 #### Scenario: Build aggregated graph data
 
