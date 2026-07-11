@@ -61,6 +61,8 @@ export interface ChangeInfo {
   artifactCount: number;
   /** 此 change 採用的 schema 名稱（.openspec.yaml schema → repo config.yaml fallback），無法判定為 null */
   schema: string | null;
+  /** 此 change 所在 worktree 的預設 schema（openspec/config.yaml schema:），無法判定為 null；供 list/dashboard 以「各自 worktree 的預設」判斷是否隱藏 badge */
+  defaultSchema: string | null;
   taskStats: TaskStats | null;
   /** 來源 worktree；僅聚合掃描會填入，單一目錄掃描為 undefined */
   source?: WorktreeSource;

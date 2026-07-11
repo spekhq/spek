@@ -19,8 +19,10 @@ object ChangeReader {
         // 讀取 .openspec.yaml metadata
         val metadata = readMetadata(File(changeDir, ".openspec.yaml"))
 
-        // change schema：優先 change .openspec.yaml，否則 fallback 回 repo config.yaml（僅供顯示 badge）
-        val schema = readChangeSchema(projectPath, changeDir)
+        // repo 預設 schema 只讀一次，供 schema fallback 與 defaultSchema 共用（避免重複讀 config.yaml）
+        val defaultSchema = readRepoSchema(projectPath)
+        // change schema：優先 change .openspec.yaml，否則 fallback 回已算好的 repo 預設（僅供顯示 badge）
+        val schema = readChangeSchema(changeDir, defaultSchema)
         // artifact 依 mtime 由新到舊排序（見 ArtifactDiscovery）
         val artifacts = ArtifactDiscovery.discover(changeDir)
         // schema 權威順序（供前端 schema-order 排序用）：只對 active change 查詢 CLI，
@@ -35,7 +37,7 @@ object ChangeReader {
             slug = slug,
             status = status,
             schema = schema,
-            defaultSchema = readRepoSchema(projectPath),
+            defaultSchema = defaultSchema,
             artifacts = artifacts,
             schemaOrder = schemaOrder,
             createdDate = createdDate,
@@ -56,14 +58,14 @@ object ChangeReader {
         return result
     }
 
-    /** change schema：change .openspec.yaml 的 schema → repo openspec/config.yaml 的 schema → null */
-    private fun readChangeSchema(projectPath: String, changeDir: File): String? {
+    /** change schema：change .openspec.yaml 的 schema → 已算好的 repo 預設（defaultSchema）→ null */
+    private fun readChangeSchema(changeDir: File, defaultSchema: String?): String? {
         val changeYaml = File(changeDir, ".openspec.yaml")
         if (changeYaml.exists()) {
             val meta = readMetadata(changeYaml)
             meta?.get("schema")?.let { return cleanScalar(it) }
         }
-        return readRepoSchema(projectPath)
+        return defaultSchema
     }
 
     private fun readRepoSchema(projectPath: String): String? {

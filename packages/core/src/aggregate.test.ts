@@ -115,6 +115,34 @@ test("scanOpenSpecAggregated: carries the main worktree's defaultSchema", async 
   assert.equal(r.defaultSchema, "spec-driven");
 });
 
+test("scanOpenSpecAggregated: each change carries its own worktree's defaultSchema", async () => {
+  // 主 worktree 預設 spec-driven；worktree B 的 config.yaml 分歧為 agent-driven。
+  // B 的 change 未宣告自己的 schema → 繼承 B 的預設；其 defaultSchema 必須是 B 的（agent-driven），
+  // 而非主 worktree 的（spec-driven），否則 list badge 會對錯基準而誤顯示。
+  const repo = initRepo("spek-agg-divergent-");
+  writeFile(path.join(repo, "openspec", "config.yaml"), "schema: spec-driven\n");
+  addActiveChange(repo, "main-change");
+  commitAll(repo, "init");
+  const wtB = repo + "-b";
+  git(repo, "worktree", "add", "-q", "-b", "wb", wtB);
+  writeFile(path.join(wtB, "openspec", "config.yaml"), "schema: agent-driven\n");
+  addActiveChange(wtB, "b-change");
+  commitAll(wtB, "b diverge");
+
+  const r = await scanOpenSpecAggregated(repo);
+  const bChange = r.activeChanges.find((c) => c.slug === "b-change");
+  const mainChange = r.activeChanges.find((c) => c.slug === "main-change");
+  assert.ok(bChange);
+  assert.ok(mainChange);
+  // B 的 change：schema 與 defaultSchema 都是 B 的 agent-driven → badge 應隱藏（無誤報）
+  assert.equal(bChange.schema, "agent-driven");
+  assert.equal(bChange.defaultSchema, "agent-driven");
+  // 主 worktree 的 change：defaultSchema 為 spec-driven
+  assert.equal(mainChange.defaultSchema, "spec-driven");
+  // 聚合結果的 header defaultSchema 仍取主 worktree
+  assert.equal(r.defaultSchema, "spec-driven");
+});
+
 test("scanOpenSpecAggregated: single worktree falls back without source", async () => {
   const repo = initRepo("spek-agg-single-");
   addActiveChange(repo, "only-one");

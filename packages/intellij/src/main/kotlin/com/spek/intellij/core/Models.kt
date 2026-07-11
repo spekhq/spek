@@ -66,6 +66,8 @@ data class ChangeInfo(
     val hasSpecs: Boolean,
     val artifactCount: Int,
     val schema: String?,
+    /** 此 change 所在 repo 的預設 schema（openspec/config.yaml schema:），無法判定為 null；與 @spekjs/core 對齊 */
+    val defaultSchema: String? = null,
     val taskStats: TaskStats?,
 )
 

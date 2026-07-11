@@ -99,4 +99,21 @@ class OpenSpecScannerTest {
         val result = OpenSpecScanner.scan(repo.absolutePath)
         assertNull(result.defaultSchema)
     }
+
+    // 每個 change 也帶著 repo 預設（來自一次讀取的 config.yaml），與 @spekjs/core 對齊
+    @Test
+    fun `every ChangeInfo carries the repo defaultSchema`() {
+        writeRepoConfig("spec-driven")
+        writeChange("active", "declared", "schema: superpowers-bridge\n")
+        writeChange("active", "inherited", null)
+        val result = OpenSpecScanner.scan(repo.absolutePath)
+        val declared = result.activeChanges.first { it.slug == "declared" }
+        val inherited = result.activeChanges.first { it.slug == "inherited" }
+        // 宣告自己 schema 的 change：schema 為自身，defaultSchema 仍是 repo 預設
+        assertEquals("superpowers-bridge", declared.schema)
+        assertEquals("spec-driven", declared.defaultSchema)
+        // 未宣告的 change：schema 退回 repo 預設，defaultSchema 亦然
+        assertEquals("spec-driven", inherited.schema)
+        assertEquals("spec-driven", inherited.defaultSchema)
+    }
 }

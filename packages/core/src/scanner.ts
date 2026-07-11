@@ -79,21 +79,22 @@ function readRepoSchema(repoDir: string): string | null {
   return m ? cleanScalar(m[1]) : null;
 }
 
-// change 的 schema：優先取 change .openspec.yaml 的 schema，否則 fallback 回 repo config.yaml
-function readChangeSchema(repoDir: string, changePath: string): string | null {
+// change 的 schema：優先取 change .openspec.yaml 的 schema，否則 fallback 回已算好的 repo 預設
+// （defaultSchema 由呼叫端算一次後傳入，避免每個 change 重讀 config.yaml）
+function readChangeSchema(changePath: string, defaultSchema: string | null): string | null {
   const yamlPath = path.join(changePath, ".openspec.yaml");
   if (fs.existsSync(yamlPath)) {
     const meta = parseChangeYaml(fs.readFileSync(yamlPath, "utf-8"));
     if (meta["schema"]) return cleanScalar(meta["schema"]);
   }
-  return readRepoSchema(repoDir);
+  return defaultSchema;
 }
 
 function scanChangeDir(
-  repoDir: string,
   changePath: string,
   slug: string,
   status: "active" | "archived",
+  defaultSchema: string | null,
 ): ChangeInfo {
   const { date, description } = parseSlug(slug);
   const hasProposal = fs.existsSync(path.join(changePath, "proposal.md"));
@@ -125,7 +126,8 @@ function scanChangeDir(
     hasTasks,
     hasSpecs,
     artifactCount: countArtifacts(changePath),
-    schema: readChangeSchema(repoDir, changePath),
+    schema: readChangeSchema(changePath, defaultSchema),
+    defaultSchema,
     taskStats,
   };
 }
@@ -142,6 +144,9 @@ export async function scanOpenSpec(repoDir: string): Promise<ScanResult> {
   const specsDir = path.join(base, "specs");
   const changesDir = path.join(base, "changes");
   const archiveDir = path.join(changesDir, "archive");
+
+  // repo 預設 schema 只讀一次，供本次掃描的每個 change 共用（避免 N+M+1 次重讀 config.yaml）
+  const defaultSchema = readRepoSchema(repoDir);
 
   const specs: SpecInfo[] = safeReadDir(specsDir)
     .filter((name) => fs.statSync(path.join(specsDir, name)).isDirectory())
@@ -162,7 +167,7 @@ export async function scanOpenSpec(repoDir: string): Promise<ScanResult> {
     .filter((name) => name !== "archive")
     .filter((name) => fs.statSync(path.join(changesDir, name)).isDirectory())
     .map((slug) => {
-      const info = scanChangeDir(repoDir, path.join(changesDir, slug), slug, "active");
+      const info = scanChangeDir(path.join(changesDir, slug), slug, "active", defaultSchema);
       info.timestamp = timestamps.get(slug) || null;
       return info;
     })
@@ -171,7 +176,7 @@ export async function scanOpenSpec(repoDir: string): Promise<ScanResult> {
   const archivedChanges: ChangeInfo[] = safeReadDir(archiveDir)
     .filter((name) => fs.statSync(path.join(archiveDir, name)).isDirectory())
     .map((slug) => {
-      const info = scanChangeDir(repoDir, path.join(archiveDir, slug), slug, "archived");
+      const info = scanChangeDir(path.join(archiveDir, slug), slug, "archived", defaultSchema);
       info.timestamp = timestamps.get(slug) || null;
       return info;
     })
@@ -188,7 +193,7 @@ export async function scanOpenSpec(repoDir: string): Promise<ScanResult> {
     ).length;
   }
 
-  return { specs, activeChanges, archivedChanges, defaultSchema: readRepoSchema(repoDir) };
+  return { specs, activeChanges, archivedChanges, defaultSchema };
 }
 
 export async function readSpec(
@@ -250,8 +255,8 @@ export async function readChange(
     metadata = parseChangeYaml(fs.readFileSync(metaPath, "utf-8"));
   }
 
-  const schema = readChangeSchema(repoDir, changePath);
   const defaultSchema = readRepoSchema(repoDir);
+  const schema = readChangeSchema(changePath, defaultSchema);
   // artifact 依 mtime 由新到舊排序（見 discoverArtifacts）
   const artifacts = discoverArtifacts(changePath);
 
