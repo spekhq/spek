@@ -1,7 +1,6 @@
 ## Purpose
 
 提供 spec 列表與單一 spec 內容檢視（含 TOC 與歷史）。
-
 ## Requirements
 ### Requirement: Spec list with filtering
 The system SHALL display all specs sorted alphabetically with history count metadata. A filter input SHALL allow instant client-side filtering by spec topic name. Each spec item SHALL display the topic name and the number of related changes (history count) as secondary information.
@@ -75,16 +74,17 @@ The spec detail page SHALL highlight the TOC entry corresponding to the heading 
 - **THEN** exactly one TOC entry is highlighted as active (the heading closest to the top)
 
 ### Requirement: Spec detail hash anchor navigation
-The spec detail page SHALL scroll to the heading matching the URL hash when the page mounts or when the hash changes, after the markdown content finishes rendering.
+The spec detail page SHALL scroll to the heading matching the URL hash when the page mounts or when the hash changes, after the markdown content finishes rendering. The scroll SHALL position the target heading in the visible area **below** any sticky or fixed header rather than at the literal viewport top, with the offset measured from the actual rendered header at scroll time (falling back to the fixed app header, then a constant) rather than a fixed assumed height.
 
 #### Scenario: Direct link with hash
 - **WHEN** user opens a URL such as `/specs/foo#requirement-bar` directly
-- **THEN** after the page loads and content renders, the page scrolls so the heading whose slug is `requirement-bar` is at the top of the visible area
+- **THEN** after the page loads and content renders, the page scrolls so the heading whose slug is `requirement-bar` sits fully visible just below the fixed header
 
 #### Scenario: Hash change while on page
 - **WHEN** the URL hash changes (e.g., user clicks a TOC entry or another in-page hash link) while already on the spec detail page
-- **THEN** the page scrolls to the new target heading
+- **THEN** the page scrolls so the target heading lands just below the header, not behind it
 
 #### Scenario: Hash with no matching heading
 - **WHEN** the URL hash does not match any heading slug on the current spec
 - **THEN** no scrolling occurs and the page renders at its default scroll position
+

@@ -1,9 +1,7 @@
 ## Purpose
 
 提供 changes 列表與單一 change 詳細檢視（proposal / design / tasks / specs 分頁），呈現 change 生命週期資訊。
-
 ## Requirements
-
 ### Requirement: Change list with active/archived separation
 The system SHALL display changes grouped into active and archived sections. Active changes SHALL be visually distinguished with a left accent color border (4px). Changes SHALL be sorted by git timestamp descending (most recent first), falling back to slug date when timestamp is unavailable. Each change row SHALL display a compact lifecycle indicator based on `createdDate` and `archivedDate` (label words like "Created" / "Archived" are intentionally omitted to reduce visual noise; the meaning is conveyed by date format and the `→` separator):
 
@@ -218,21 +216,25 @@ The change detail page SHALL highlight the TOC entry corresponding to the headin
 - **THEN** exactly one TOC entry is highlighted (the heading closest to the top)
 
 ### Requirement: Change detail hash anchor navigation
-The change detail page SHALL scroll to the heading matching the URL hash after the page loads or after the hash changes, once the active tab's markdown content finishes rendering. When a URL contains both `tab` query param and a hash, the page SHALL first activate the specified tab, then scroll to the hash-matching heading within that tab.
+The change detail page SHALL scroll to the heading matching the URL hash after the page loads or after the hash changes, once the active tab's markdown content finishes rendering. When a URL contains both `tab` query param and a hash, the page SHALL first activate the specified tab, then scroll to the hash-matching heading within that tab. The scroll SHALL position the target heading in the visible area **below** the sticky header (title + tab row), not at the literal viewport top where the header would obscure it. The offset SHALL be derived from the actual rendered sticky header at scroll time (falling back to the fixed app header, then a constant) rather than a fixed assumed height, so a taller-than-usual sticky header does not hide the target.
 
 #### Scenario: Direct link with tab and hash
 - **WHEN** user opens a URL such as `/changes/<slug>?tab=design#decision-1`
 - **THEN** the Design tab becomes active
-- **AND** after the Design content renders, the page scrolls so the heading with slug `decision-1` is at the top of the visible area
+- **AND** after the Design content renders, the page scrolls so the heading with slug `decision-1` sits fully visible just below the sticky header
 
 #### Scenario: Direct link with hash but no tab param
 - **WHEN** user opens `/changes/<slug>#some-heading` with no `tab` query param
 - **THEN** the Proposal tab is active
-- **AND** the page scrolls to the heading with slug `some-heading` in the Proposal content
+- **AND** the page scrolls so the heading with slug `some-heading` in the Proposal content sits just below the sticky header
 
 #### Scenario: Hash change while on page
 - **WHEN** user clicks a TOC entry while viewing a markdown tab
-- **THEN** the URL hash updates and the page scrolls to the new target heading within the current tab
+- **THEN** the URL hash updates and the page scrolls so the target heading lands just below the sticky header within the current tab
+
+#### Scenario: Tall sticky header does not obscure the target
+- **WHEN** the sticky header is taller than a fixed 80px assumption (e.g. it carries worktree chips or a schema-fallback notice) and the user navigates to a heading
+- **THEN** the heading lands below the measured header bottom and is not hidden behind it — the section clicked, not the next one, appears at the top of the readable area
 
 #### Scenario: Hash with no matching heading
 - **WHEN** the URL hash does not match any heading slug on the current tab
@@ -294,3 +296,4 @@ Under aggregation, a change row SHALL link to its detail page with a `wt` query 
 #### Scenario: Detail page without wt parameter
 - **WHEN** the user opens `/changes/<slug>` with no `wt` parameter
 - **THEN** the change is read from the currently selected directory, as before this change
+
