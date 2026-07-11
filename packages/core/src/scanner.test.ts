@@ -290,6 +290,8 @@ test("scanOpenSpec: every ChangeInfo carries the repo defaultSchema", async () =
   // 未宣告的 change：schema 退回 repo 預設，defaultSchema 亦然（故 badge 應隱藏）
   assert.equal(inherited?.schema, "spec-driven");
   assert.equal(inherited?.defaultSchema, "spec-driven");
+  // active change 的 status 應為 "active"（釘住 scanChangeDir 的 status 引數，非只靠 archivedDate 間接判定）
+  assert.equal(inherited?.status, "active");
 });
 
 test("scanOpenSpec: reads config.yaml once regardless of change count", async () => {
