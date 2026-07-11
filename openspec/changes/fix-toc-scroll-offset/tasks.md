@@ -16,4 +16,4 @@
 - [x] 3.1 `npm run type-check` clean.
 - [x] 3.2 `node --import tsx --test packages/web/src/utils/scrollOffset.test.ts` green.
 - [x] 3.3 `npm run build` succeeds.
-- [ ] 3.4 Drive the running app: click a deep TOC heading on a Change detail with a tall sticky header; confirm the heading lands below the header (not the next section). Capture before/after for the PR.
+- [x] 3.4 Drive the running app: click a deep TOC heading on a Change detail with a tall sticky header; confirm the heading lands below the header (not the next section). Capture before/after for the PR.
