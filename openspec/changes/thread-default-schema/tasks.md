@@ -36,5 +36,5 @@
 - [x] 6.2 `npm run test -w @spek/core` green (new scanner tests included).
 - [x] 6.3 `npm run build` (core + web) and `npm run build:demo` succeed; rebuilt `docs/demo.html` carries `defaultSchema` on changes.
 - [x] 6.4 IntelliJ: build + run Kotlin tests with freshly instrumented classes (verify the reported test count, not stale bytecode).
-- [ ] 6.5 Run the project quality gates (mutation testing on changed scanner logic, LSP diagnostics, unused-export lint) before marking the change ready.
+- [x] 6.5 Run the project quality gates (mutation testing on changed scanner logic, LSP diagnostics, unused-export lint) before marking the change ready.
 - [x] 6.6 Exclude version bumps and CHANGELOG edits from this feature branch (integration-only, kept out of the upstream PR).
