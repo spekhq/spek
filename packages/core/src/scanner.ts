@@ -3,7 +3,7 @@ import path from "node:path";
 import { parseTasks } from "./tasks.js";
 import { getTimestamps } from "./git-cache.js";
 import { listWorktrees, toWorktreeSource } from "./worktrees.js";
-import { discoverArtifacts, countArtifacts } from "./artifacts.js";
+import { discoverArtifacts, countArtifacts, changeDirMtime } from "./artifacts.js";
 import { cliSchemaOrderProvider, resolveSchemaOrder, type SchemaOrderProvider } from "./schema-order.js";
 import type {
   SpecInfo,
@@ -16,6 +16,7 @@ import type {
   GraphData,
   GraphNode,
   GraphEdge,
+  WorktreeInfo,
 } from "./types.js";
 
 function openspecDir(repoDir: string): string {
@@ -412,6 +413,47 @@ export function findRelatedChanges(repoDir: string, topic: string): string[] {
  * active changes 聯集不去重並附 source、archived changes 依 slug 去重（主 worktree 優先）、
  * specs 取主 worktree。關閉聚合、非 git、或單一 worktree 時等同 scanOpenSpec(repoDir)。
  */
+/**
+ * 決定每個 active change slug 由哪個 worktree 的副本勝出：非主 worktree 一律優先於主 worktree；
+ * 若同一 slug 存在於多個非主 worktree（例如尚未動工、剛從 main 分岔繼承而來），
+ * 以該 change 目錄最新檔案 mtime 較新者勝出——這正是「目前正在編輯」的訊號。
+ */
+function pickActiveWinners(
+  scans: { wt: WorktreeInfo; scan: ScanResult }[],
+  mainWt: WorktreeInfo,
+): Map<string, WorktreeInfo> {
+  const winners = new Map<string, WorktreeInfo>();
+  const winnerMtimes = new Map<string, number>();
+
+  for (const { wt, scan } of scans) {
+    const isMain = wt === mainWt;
+    for (const c of scan.activeChanges) {
+      const current = winners.get(c.slug);
+      if (!current) {
+        winners.set(c.slug, wt);
+        continue;
+      }
+      if (current === mainWt) {
+        if (!isMain) winners.set(c.slug, wt);
+        continue;
+      }
+      if (isMain) continue; // 非主 worktree 已勝出，main 不參與比較
+
+      // 兩者皆非主 worktree：比較 mtime，較新者勝出
+      const currentMtime =
+        winnerMtimes.get(c.slug) ?? changeDirMtime(path.join(openspecDir(current.path), "changes", c.slug));
+      winnerMtimes.set(c.slug, currentMtime);
+      const candidateMtime = changeDirMtime(path.join(openspecDir(wt.path), "changes", c.slug));
+      if (candidateMtime > currentMtime) {
+        winners.set(c.slug, wt);
+        winnerMtimes.set(c.slug, candidateMtime);
+      }
+    }
+  }
+
+  return winners;
+}
+
 export async function scanOpenSpecAggregated(
   repoDir: string,
   options: { aggregate?: boolean } = {},
@@ -433,12 +475,16 @@ export async function scanOpenSpecAggregated(
   // 主 worktree = 第一個非 bare（通常即 worktrees[0]）
   const main = scans.find((s) => !s.wt.isBare) ?? scans[0];
 
-  // active changes：所有 worktree 聯集、不去重、附 source
+  // active changes：依 slug 去重，非主 worktree 優先於主 worktree；同 slug 出現在多個非主
+  // worktree 時，取 change 目錄最新 mtime 較新者（見 pickActiveWinners）
+  const activeWinners = pickActiveWinners(scans, main.wt);
   const activeChanges: ChangeInfo[] = [];
   for (const { wt, scan } of scans) {
     const source = toWorktreeSource(wt);
     for (const c of scan.activeChanges) {
-      activeChanges.push({ ...c, source });
+      if (activeWinners.get(c.slug) === wt) {
+        activeChanges.push({ ...c, source });
+      }
     }
   }
 
@@ -489,6 +535,13 @@ export async function buildGraphDataAggregated(
 
   const main = worktrees.find((w) => !w.isBare) ?? worktrees[0];
 
+  // 與 scanOpenSpecAggregated 共用同一套 active-change 勝出邏輯，避免 list 與 graph 兩處對「哪個
+  // worktree 擁有這個 slug」給出不同答案
+  const scans = await Promise.all(
+    worktrees.map(async (wt) => ({ wt, scan: await scanOpenSpec(wt.path) })),
+  );
+  const activeWinners = pickActiveWinners(scans, main);
+
   // spec 節點：只取主 worktree
   const nodes: GraphNode[] = buildGraphData(main.path).nodes
     .filter((n) => n.type === "spec")
@@ -510,6 +563,8 @@ export async function buildGraphDataAggregated(
       if (node.status === "archived") {
         if (seenArchivedSlugs.has(slug)) continue;
         seenArchivedSlugs.add(slug);
+      } else if (activeWinners.get(slug) !== wt) {
+        continue;
       }
       const newId = `change:${wt.key}:${slug}`;
       idMap.set(node.id, newId);

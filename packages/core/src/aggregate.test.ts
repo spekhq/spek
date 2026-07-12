@@ -81,7 +81,7 @@ test("scanOpenSpecAggregated: deduplicates archived changes by slug", async () =
   assert.equal(r.archivedChanges.filter((c) => c.slug === "2026-01-01-old").length, 1);
 });
 
-test("scanOpenSpecAggregated: same active slug in two worktrees kept separately", async () => {
+test("scanOpenSpecAggregated: same active slug in two worktrees dedupes to the most recently modified copy", async () => {
   const repo = initRepo("spek-agg-dup-");
   writeFile(path.join(repo, "openspec", "config.yaml"), "schema: spec-driven\n");
   commitAll(repo, "init");
@@ -93,11 +93,48 @@ test("scanOpenSpecAggregated: same active slug in two worktrees kept separately"
   git(repo, "worktree", "add", "-q", "-b", "wb", wtB);
   addActiveChange(wtB, "shared");
   commitAll(wtB, "b");
+  // B 的 proposal.md 給予明確較新的 mtime，模擬 B 才是目前正在編輯此 change 的 worktree
+  const past = new Date("2020-01-01T00:00:00Z");
+  const future = new Date("2030-01-01T00:00:00Z");
+  fs.utimesSync(path.join(wtA, "openspec", "changes", "shared", "proposal.md"), past, past);
+  fs.utimesSync(path.join(wtB, "openspec", "changes", "shared", "proposal.md"), future, future);
 
   const r = await scanOpenSpecAggregated(repo);
   const shared = r.activeChanges.filter((c) => c.slug === "shared");
-  assert.equal(shared.length, 2);
-  assert.notEqual(shared[0].source?.key, shared[1].source?.key);
+  assert.equal(shared.length, 1);
+  assert.equal(shared[0].source?.branch, "wb");
+});
+
+test("scanOpenSpecAggregated: worktree copy of an active change shadows main's copy", async () => {
+  const repo = initRepo("spek-agg-shadow-");
+  addActiveChange(repo, "shared");
+  commitAll(repo, "init");
+  const wtA = repo + "-a";
+  git(repo, "worktree", "add", "-q", "-b", "wa", wtA);
+
+  const r = await scanOpenSpecAggregated(repo);
+  const shared = r.activeChanges.filter((c) => c.slug === "shared");
+  assert.equal(shared.length, 1);
+  assert.equal(shared[0].source?.isMain, false);
+  assert.equal(shared[0].source?.branch, "wa");
+});
+
+test("scanOpenSpecAggregated: active change absent from every worktree stays on main", async () => {
+  // wtA 先分岔，之後才在主 repo 新增 main-only → wtA 的樹裡根本沒有這個 change 目錄
+  const repo = initRepo("spek-agg-main-only-");
+  writeFile(path.join(repo, "openspec", "specs", "alpha", "spec.md"), "## Requirements\n");
+  commitAll(repo, "init");
+  const wtA = repo + "-a";
+  git(repo, "worktree", "add", "-q", "-b", "wa", wtA);
+  addActiveChange(wtA, "other");
+  commitAll(wtA, "a");
+  addActiveChange(repo, "main-only");
+  commitAll(repo, "main change after fork");
+
+  const r = await scanOpenSpecAggregated(repo);
+  const mainOnly = r.activeChanges.filter((c) => c.slug === "main-only");
+  assert.equal(mainOnly.length, 1);
+  assert.equal(mainOnly[0].source?.isMain, true);
 });
 
 test("scanOpenSpecAggregated: carries the main worktree's defaultSchema", async () => {
@@ -119,15 +156,17 @@ test("scanOpenSpecAggregated: each change carries its own worktree's defaultSche
   // 主 worktree 預設 spec-driven；worktree B 的 config.yaml 分歧為 agent-driven。
   // B 的 change 未宣告自己的 schema → 繼承 B 的預設；其 defaultSchema 必須是 B 的（agent-driven），
   // 而非主 worktree 的（spec-driven），否則 list badge 會對錯基準而誤顯示。
+  // wtB 先分岔，main-change 之後才加到主 repo，兩個 change 才不會因 dedup 而合併成一筆。
   const repo = initRepo("spek-agg-divergent-");
   writeFile(path.join(repo, "openspec", "config.yaml"), "schema: spec-driven\n");
-  addActiveChange(repo, "main-change");
   commitAll(repo, "init");
   const wtB = repo + "-b";
   git(repo, "worktree", "add", "-q", "-b", "wb", wtB);
   writeFile(path.join(wtB, "openspec", "config.yaml"), "schema: agent-driven\n");
   addActiveChange(wtB, "b-change");
   commitAll(wtB, "b diverge");
+  addActiveChange(repo, "main-change");
+  commitAll(repo, "main change after fork");
 
   const r = await scanOpenSpecAggregated(repo);
   const bChange = r.activeChanges.find((c) => c.slug === "b-change");
@@ -170,4 +209,25 @@ test("buildGraphDataAggregated: namespaces change node ids by worktree", async (
   assert.match(changeNodes[0].id, /^change:[0-9a-f]{8}:add-a$/);
   assert.ok(changeNodes[0].source);
   assert.ok(g.nodes.some((n) => n.id === "spec:alpha"));
+});
+
+test("buildGraphDataAggregated: deduplicates active change nodes shared with main", async () => {
+  // add-foo 存在於主 repo（先 commit）與 wtA（分岔後繼承）→ 應合併成一個節點，來源為 wtA
+  const repo = initRepo("spek-agg-graph-dedup-");
+  writeFile(path.join(repo, "openspec", "specs", "alpha", "spec.md"), "## Requirements\n");
+  addActiveChange(repo, "add-foo", "alpha");
+  commitAll(repo, "init");
+  const wtA = repo + "-a";
+  git(repo, "worktree", "add", "-q", "-b", "wa", wtA);
+
+  const g = await buildGraphDataAggregated(repo);
+  const changeNodes = g.nodes.filter((n) => n.type === "change");
+  assert.equal(changeNodes.length, 1);
+  assert.equal(changeNodes[0].source?.isMain, false);
+
+  const changeEdges = g.edges.filter((e) => e.source === changeNodes[0].id);
+  assert.equal(changeEdges.length, 1);
+  const specNode = g.nodes.find((n) => n.id === "spec:alpha");
+  assert.ok(specNode);
+  assert.equal(specNode.historyCount, 1);
 });
