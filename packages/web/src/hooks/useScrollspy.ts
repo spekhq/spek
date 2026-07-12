@@ -1,7 +1,6 @@
 import { useEffect, useState } from "react";
-
-// fixed header (h-14) + main padding 之和，heading 超過此線視為已捲過
-const HEADER_THRESHOLD = 96;
+import { scrollOffset } from "../utils/scrollOffset";
+import { activeHeadingId } from "../utils/scrollspy";
 
 export function useScrollspy(ids: string[]): string | null {
   const [activeId, setActiveId] = useState<string | null>(null);
@@ -13,18 +12,13 @@ export function useScrollspy(ids: string[]): string | null {
     }
 
     const computeActive = () => {
-      let lastAbove: string | null = null;
-      for (const id of ids) {
+      // 與錨點捲動同一條偏移線（sticky header 底邊），highlight 才會對上實際置頂的 heading
+      const threshold = scrollOffset();
+      const tops = ids.map((id) => {
         const el = document.getElementById(id);
-        if (!el) continue;
-        const top = el.getBoundingClientRect().top;
-        if (top - HEADER_THRESHOLD <= 0) {
-          lastAbove = id;
-        } else {
-          break;
-        }
-      }
-      setActiveId(lastAbove ?? ids[0] ?? null);
+        return { id, top: el ? el.getBoundingClientRect().top : null };
+      });
+      setActiveId(activeHeadingId(tops, threshold));
     };
 
     let rafId: number | null = null;

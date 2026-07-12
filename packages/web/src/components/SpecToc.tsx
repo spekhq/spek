@@ -1,6 +1,7 @@
 import { useLocation, useNavigate } from "react-router-dom";
 import type { Heading } from "@spekjs/core/headings";
 import { useScrollspy } from "../hooks/useScrollspy";
+import { scrollToAnchorId } from "../utils/scrollOffset";
 
 interface SpecTocProps {
   headings: Heading[];
@@ -14,11 +15,7 @@ export function SpecToc({ headings }: SpecTocProps) {
 
   const handleClick = (e: React.MouseEvent<HTMLAnchorElement>, slug: string) => {
     e.preventDefault();
-    const el = document.getElementById(slug);
-    if (el) {
-      const top = el.getBoundingClientRect().top + window.scrollY - 80;
-      window.scrollTo({ top, behavior: "smooth" });
-    }
+    scrollToAnchorId(slug);
     navigate(`${location.pathname}${location.search}#${slug}`, { replace: false });
   };
 
