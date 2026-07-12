@@ -37,4 +37,12 @@
 - [x] 6.3 `npm run build` (core + web) and `npm run build:demo` succeed; rebuilt `docs/demo.html` carries `defaultSchema` on changes.
 - [x] 6.4 IntelliJ: build + run Kotlin tests with freshly instrumented classes (verify the reported test count, not stale bytecode).
 - [x] 6.5 Run the project quality gates (mutation testing on changed scanner logic, LSP diagnostics, unused-export lint) before marking the change ready.
-- [x] 6.6 Exclude version bumps and CHANGELOG edits from this feature branch (integration-only, kept out of the upstream PR).
+- [x] 6.6 Exclude **product** version bumps and the three product CHANGELOGs from this branch (integration-only). The `@spekjs/core` package version is a separate, independent version line (see §7) and *is* bumped here, as its public type changes in this change.
+
+## 7. Review follow-ups: make the required field real across the API surface
+
+- [x] 7.1 `packages/ui/src/timeline/__tests__/grouping.test.ts`: stamp `defaultSchema` in the `mkChange` fixture. The required field left this `ChangeInfo` literal type-invalid (`TS2741`) while the suite stayed green, because `packages/ui/tsconfig.json` excludes `__tests__` and the tests run through tsx without a typecheck.
+- [x] 7.2 `packages/core/package.json`: bump `@spekjs/core` 1.0.0 → 1.1.0 (its own version line, independent of the product release).
+- [x] 7.3 `packages/core/CHANGELOG.md`: document the source-breaking type change prominently — required `ChangeInfo.defaultSchema` breaks consumers that *construct* `ChangeInfo` (e.g. to feed `@spekjs/ui`'s `ChangeTimeline`), with a migration note and the reason it ships as a minor rather than a major (D7).
+- [x] 7.4 `packages/intellij/.../core/Models.kt`: drop the `= null` defaults on `defaultSchema` for `ChangeInfo` / `ChangeDetail` / `ChangesData` so Kotlin gets the same compile-time guard as TS (D6). All three construction sites already pass a value.
+- [x] 7.5 Re-verify after the follow-ups: `@spekjs/core`, `@spekjs/web`, `@spekjs/ui` and IntelliJ Kotlin suites green; `type-check` and `build` clean; the `TS2741` in the ui fixture gone.

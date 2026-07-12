@@ -27,5 +27,6 @@ Follow-up to merged PR #10, resolving upstream issue kewang/spek#11. One change 
 - **Core**: `packages/core/src/scanner.ts` (`readChangeSchema`, `scanChangeDir`, `scanOpenSpec`, `readChange`), `packages/core/src/types.ts` (`ChangeInfo.defaultSchema`).
 - **Adapters/API**: `ChangeInfo` now carries `defaultSchema`; `FetchAdapter`, `MessageAdapter`, `StaticAdapter` (demo data) and API types must preserve it end-to-end.
 - **Web UI**: `ChangeList` and `Dashboard` switch the badge comparison to per-change `defaultSchema`; `ChangeDetail` and the Changes header are unchanged.
-- **Kotlin**: `packages/intellij/.../core/OpenSpecScanner.kt` mirrors the read-once fallback (efficiency only).
+- **Kotlin**: `packages/intellij/.../core/OpenSpecScanner.kt` mirrors the read-once fallback; `Models.kt` declares `defaultSchema` without a default value so Kotlin carries the same compile-time guard as TS.
+- **Published package**: `ChangeInfo` is public API of `@spekjs/core`, and hosts *construct* it to feed `@spekjs/ui`'s `ChangeTimeline`. Making `defaultSchema` required is source-breaking for those constructors, so `@spekjs/core` goes to **1.1.0** with the break documented in its CHANGELOG (migration: add the field, `null` is valid). `packages/ui`'s timeline test fixture is updated accordingly.
 - No behavior change for single-worktree, single-schema repos.
