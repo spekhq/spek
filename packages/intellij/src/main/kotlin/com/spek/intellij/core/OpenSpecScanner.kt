@@ -16,6 +16,9 @@ object OpenSpecScanner {
         val changesDir = File(base, "changes")
         val archiveDir = File(changesDir, "archive")
 
+        // repo 預設 schema 只讀一次，供本次掃描每個 change 共用（避免每個 change 重讀 config.yaml）
+        val defaultSchema = readRepoSchema(projectPath)
+
         val specs = safeListDirs(specsDir)
             .filter { File(it, "spec.md").exists() }
             .map { dir ->
@@ -30,11 +33,11 @@ object OpenSpecScanner {
 
         val activeChanges = safeListDirs(changesDir)
             .filter { it.name != "archive" }
-            .map { scanChangeDir(projectPath, it, "active") }
+            .map { scanChangeDir(it, "active", defaultSchema) }
             .sortedByDescending { it.timestamp ?: it.date ?: "" }
 
         val archivedChanges = safeListDirs(archiveDir)
-            .map { scanChangeDir(projectPath, it, "archived") }
+            .map { scanChangeDir(it, "archived", defaultSchema) }
             .sortedByDescending { it.timestamp ?: it.date ?: "" }
 
         // 計算每個 spec 被多少 changes 引用
@@ -49,10 +52,10 @@ object OpenSpecScanner {
             specs[i] = specs[i].copy(historyCount = count)
         }
 
-        return ScanResult(specs, activeChanges, archivedChanges, readRepoSchema(projectPath))
+        return ScanResult(specs, activeChanges, archivedChanges, defaultSchema)
     }
 
-    private fun scanChangeDir(projectPath: String, dir: File, status: String): ChangeInfo {
+    private fun scanChangeDir(dir: File, status: String, defaultSchema: String?): ChangeInfo {
         val slug = dir.name
         val (date, description) = parseSlug(slug)
         val hasProposal = File(dir, "proposal.md").exists()
@@ -83,19 +86,20 @@ object OpenSpecScanner {
             hasTasks = hasTasks,
             hasSpecs = hasSpecs,
             artifactCount = ArtifactDiscovery.count(dir),
-            schema = readChangeSchema(projectPath, dir),
+            schema = readChangeSchema(dir, defaultSchema),
+            defaultSchema = defaultSchema,
             taskStats = taskStats,
         )
     }
 
-    /** change schema：change .openspec.yaml 的 schema → repo openspec/config.yaml → null */
-    private fun readChangeSchema(projectPath: String, dir: File): String? {
+    /** change schema：change .openspec.yaml 的 schema → 已算好的 repo 預設（defaultSchema）→ null */
+    private fun readChangeSchema(dir: File, defaultSchema: String?): String? {
         val changeYaml = File(dir, ".openspec.yaml")
         if (changeYaml.exists()) {
             val m = Regex("""^schema:\s*(.+)$""", RegexOption.MULTILINE).find(changeYaml.readText())
             if (m != null) return cleanScalar(m.groupValues[1])
         }
-        return readRepoSchema(projectPath)
+        return defaultSchema
     }
 
     /** repo 預設 schema：openspec/config.yaml 的 schema → null（純讀 yaml key，不呼叫 CLI） */

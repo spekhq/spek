@@ -28,12 +28,11 @@ function changeMetaDisplay(c: ChangeInfo, today: string): { text: string; toolti
   return null;
 }
 
-function ChangeRow({ c, today, accent, showSource, defaultSchema }: {
+function ChangeRow({ c, today, accent, showSource }: {
   c: ChangeInfo;
   today: string;
   accent: boolean;
   showSource: boolean;
-  defaultSchema: string | null | undefined;
 }) {
   const meta = changeMetaDisplay(c, today);
   return (
@@ -51,7 +50,7 @@ function ChangeRow({ c, today, accent, showSource, defaultSchema }: {
           {showSource && c.source && <WorktreeBadge source={c.source} />}
         </span>
         <span className="flex items-center gap-2 shrink-0">
-          <SchemaBadge schema={c.schema} defaultSchema={defaultSchema} />
+          <SchemaBadge schema={c.schema} defaultSchema={c.defaultSchema} />
           {meta && (
             <span
               className="text-text-muted text-xs whitespace-nowrap tracking-wide [word-spacing:0.15em]"
@@ -131,7 +130,7 @@ export function ChangeList() {
           <h2 className="text-lg font-semibold mb-3">Active</h2>
           <div className="space-y-2">
             {active.map((c) => (
-              <ChangeRow key={changeKey(c)} c={c} today={today} accent showSource={showSource} defaultSchema={defaultSchema} />
+              <ChangeRow key={changeKey(c)} c={c} today={today} accent showSource={showSource} />
             ))}
           </div>
         </section>
@@ -142,7 +141,7 @@ export function ChangeList() {
           <h2 className="text-lg font-semibold mb-3">Archived</h2>
           <div className="space-y-2">
             {archived.map((c) => (
-              <ChangeRow key={changeKey(c)} c={c} today={today} accent={false} showSource={showSource} defaultSchema={defaultSchema} />
+              <ChangeRow key={changeKey(c)} c={c} today={today} accent={false} showSource={showSource} />
             ))}
           </div>
         </section>

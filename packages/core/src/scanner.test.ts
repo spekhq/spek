@@ -1,4 +1,4 @@
-import { test } from "node:test";
+import { test, mock } from "node:test";
 import assert from "node:assert/strict";
 import fs from "node:fs";
 import os from "node:os";
@@ -274,4 +274,42 @@ test("readChange: defaultSchema is the repo default even when the change declare
   assert.ok(detail);
   assert.equal(detail.schema, "superpowers-bridge");
   assert.equal(detail.defaultSchema, "spec-driven");
+});
+
+test("scanOpenSpec: every ChangeInfo carries the repo defaultSchema", async () => {
+  const repo = mkRepo();
+  writeRepoConfig(repo, "spec-driven");
+  writeChange(repo, "active", "declared", "schema: superpowers-bridge\n");
+  writeChange(repo, "active", "inherited", null);
+  const result = await scanOpenSpec(repo);
+  const declared = result.activeChanges.find((c) => c.slug === "declared");
+  const inherited = result.activeChanges.find((c) => c.slug === "inherited");
+  // 宣告自己 schema 的 change：schema 為自身，defaultSchema 仍是 repo 預設
+  assert.equal(declared?.schema, "superpowers-bridge");
+  assert.equal(declared?.defaultSchema, "spec-driven");
+  // 未宣告的 change：schema 退回 repo 預設，defaultSchema 亦然（故 badge 應隱藏）
+  assert.equal(inherited?.schema, "spec-driven");
+  assert.equal(inherited?.defaultSchema, "spec-driven");
+  // active change 的 status 應為 "active"（釘住 scanChangeDir 的 status 引數，非只靠 archivedDate 間接判定）
+  assert.equal(inherited?.status, "active");
+});
+
+test("scanOpenSpec: reads config.yaml once regardless of change count", async () => {
+  const repo = mkRepo();
+  writeRepoConfig(repo, "spec-driven");
+  // 三個都不宣告自己的 schema → 全部 fallback 回 repo 預設
+  writeChange(repo, "active", "c1", null);
+  writeChange(repo, "active", "c2", null);
+  writeChange(repo, "archived", "2026-01-01-c3", null);
+  const spy = mock.method(fs, "readFileSync");
+  try {
+    await scanOpenSpec(repo);
+    const configReads = spy.mock.calls.filter((call) =>
+      String(call.arguments[0]).replace(/\\/g, "/").endsWith("openspec/config.yaml"),
+    ).length;
+    // 預設 schema 只算一次並共用，而非每個 change 重讀
+    assert.equal(configReads, 1);
+  } finally {
+    spy.mock.restore();
+  }
 });

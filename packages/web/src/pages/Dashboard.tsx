@@ -29,7 +29,6 @@ export function Dashboard() {
   const activeChanges = changes.data?.active ?? [];
   const archivedChanges = (changes.data?.archived ?? []).slice(0, 10);
   const showSource = !!changes.data?.aggregated && (changes.data?.worktrees?.length ?? 0) > 1;
-  const defaultSchema = changes.data?.defaultSchema;
 
   const today = todayIso();
   const archivedSpans = (changes.data?.archived ?? [])
@@ -79,7 +78,7 @@ export function Dashboard() {
                     {showSource && c.source && <WorktreeBadge source={c.source} />}
                   </span>
                   <span className="flex items-center gap-2 shrink-0">
-                    <SchemaBadge schema={c.schema} defaultSchema={defaultSchema} />
+                    <SchemaBadge schema={c.schema} defaultSchema={c.defaultSchema} />
                     {(c.timestamp || c.date) && (
                       <span className="text-text-muted text-xs whitespace-nowrap" title={c.timestamp || undefined}>
                         {c.timestamp ? formatRelativeTime(c.timestamp) : c.date}
@@ -114,7 +113,7 @@ export function Dashboard() {
                   {showSource && c.source && <WorktreeBadge source={c.source} />}
                 </span>
                 <span className="flex items-center gap-2 shrink-0">
-                  <SchemaBadge schema={c.schema} defaultSchema={defaultSchema} />
+                  <SchemaBadge schema={c.schema} defaultSchema={c.defaultSchema} />
                   {(c.timestamp || c.date) && (
                     <span className="text-text-muted text-xs whitespace-nowrap" title={c.timestamp || undefined}>
                       {c.timestamp ? formatRelativeTime(c.timestamp) : c.date}

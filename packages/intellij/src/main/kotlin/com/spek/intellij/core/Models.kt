@@ -66,6 +66,12 @@ data class ChangeInfo(
     val hasSpecs: Boolean,
     val artifactCount: Int,
     val schema: String?,
+    /**
+     * 此 change 所在 repo 的預設 schema（openspec/config.yaml schema:），無法判定為 null。
+     * 刻意不給預設值：與 @spekjs/core 的必填欄位對齊，讓漏 stamp 的 producer 在編譯期就失敗
+     * （若給了預設值，漏填會靜默送出 null，前端 SchemaBadge 便會對每個 change 都顯示 badge）。
+     */
+    val defaultSchema: String?,
     val taskStats: TaskStats?,
 )
 
@@ -85,8 +91,8 @@ data class ChangeDetail(
     val slug: String,
     val status: String,
     val schema: String?,
-    /** repo 預設 schema（openspec/config.yaml schema:），無法判定為 null；供 UI 隱藏與 default 相同的 badge */
-    val defaultSchema: String? = null,
+    /** repo 預設 schema（openspec/config.yaml schema:），無法判定為 null；供 UI 隱藏與 default 相同的 badge。刻意不給預設值，理由同 ChangeInfo */
+    val defaultSchema: String?,
     val artifacts: List<ChangeArtifact>,
     /** schema 權威順序（artifact id 清單）；CLI 不可用 / archived 時為 null */
     val schemaOrder: List<String>? = null,
@@ -106,8 +112,8 @@ data class ChangeSpec(
 data class ChangesData(
     val active: List<ChangeInfo>,
     val archived: List<ChangeInfo>,
-    /** repo 預設 schema（openspec/config.yaml schema:），無法判定為 null；供 list/overview 隱藏與 default 相同的 badge */
-    val defaultSchema: String? = null,
+    /** repo 預設 schema（openspec/config.yaml schema:），無法判定為 null；供 list/overview 隱藏與 default 相同的 badge。刻意不給預設值，理由同 ChangeInfo */
+    val defaultSchema: String?,
 )
 
 @Serializable
