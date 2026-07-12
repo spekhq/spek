@@ -8,7 +8,7 @@ A fresh worktree created from `main` inherits every change directory that existe
 
 **Goals:**
 - One entry per active change slug in both the Changes list/Overview and the Graph, chosen from whichever worktree is actually editing it.
-- Reuse existing per-change timestamp data (`ChangeInfo.timestamp`/`date`, `compareChangesByTimestamp`) for tie-breaking instead of introducing a new recency signal.
+- Reuse an existing recency signal for tie-breaking instead of introducing a new mechanism: the change directory's filesystem mtime, computed the same way `artifacts.ts` already does for artifact ordering.
 - Single, shared election logic so the list and graph paths can't disagree about which worktree "owns" a slug.
 
 **Non-Goals:**

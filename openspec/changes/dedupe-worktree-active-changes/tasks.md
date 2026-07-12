@@ -26,4 +26,4 @@
 ## 5. Verification
 
 - [x] 5.1 Run `npm run type-check` and the full `npm run test -w @spekjs/core` suite; all green.
-- [ ] 5.2 Manually verify against a repo shaped like David's (multiple open changes on main, one worktree per change) that the Changes list and Graph each show one entry per change, sourced from the worktree doing the work.
+- [x] 5.2 Manually verify against a repo shaped like David's (multiple open changes on main, one worktree per change) that the Changes list and Graph each show one entry per change, sourced from the worktree doing the work.

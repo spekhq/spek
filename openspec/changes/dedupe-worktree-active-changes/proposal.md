@@ -18,7 +18,7 @@ When several git worktrees each work through a different in-progress OpenSpec ch
 
 ### Modified Capabilities
 
-- `worktree-aggregation`: "Aggregate active changes across worktrees" changes from union-without-dedup to dedup-by-slug with worktree-over-main priority and most-recent-timestamp tiebreak.
+- `worktree-aggregation`: "Aggregate active changes across worktrees" changes from union-without-dedup to dedup-by-slug with worktree-over-main priority and most-recently-modified-mtime tiebreak.
 - `graph-view`: "Aggregated change nodes from worktrees" changes from one node per worktree per active slug to one node per active slug (from the winning worktree), matching the same priority rule.
 
 ## Impact
