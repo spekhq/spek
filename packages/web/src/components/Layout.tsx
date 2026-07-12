@@ -70,7 +70,10 @@ export function Layout() {
   return (
     <div className="min-h-screen bg-bg-primary">
       {/* Header */}
-      <header className="fixed top-0 left-0 right-0 h-14 bg-bg-secondary border-b border-border flex items-center px-4 z-10">
+      <header
+        data-spek-app-header
+        className="fixed top-0 left-0 right-0 h-14 bg-bg-secondary border-b border-border flex items-center px-4 z-10"
+      >
         {isMobile && (
           <button
             onClick={() => setSidebarOpen(!sidebarOpen)}

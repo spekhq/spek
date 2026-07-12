@@ -1,7 +1,9 @@
 ## Purpose
 
 提供 changes 列表與單一 change 詳細檢視（proposal / design / tasks / specs 分頁），呈現 change 生命週期資訊。
+
 ## Requirements
+
 ### Requirement: Change list with active/archived separation
 The system SHALL display changes grouped into active and archived sections. Active changes SHALL be visually distinguished with a left accent color border (4px). Changes SHALL be sorted by git timestamp descending (most recent first), falling back to slug date when timestamp is unavailable. Each change row SHALL display a compact lifecycle indicator based on `createdDate` and `archivedDate` (label words like "Created" / "Archived" are intentionally omitted to reduce visual noise; the meaning is conveyed by date format and the `→` separator):
 
@@ -204,7 +206,7 @@ The change detail page SHALL reflect the active tab in the URL query string (`?t
 - **THEN** the Proposal tab is active and no error is raised
 
 ### Requirement: Change detail scrollspy
-The change detail page SHALL highlight the TOC entry corresponding to the heading currently closest to the top of the viewport while the user scrolls the active markdown tab (scrollspy behavior).
+The change detail page SHALL highlight the TOC entry corresponding to the heading currently closest to the top of the viewport while the user scrolls the active markdown tab (scrollspy behavior). The threshold that decides whether a heading has been scrolled past SHALL be the same measured header bottom that hash-anchor scrolling uses, and the comparison SHALL tolerate a few pixels of rounding, so the heading a reader just scrolled to via the TOC is the one highlighted.
 
 #### Scenario: Active entry on scroll
 - **WHEN** user scrolls through a markdown tab's content while the TOC is visible
@@ -215,8 +217,12 @@ The change detail page SHALL highlight the TOC entry corresponding to the headin
 - **WHEN** multiple headings are simultaneously visible in the viewport
 - **THEN** exactly one TOC entry is highlighted (the heading closest to the top)
 
+#### Scenario: The clicked entry is the highlighted one
+- **WHEN** the user clicks a TOC entry and the page finishes scrolling that heading to just below the sticky header
+- **THEN** the clicked entry — not the one before it — is highlighted, whether the click started from the top of the page or mid-scroll
+
 ### Requirement: Change detail hash anchor navigation
-The change detail page SHALL scroll to the heading matching the URL hash after the page loads or after the hash changes, once the active tab's markdown content finishes rendering. When a URL contains both `tab` query param and a hash, the page SHALL first activate the specified tab, then scroll to the hash-matching heading within that tab. The scroll SHALL position the target heading in the visible area **below** the sticky header (title + tab row), not at the literal viewport top where the header would obscure it. The offset SHALL be derived from the actual rendered sticky header at scroll time (falling back to the fixed app header, then a constant) rather than a fixed assumed height, so a taller-than-usual sticky header does not hide the target.
+The change detail page SHALL scroll to the heading matching the URL hash after the page loads or after the hash changes, once the active tab's markdown content finishes rendering. When a URL contains both `tab` query param and a hash, the page SHALL first activate the specified tab, then scroll to the hash-matching heading within that tab. The scroll SHALL position the target heading in the visible area **below** the sticky header (title + tab row), not at the literal viewport top where the header would obscure it. The offset SHALL be derived from the actual rendered sticky header at scroll time (falling back to the fixed app header, then a constant) rather than a fixed assumed height, so a taller-than-usual sticky header does not hide the target. The header SHALL be measured as it sits once pinned, so the offset does not drift with the reader's current scroll position.
 
 #### Scenario: Direct link with tab and hash
 - **WHEN** user opens a URL such as `/changes/<slug>?tab=design#decision-1`
@@ -296,4 +302,3 @@ Under aggregation, a change row SHALL link to its detail page with a `wt` query 
 #### Scenario: Detail page without wt parameter
 - **WHEN** the user opens `/changes/<slug>` with no `wt` parameter
 - **THEN** the change is read from the currently selected directory, as before this change
-

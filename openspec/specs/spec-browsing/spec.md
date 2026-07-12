@@ -1,6 +1,7 @@
 ## Purpose
 
 提供 spec 列表與單一 spec 內容檢視（含 TOC 與歷史）。
+
 ## Requirements
 ### Requirement: Spec list with filtering
 The system SHALL display all specs sorted alphabetically with history count metadata. A filter input SHALL allow instant client-side filtering by spec topic name. Each spec item SHALL display the topic name and the number of related changes (history count) as secondary information.
@@ -63,7 +64,7 @@ The spec detail page (`/specs/:topic`) SHALL display a sticky table-of-contents 
 - **THEN** each `h3` entry is visually indented relative to its preceding `h2` entry
 
 ### Requirement: Spec detail scrollspy
-The spec detail page SHALL highlight the TOC entry corresponding to the heading currently closest to the top of the viewport while the user scrolls (scrollspy behavior).
+The spec detail page SHALL highlight the TOC entry corresponding to the heading currently closest to the top of the viewport while the user scrolls (scrollspy behavior). The threshold that decides whether a heading has been scrolled past SHALL be the same measured header bottom that hash-anchor scrolling uses, and the comparison SHALL tolerate a few pixels of rounding, so the heading a reader just scrolled to via the TOC is the one highlighted.
 
 #### Scenario: Active entry on scroll
 - **WHEN** the user scrolls the spec detail content and a heading enters the top region of the viewport
@@ -73,8 +74,12 @@ The spec detail page SHALL highlight the TOC entry corresponding to the heading 
 - **WHEN** multiple headings are simultaneously visible in the viewport
 - **THEN** exactly one TOC entry is highlighted as active (the heading closest to the top)
 
+#### Scenario: The clicked entry is the highlighted one
+- **WHEN** the user clicks a TOC entry and the page finishes scrolling that heading to just below the header
+- **THEN** the clicked entry — not the one before it — is highlighted
+
 ### Requirement: Spec detail hash anchor navigation
-The spec detail page SHALL scroll to the heading matching the URL hash when the page mounts or when the hash changes, after the markdown content finishes rendering. The scroll SHALL position the target heading in the visible area **below** any sticky or fixed header rather than at the literal viewport top, with the offset measured from the actual rendered header at scroll time (falling back to the fixed app header, then a constant) rather than a fixed assumed height.
+The spec detail page SHALL scroll to the heading matching the URL hash when the page mounts or when the hash changes, after the markdown content finishes rendering. The scroll SHALL position the target heading in the visible area **below** any sticky or fixed header rather than at the literal viewport top, with the offset measured from the actual rendered header at scroll time (falling back to the fixed app header, then a constant) rather than a fixed assumed height. The header SHALL be measured as it sits once pinned, so the offset does not drift with the reader's current scroll position.
 
 #### Scenario: Direct link with hash
 - **WHEN** user opens a URL such as `/specs/foo#requirement-bar` directly
@@ -87,4 +92,3 @@ The spec detail page SHALL scroll to the heading matching the URL hash when the 
 #### Scenario: Hash with no matching heading
 - **WHEN** the URL hash does not match any heading slug on the current spec
 - **THEN** no scrolling occurs and the page renders at its default scroll position
-
