@@ -1,5 +1,12 @@
 # Changelog
 
+## 1.7.0
+
+- **spek has moved to the `spekhq` GitHub organization** — the repository is now [`spekhq/spek`](https://github.com/spekhq/spek). Clones, links, issues, and stars redirect automatically, so for most users there is nothing to do. **Two things do not redirect:**
+  - **GitHub Action users must update their workflows** — change `uses: kewang/spek@v1` to `uses: spekhq/spek@v1`. GitHub deliberately does not redirect action references (a redirect would let a rename hijack someone else's action), so the old path now fails with `repository not found`.
+  - **The live demo and the README badges moved** to `https://spekhq.github.io/spek/`. GitHub Pages is not redirected after a transfer, so the old `kewang.github.io/spek/` URLs are gone for good.
+- **GitHub Action: fixed a build failure that hit every run** — the action never built `@spekjs/ui` explicitly; it got that package's `dist` for free from an install-time hook that `npm ci` happened to run. When the hook moved to publish time (so `npm ci` would stop failing in the publish pipelines), the action silently lost its `@spekjs/ui` build and every run died resolving `@spekjs/ui/styles.css`. Pinning an older tag did not help — the action builds spek from `master` by default, so the breakage reached everyone at once. The action now builds `@spekjs/ui` explicitly.
+
 ## 1.6.1
 
 - **TOC navigation lands on the section you clicked** — clicking a table-of-contents entry, or opening a `#hash` deep link, on a Change or Spec detail page no longer scrolls the target heading behind the sticky header, which made it look like the click had jumped one section too far. The offset is now measured from the header that is actually rendered instead of an assumed 80px, and the entry you clicked is the one the TOC highlights.

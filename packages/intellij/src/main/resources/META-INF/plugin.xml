@@ -25,11 +25,10 @@
     ]]></description>
 
     <change-notes><![CDATA[
-        <p><b>1.6.1</b></p>
+        <p><b>1.7.0</b></p>
         <ul>
-            <li><b>TOC navigation lands on the section you clicked</b> — clicking a table-of-contents entry, or opening a #hash deep link, on a Change or Spec detail page no longer scrolls the target heading behind the sticky header, which made it look like the click had jumped one section too far. The offset is now measured from the header that is actually rendered instead of an assumed 80px, and the entry you clicked is the one the TOC highlights.</li>
-            <li><b>Schema badge under worktree aggregation</b> — when changes are aggregated across worktrees, each change's schema is now compared against the default schema of the worktree it actually lives in, rather than the main worktree's. A change that uses its own worktree's default no longer shows a badge, and the list and detail views agree on this.</li>
-            <li>Thanks to Norman Hansen (@nthansen) for both.</li>
+            <li><b>spek has moved to the spekhq GitHub organization</b> — the repository is now github.com/spekhq/spek, and the live demo moved to spekhq.github.io/spek. Links from the marketplace listing and from older versions redirect automatically.</li>
+            <li>No other user-facing changes for the plugin in this release.</li>
         </ul>
     ]]></change-notes>
 

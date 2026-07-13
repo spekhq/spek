@@ -1,5 +1,10 @@
 # Changelog
 
+## 1.7.0
+
+- **spek has moved to the `spekhq` GitHub organization** — the repository is now [`spekhq/spek`](https://github.com/spekhq/spek), and the live demo moved to [`spekhq.github.io/spek`](https://spekhq.github.io/spek/demo.html). Links from the marketplace listing and from older versions redirect automatically.
+- No other user-facing changes for the extension in this release.
+
 ## 1.6.1
 
 - **TOC navigation lands on the section you clicked** — clicking a table-of-contents entry, or opening a `#hash` deep link, on a Change or Spec detail page no longer scrolls the target heading behind the sticky header, which made it look like the click had jumped one section too far. The offset is now measured from the header that is actually rendered instead of an assumed 80px, and the entry you clicked is the one the TOC highlights.
