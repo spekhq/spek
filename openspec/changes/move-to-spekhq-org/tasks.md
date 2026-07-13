@@ -95,7 +95,12 @@
       上一個 change 之所以修得好 VS Code 與 IntelliJ，是因為 `vscode-cicd` / `intellij-cicd` 各自
       都有一條 build chain requirement 逼它去對齊；**`github-action` 一條都沒有，於是沒有東西需要
       更新、也沒有東西會失敗**。只改 `action.yml` 是修症狀，補這條 requirement 才是修病因
-- [ ] 9.3 重跑煙霧測試，確認 action 真的建得出靜態站與 badge
+- [x] 9.3 重跑煙霧測試 —— **通過**（建出 2.28 MB 的 `spek.html` 與 3 個 badge）
+- [x] 9.4 **煙霧測試跑完即移除**（`.github/workflows/smoke-action.yml`，暫時性，使用者裁決）。
+      **代價要講清楚，這不是疏忽**：`action.yml` 是本 repo 唯一**零自動化覆蓋**的出貨品 ——
+      它壞了整整一天沒人發現，正因為沒有任何測試會跑它。9.2 補的
+      `Requirement: Action build chain` 因此**沒有對應的自動驗收**，只是一段散文。
+      **日後任何改動套件 build 時機的 change，都必須手動驗一次 action** —— 這條路徑不會自己叫
 
 ## 8. 發佈（design D4 —— **兩條路徑，缺一不可**）
 

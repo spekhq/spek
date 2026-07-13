@@ -36,6 +36,25 @@ spek 是一個 OpenSpec 內容檢視器，提供四種使用方式：
 `docs/demo.html` 這類合法提到歷史的產生物）。要改動 `action.yml` 時，記得上面那段：**`repository:`
 那一行殘留舊名不會壞**，它是這個 repo 唯一「錯了也全綠」的地方。
 
+## `action.yml` 沒有任何自動化覆蓋 —— 動它之前先讀這段
+
+**對外發佈的 composite action 是本 repo 唯一零測試覆蓋的出貨品。** `npm test` 完全碰不到它，
+CI 也沒有任何 workflow 會跑它。這是**明知的取捨**，不是疏忽。
+
+代價已經實現過一次：`fix-publish-workflow-install` 把 `@spekjs/ui` 的 build 從 `prepare`
+（安裝期）移到 `prepublishOnly`（發佈期）。它修好了 VS Code 與 IntelliJ 的 pipeline —— 因為
+`vscode-cicd` 與 `intellij-cicd` 各自都有一條 build chain requirement 逼它去對齊。**而 `action.yml`
+是靠 `npm ci` 順手觸發 ui 的 `prepare` 才拿到 dist 的**，那個 hook 一沒，它的 ui build 就**靜默
+消失**了 —— Marketplace 上的 action 壞了整整一天，沒有任何東西叫過一聲。
+
+（`github-action` 現在有了 `Requirement: Action build chain`，但它**沒有自動驗收**，只是一段散文。）
+
+> **因此：任何改動套件建置時機／建置鏈的 change，都必須手動驗一次 action。**
+> 最快的方法是臨時加一支 `workflow_dispatch` 的 workflow，`uses: spekhq/spek@master` +
+> `generate-badges: "true"`，斷言 `html-path` 與 `badges-path` 真的產出檔案，驗完移除。
+> **注意 `spek-version` 預設是 `"master"`** —— 所以使用者即使 pin 了 `@v1`，建置仍走 master：
+> master 一壞，所有人立刻壞，pin tag 救不了他們。
+
 ## Tech Stack
 
 - **Core**: `@spekjs/core` — 共用邏輯（scanner、tasks parser、型別定義），純 Node.js。**已發佈至 npm public registry**，有獨立於 root 的版本線；唯一的 runtime 依賴是 `cross-spawn`。repo 內的 `packages/web` / `packages/vscode` 以 `"*"` 由 npm workspaces 解析到本地，不從 registry 抓，因此開發不受 core 發版節奏影響。
