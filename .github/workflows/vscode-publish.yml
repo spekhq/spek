@@ -22,7 +22,7 @@ jobs:
         run: npm run build -w @spekjs/core
 
       - name: Build webview
-        run: npm run build:webview -w @spekjs/web
+        run: npm run build:webview
 
       - name: Build extension
         run: npm run build -w spek-vscode
