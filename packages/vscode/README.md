@@ -56,8 +56,8 @@ All data stays on your machine. No telemetry, no external requests.
 
 ## Links
 
-- [Source Code](https://github.com/kewang/spek)
-- [Report Issues](https://github.com/kewang/spek/issues)
+- [Source Code](https://github.com/spekhq/spek)
+- [Report Issues](https://github.com/spekhq/spek/issues)
 - [OpenSpec Specification](https://github.com/Fission-AI/OpenSpec)
 
 ## License

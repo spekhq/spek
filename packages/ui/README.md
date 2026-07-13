@@ -3,7 +3,7 @@
 Reusable OpenSpec visualizations: a force-directed **spec ↔ change graph** and a Gantt-style
 **change timeline**.
 
-These are the same two views that [spek](https://github.com/kewang/spek)'s web app ships — extracted
+These are the same two views that [spek](https://github.com/spekhq/spek)'s web app ships — extracted
 so that other hosts can render them too. They are **presentational**: they take data through props
 and report the user's choices through callbacks. They have no router, no data layer, and no CSS
 framework.

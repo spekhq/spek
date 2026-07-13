@@ -40,7 +40,7 @@ runs:
     - name: Checkout spek
       uses: actions/checkout@v7
       with:
-        repository: kewang/spek
+        repository: spekhq/spek
         ref: ${{ inputs.spek-version }}
         path: .spek-builder
 

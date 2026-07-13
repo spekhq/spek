@@ -2,7 +2,7 @@
 
 Framework-agnostic engine for reading [OpenSpec](https://github.com/Fission-AI/OpenSpec) repositories.
 
-It scans an OpenSpec directory, reads specs and changes, parses task checkboxes, and aggregates data across git worktrees — with no framework dependencies. This is the engine behind [spek](https://github.com/kewang/spek), the OpenSpec viewer (Web, VS Code, IntelliJ).
+It scans an OpenSpec directory, reads specs and changes, parses task checkboxes, and aggregates data across git worktrees — with no framework dependencies. This is the engine behind [spek](https://github.com/spekhq/spek), the OpenSpec viewer (Web, VS Code, IntelliJ).
 
 ## Install
 

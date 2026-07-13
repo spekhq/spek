@@ -11,11 +11,11 @@
   ],
   "license": "MIT",
   "author": "Kewang",
-  "homepage": "https://github.com/kewang/spek#readme",
-  "bugs": "https://github.com/kewang/spek/issues",
+  "homepage": "https://github.com/spekhq/spek#readme",
+  "bugs": "https://github.com/spekhq/spek/issues",
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/kewang/spek.git",
+    "url": "git+https://github.com/spekhq/spek.git",
     "directory": "packages/core"
   },
   "publishConfig": {

@@ -115,7 +115,7 @@ Automate the spek release process — update CHANGELOGs, bump version, create ta
    git push origin v1 --force
    ```
 
-   This follows the GitHub Action versioning convention — users referencing `kewang/spek@v1` will automatically get the latest release.
+   This follows the GitHub Action versioning convention — users referencing `spekhq/spek@v1` will automatically get the latest release.
 
 10. **Create GitHub Release**
 

@@ -41,7 +41,7 @@ intellijPlatform {
         description = "OpenSpec content viewer for IntelliJ-based IDEs"
         vendor {
             name = "spek"
-            url = "https://github.com/kewang/spek"
+            url = "https://github.com/spekhq/spek"
         }
         ideaVersion {
             sinceBuild = providers.gradleProperty("pluginSinceBuild").get()

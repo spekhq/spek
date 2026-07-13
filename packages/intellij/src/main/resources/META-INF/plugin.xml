@@ -1,7 +1,7 @@
 <idea-plugin>
     <id>tw.kewang.spek</id>
     <name>spek - OpenSpec Viewer</name>
-    <vendor url="https://github.com/kewang/spek">kewang</vendor>
+    <vendor url="https://github.com/spekhq/spek">kewang</vendor>
     <description><![CDATA[
         <p><b>spek</b> is an OpenSpec content viewer that lets you browse specs, changes, and task progress directly within your IDE.</p>
 

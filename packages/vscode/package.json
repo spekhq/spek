@@ -6,14 +6,14 @@
   "publisher": "kewang",
   "license": "MIT",
   "icon": "icon.png",
-  "homepage": "https://github.com/kewang/spek#readme",
+  "homepage": "https://github.com/spekhq/spek#readme",
   "repository": {
     "type": "git",
-    "url": "https://github.com/kewang/spek.git",
+    "url": "https://github.com/spekhq/spek.git",
     "directory": "packages/vscode"
   },
   "bugs": {
-    "url": "https://github.com/kewang/spek/issues"
+    "url": "https://github.com/spekhq/spek/issues"
   },
   "keywords": [
     "openspec",

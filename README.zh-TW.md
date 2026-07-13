@@ -7,9 +7,9 @@
 </p>
 
 <p align="center">
-  <img alt="Specs" src="https://kewang.github.io/spek/badges/specs.svg" />
-  <img alt="Open Changes" src="https://kewang.github.io/spek/badges/open_changes.svg" />
-  <img alt="Tasks" src="https://kewang.github.io/spek/badges/tasks.svg" />
+  <img alt="Specs" src="https://spekhq.github.io/spek/badges/specs.svg" />
+  <img alt="Open Changes" src="https://spekhq.github.io/spek/badges/open_changes.svg" />
+  <img alt="Tasks" src="https://spekhq.github.io/spek/badges/tasks.svg" />
 </p>
 
 **[English](README.md)**
@@ -20,7 +20,7 @@
 
 **spek** 把你本機的 OpenSpec 目錄變成可瀏覽、可搜尋的介面。不用再打開一堆 Markdown 檔案逐一閱讀，spek 提供結構化的瀏覽體驗，包含 BDD 語法高亮、任務進度追蹤和全文搜尋。
 
-**[線上 Demo](https://kewang.github.io/spek/demo.html)** — 直接在瀏覽器體驗，免安裝。
+**[線上 Demo](https://spekhq.github.io/spek/demo.html)** — 直接在瀏覽器體驗，免安裝。
 
 提供三種使用方式：
 
@@ -63,7 +63,7 @@ spek 會探索 repo 的每一個 worktree（透過 `git worktree list`），把*
 ### Web 版
 
 ```bash
-git clone https://github.com/kewang/spek.git
+git clone https://github.com/spekhq/spek.git
 cd spek
 npm install
 npm run dev
@@ -148,7 +148,7 @@ spek 會顯示變更實際包含的所有 artifact，因此以自訂 OpenSpec sc
   with:
     fetch-depth: 0  # 建議取得完整 git history 以取得正確的 change timestamps
 
-- uses: kewang/spek@v1
+- uses: spekhq/spek@v1
   with:
     title: "My Project - OpenSpec"
 ```
@@ -177,7 +177,7 @@ jobs:
         with:
           fetch-depth: 0
 
-      - uses: kewang/spek@v1
+      - uses: spekhq/spek@v1
         with:
           title: "My Project - OpenSpec"
 
@@ -212,7 +212,7 @@ jobs:
 啟用 `generate-badges` 可在建置靜態網站時一併產生 SVG 狀態徽章（specs 數量、open changes 數量、tasks 完成率）。部署到 GitHub Pages 後即可在 README 中引用：
 
 ```yaml
-- uses: kewang/spek@v1
+- uses: spekhq/spek@v1
   with:
     title: "My Project - OpenSpec"
     generate-badges: true

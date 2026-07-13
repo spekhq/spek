@@ -7,9 +7,9 @@
 </p>
 
 <p align="center">
-  <img alt="Specs" src="https://kewang.github.io/spek/badges/specs.svg" />
-  <img alt="Open Changes" src="https://kewang.github.io/spek/badges/open_changes.svg" />
-  <img alt="Tasks" src="https://kewang.github.io/spek/badges/tasks.svg" />
+  <img alt="Specs" src="https://spekhq.github.io/spek/badges/specs.svg" />
+  <img alt="Open Changes" src="https://spekhq.github.io/spek/badges/open_changes.svg" />
+  <img alt="Tasks" src="https://spekhq.github.io/spek/badges/tasks.svg" />
 </p>
 
 **[繁體中文](README.zh-TW.md)**
@@ -20,7 +20,7 @@
 
 **spek** turns your local OpenSpec directory into a navigable, searchable interface. Instead of reading raw Markdown files in a text editor, spek provides structured browsing with BDD syntax highlighting, task progress tracking, and full-text search.
 
-**[Live Demo](https://kewang.github.io/spek/demo.html)** — Try it instantly in your browser, no install needed.
+**[Live Demo](https://spekhq.github.io/spek/demo.html)** — Try it instantly in your browser, no install needed.
 
 Available in three forms:
 
@@ -63,7 +63,7 @@ spek discovers every worktree of a repository (via `git worktree list`) and **ag
 ### Web Version
 
 ```bash
-git clone https://github.com/kewang/spek.git
+git clone https://github.com/spekhq/spek.git
 cd spek
 npm install
 npm run dev
@@ -148,7 +148,7 @@ Use spek as a GitHub Action to automatically build a static OpenSpec site in you
   with:
     fetch-depth: 0  # Recommended for accurate change timestamps
 
-- uses: kewang/spek@v1
+- uses: spekhq/spek@v1
   with:
     title: "My Project - OpenSpec"
 ```
@@ -177,7 +177,7 @@ jobs:
         with:
           fetch-depth: 0
 
-      - uses: kewang/spek@v1
+      - uses: spekhq/spek@v1
         with:
           title: "My Project - OpenSpec"
 
@@ -212,7 +212,7 @@ jobs:
 Enable `generate-badges` to generate SVG status badges (specs count, open changes, tasks progress) alongside your static site. Deploy them to GitHub Pages and reference in your README:
 
 ```yaml
-- uses: kewang/spek@v1
+- uses: spekhq/spek@v1
   with:
     title: "My Project - OpenSpec"
     generate-badges: true

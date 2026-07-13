@@ -10,10 +10,36 @@ spek 是一個 OpenSpec 內容檢視器，提供四種使用方式：
 3. **IntelliJ Plugin**：在 IntelliJ IDEA 系列 IDE 中透過 Tool Window + JCEF 瀏覽 OpenSpec 內容
 4. **Demo**：獨立靜態 HTML（`docs/demo.html`），內嵌 spek 自身的 openspec 資料，可部署至 GitHub Pages
 
+## Repo 位置（`move-to-spekhq-org` 起）
+
+本 repo 位於 **`spekhq/spek`**（原 `kewang/spek`）。GitHub org 為 `spekhq` —— 首選的 `spekjs`
+（與 npm scope `@spekjs` 對齊）被一個閒置的 User 帳號佔著，開不出來。**npm scope 仍是 `@spekjs`，
+不改**：GitHub org 名與 npm scope 不一致是常態（`@tailwindcss/*` 的源碼在 `tailwindlabs/tailwindcss`）。
+
+> ### **`kewang/spek` 這個名字此後不可再被佔用。**
+>
+> GitHub 的 repo redirect 在此是**承重的**，而它在舊名被重新佔用的當下就會停用。兩件事靠它撐著：
+>
+> 1. **已發佈版本的 npm metadata。** `@spekjs/core@1.x` 等既有版本的 `repository` 欄位永遠指向
+>    `kewang/spek`，**且無法修正**（已發佈的 tarball 不可變）。
+> 2. **`action.yml` 的歷史 tag。** composite action 在執行期 `actions/checkout` 自己的原始碼；
+>    舊 tag 上的那一行仍寫著舊位置，靠 redirect 解析。
+>
+> 在 `kewang/` 底下重建一個叫 `spek` 的 repo，會**同時**炸掉這兩者 —— 而且第二項的後果是：
+> 使用者的 CI 會 checkout 一個**完全不同的 repo** 並執行它。這是一條供應鏈路徑。
+>
+> 同理，**Pages 的舊網址（`kewang.github.io/spek`）已永久失效**，GitHub 不 redirect Pages。
+> 不要試圖用一個 stub repo 把它救回來 —— 那正是「重新佔用舊名」。
+
+**搬遷的完整性以一次性 grep 驗收，沒有常駐守衛** —— 舊名沒有「重新流入」的來源（不會有人在新
+程式碼裡寫 `kewang/spek`），一道常駐的檢查只會養出一份越來越長的排除清單（CHANGELOG、`openspec/`、
+`docs/demo.html` 這類合法提到歷史的產生物）。要改動 `action.yml` 時，記得上面那段：**`repository:`
+那一行殘留舊名不會壞**，它是這個 repo 唯一「錯了也全綠」的地方。
+
 ## Tech Stack
 
 - **Core**: `@spekjs/core` — 共用邏輯（scanner、tasks parser、型別定義），純 Node.js。**已發佈至 npm public registry**，有獨立於 root 的版本線；唯一的 runtime 依賴是 `cross-spawn`。repo 內的 `packages/web` / `packages/vscode` 以 `"*"` 由 npm workspaces 解析到本地，不從 registry 抓，因此開發不受 core 發版節奏影響。
-- **UI**: `@spekjs/ui` — 可重用的視覺化元件（`SpecGraph` 力導向圖、`ChangeTimeline` Gantt）。**同樣發佈至 npm**，供 repo 外的宿主（`spek-workspace`，Electron agent 工作台）使用。**元件是純呈現層**：資料由 props 進、選擇由回呼出，**沒有 router、沒有 adapter、沒有 CSS 框架** —— 因為宿主之間這三件事完全不同。顏色以 8 個 `--spek-*` CSS 變數表達（套件擁有自己的變數名，不讀宿主的 token；否則命名不同的宿主會得到一張沒有顏色的圖）。`packages/web` 的 `/graph` 與 `/timeline` 兩頁退為薄殼：取數、loading／error、導航、主題訊號。
+- **UI**: `@spekjs/ui` — 可重用的視覺化元件（`SpecGraph` 力導向圖、`ChangeTimeline` Gantt）。**同樣發佈至 npm**，供 repo 外的宿主使用。**元件是純呈現層**：資料由 props 進、選擇由回呼出，**沒有 router、沒有 adapter、沒有 CSS 框架** —— 因為宿主之間這三件事完全不同。顏色以 8 個 `--spek-*` CSS 變數表達（套件擁有自己的變數名，不讀宿主的 token；否則命名不同的宿主會得到一張沒有顏色的圖）。`packages/web` 的 `/graph` 與 `/timeline` 兩頁退為薄殼：取數、loading／error、導航、主題訊號。
 - **Frontend**: React 19 + Vite + TypeScript + Tailwind CSS v4
 - **Backend**: Express.js (Node.js) — 讀取本地檔案系統提供 REST API
 - **VS Code Extension**: Webview Panel + esbuild bundling
