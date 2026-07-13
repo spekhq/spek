@@ -104,11 +104,11 @@
 
 ## 8. 發佈（design D4 —— **兩條路徑，缺一不可**）
 
-- [ ] 8.1 跑 release skill 發一次版：更新 CHANGELOG、bump、推 tag → 觸發 VS Code Marketplace 與
+- [x] 8.1 跑 release skill 發一次版：更新 CHANGELOG、bump、推 tag → 觸發 VS Code Marketplace 與
       JetBrains Marketplace 的發佈，建立 GitHub Release（Actions Marketplace），並 force-update
       `v1` tag 指向新位置的 release commit
-- [ ] 8.2 **手動** `npm publish` `@spekjs/core` 與 `@spekjs/ui` 的 patch 版 —— 它們有**獨立於 root
+- [x] 8.2 **手動** `npm publish` `@spekjs/core` 與 `@spekjs/ui` 的 patch 版 —— 它們有**獨立於 root
       的版本線**，既不隨 root 的 `version` script 連動，也沒有任何 CI 在發它們。**只跑 8.1 的話，
       npm 上那兩個頁面的 badge 會一直是破圖**
-- [ ] 8.3 複驗四個商店頁面的 badge 不再破圖：npm（core／ui）、VS Code Marketplace、
+- [x] 8.3 複驗四個商店頁面的 badge 不再破圖：npm（core／ui）、VS Code Marketplace、
       JetBrains Marketplace、GitHub Actions Marketplace
