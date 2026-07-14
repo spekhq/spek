@@ -564,30 +564,37 @@ export async function buildGraphDataAggregated(
 
   const main = worktrees.find((w) => !w.isBare) ?? worktrees[0];
 
-  // 與 scanOpenSpecAggregated 共用同一套 active-change 勝出邏輯，避免 list 與 graph 兩處對「哪個
-  // worktree 擁有這個 slug」給出不同答案
-  const scans = await Promise.all(
-    worktrees.map(async (wt) => ({ wt, scan: await scanOpenSpec(wt.path) })),
-  );
-  const activeEntries = scans.map((s) => ({
-    wt: s.wt,
-    slugs: s.scan.activeChanges.map((c) => c.slug),
+  // 每個非 bare worktree 只建一次 graph，重用於「取 active slug 做選舉」與「輸出節點」，
+  // 不再為了取 slug 而額外 scanOpenSpec（pickActiveWinners 只需 {wt, slugs}）。主 worktree 先處理，
+  // 確保 archived 去重以主 worktree 為準。
+  const ordered = [main, ...worktrees.filter((w) => w !== main)];
+  const graphs = new Map<WorktreeInfo, GraphData>();
+  for (const wt of ordered) {
+    if (wt.isBare) continue;
+    graphs.set(wt, buildGraphData(wt.path));
+  }
+
+  // 與 scanOpenSpecAggregated 共用同一套 active-change 勝出邏輯（分歧選舉），避免 list 與 graph
+  // 兩處對「哪個 worktree 擁有這個 slug」給出不同答案
+  const activeEntries = [...graphs].map(([wt, g]) => ({
+    wt,
+    slugs: g.nodes
+      .filter((n) => n.type === "change" && n.status !== "archived")
+      .map((n) => n.id.slice("change:".length)),
   }));
   const activeWinners = await pickActiveWinners(activeEntries, main);
 
   // spec 節點：只取主 worktree
-  const nodes: GraphNode[] = buildGraphData(main.path).nodes
+  const nodes: GraphNode[] = (graphs.get(main)?.nodes ?? [])
     .filter((n) => n.type === "spec")
     .map((n) => ({ ...n }));
   const edges: GraphEdge[] = [];
   const seenArchivedSlugs = new Set<string>();
   const historyCounts = new Map<string, number>();
 
-  // 主 worktree 先處理，確保 archived 去重以主 worktree 為準
-  const ordered = [main, ...worktrees.filter((w) => w !== main)];
   for (const wt of ordered) {
-    if (wt.isBare) continue;
-    const g = buildGraphData(wt.path);
+    const g = graphs.get(wt);
+    if (!g) continue;
     const source = toWorktreeSource(wt);
     const idMap = new Map<string, string>();
     for (const node of g.nodes) {

@@ -305,3 +305,23 @@ test("buildGraphDataAggregated: deduplicates active change nodes shared with mai
   assert.ok(specNode);
   assert.equal(specNode.historyCount, 1);
 });
+
+test("buildGraphDataAggregated: an inherited-but-untouched fork does not own the change node", async () => {
+  // main 有 add-foo（含 delta spec）；wtB 分岔後繼承但從未編輯 → 節點歸 main，非 wtB；
+  // 且與 list 路徑選出相同的勝出者（both via pickActiveWinners），historyCount 去重為 1。
+  const repo = initRepo("spek-agg-graph-inherit-");
+  writeFile(path.join(repo, "openspec", "specs", "alpha", "spec.md"), "## Requirements\n");
+  addActiveChange(repo, "add-foo", "alpha");
+  commitAll(repo, "init");
+  const wtB = repo + "-b";
+  git(repo, "worktree", "add", "-q", "-b", "wb", wtB);
+
+  const g = await buildGraphDataAggregated(repo);
+  const changeNodes = g.nodes.filter((n) => n.type === "change");
+  assert.equal(changeNodes.length, 1);
+  assert.equal(changeNodes[0].source?.isMain, true);
+  const changeEdges = g.edges.filter((e) => e.source === changeNodes[0].id);
+  assert.equal(changeEdges.length, 1);
+  const specNode = g.nodes.find((n) => n.id === "spec:alpha");
+  assert.equal(specNode?.historyCount, 1);
+});
