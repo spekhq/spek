@@ -142,29 +142,16 @@ The system SHALL display a legend overlay in a corner of the graph container, sh
 - **THEN** a legend is visible showing node type indicators with labels
 
 ### Requirement: Aggregated change nodes from worktrees
-When the graph is built from aggregated worktree data, change nodes SHALL include one node per active change slug (deduplicated using the same worktree-over-main priority and most-recently-modified-mtime tiebreak as the aggregated active changes list) plus the slug-deduplicated archived changes. Change node ids SHALL be namespaced by the winning worktree (`change:<worktreeKey>:<slug>`). Spec nodes SHALL come only from the main worktree.
+When the graph is built from aggregated worktree data, change nodes SHALL include every worktree's active changes without deduplication and the slug-deduplicated archived changes. Change node ids SHALL be namespaced by worktree (`change:<worktreeKey>:<slug>`) so that same-slug changes from different worktrees do not collide. Spec nodes SHALL come only from the main worktree.
 
-#### Scenario: Same-slug active changes deduplicate to one node
-
-- **WHEN** the main worktree and worktree A both have an active change with slug `add-foo`
-- **THEN** the graph contains exactly one change node for `add-foo`
-- **AND** its id is namespaced by worktree A's key, not main's
-
-#### Scenario: Distinct active changes stay distinct
-
-- **WHEN** worktree A has active change `add-foo` and worktree B has active change `add-bar`
-- **THEN** the graph contains two distinct change nodes, one per slug
+#### Scenario: Same-slug change nodes do not collide
+- **WHEN** two worktrees each have an active change with slug `add-foo`
+- **THEN** the graph contains two distinct change nodes with different ids
 - **AND** each connects to the spec nodes its own delta specs reference
 
 #### Scenario: Spec nodes from main worktree
 - **WHEN** the graph is built from aggregated worktree data
 - **THEN** spec nodes are taken only from the main worktree
-
-#### Scenario: Deduplication removes duplicate edges from spec fan-in
-
-- **WHEN** an active change `add-foo` with a delta spec exists in both main and worktree A
-- **THEN** the graph contains exactly one `change:...:add-foo` → spec edge
-- **AND** the spec node's `historyCount` counts that edge once, not once per worktree
 
 ### Requirement: Worktree source on change nodes
 When the graph shows aggregated data from more than one worktree, each change node SHALL convey its source worktree, for example through its label or a tooltip. When the graph shows a single worktree, no source information SHALL be added.
