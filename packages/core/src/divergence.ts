@@ -1,4 +1,5 @@
 import { execFile } from "node:child_process";
+import type { WorktreeInfo } from "./types.js";
 
 /**
  * 從 `git diff --name-only` 或 `git status --porcelain` 的一行輸出中取出 active change 的 slug。
@@ -53,3 +54,10 @@ export async function divergedSlugs(
   }
   return slugs;
 }
+
+/** 供 `pickActiveWinners` 注入的分歧判定；預設走真實 git，測試可替換為確定性的假物。 */
+export type DivergenceProvider = (wt: WorktreeInfo, mainHead: string | null) => Promise<Set<string>>;
+
+/** 以真實 git 指令判定分歧的預設 provider。 */
+export const cliDivergence: DivergenceProvider = (wt, mainHead) =>
+  divergedSlugs(wt.path, wt.head, mainHead);
