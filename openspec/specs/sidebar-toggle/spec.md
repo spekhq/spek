@@ -4,7 +4,7 @@
 
 ## Requirements
 ### Requirement: Sidebar collapse toggle button
-The system SHALL display a toggle button at the bottom of the sidebar (above the Resync button) that collapses or expands the sidebar. The button SHALL display a left-pointing chevron (`«`) when the sidebar is expanded and a right-pointing chevron (`»`) when collapsed.
+The system SHALL display a toggle button at the bottom of the sidebar (above the Refresh button) that collapses or expands the sidebar. The button SHALL display a left-pointing chevron (`«`) when the sidebar is expanded and a right-pointing chevron (`»`) when collapsed.
 
 #### Scenario: Toggle sidebar from expanded to collapsed
 - **WHEN** the sidebar is expanded and the user clicks the toggle button
@@ -29,12 +29,13 @@ The system SHALL display navigation items as icon-only buttons when the sidebar 
 - **WHEN** the user is on the Specs page and sidebar is collapsed
 - **THEN** the Specs icon is highlighted with the accent color
 
-### Requirement: Collapsed sidebar Resync button
-The system SHALL display the Resync button as icon-only in collapsed state, without the text label, and with a `title` attribute for tooltip.
+### Requirement: Collapsed sidebar Refresh button
+The system SHALL display the Refresh button as icon-only in collapsed state, without the text label. Because the icon alone is the button's entire affordance in this state, it SHALL carry both a `title` attribute for the tooltip and an accessible name identifying it as Refresh.
 
-#### Scenario: Resync button in collapsed state
+#### Scenario: Refresh button in collapsed state
 - **WHEN** the sidebar is collapsed
-- **THEN** the Resync button displays only the sync icon with a tooltip
+- **THEN** the Refresh button displays only its icon, with a tooltip reading "Refresh"
+- **AND** the button exposes an accessible name of "Refresh" to assistive technology
 
 ### Requirement: Sidebar collapse state persistence
 The system SHALL persist the sidebar collapse state to localStorage (key: `spek-sidebar-collapsed`) in the web version. On page load, the sidebar SHALL restore the previously saved state. In VS Code webview, the state SHALL default to expanded and not persist across sessions.

@@ -1,7 +1,13 @@
 import { useState, useEffect, useCallback, useRef } from "react";
 import { useRepo } from "../contexts/RepoContext";
 import { useApiAdapter } from "../api/ApiAdapterContext";
-import { useRefreshKey } from "../contexts/RefreshContext";
+import {
+  useRefreshKey,
+  useRefresh,
+  useRefreshing,
+  useBeginFetch,
+} from "../contexts/RefreshContext";
+import { runManualRefresh } from "../contexts/refreshTracker";
 import { getAggregatePref } from "../utils/aggregatePref";
 import type {
   OverviewData,
@@ -50,6 +56,7 @@ function useAsyncData<T>(
   deps: unknown[],
 ): FetchState<T> {
   const refreshKey = useRefreshKey();
+  const beginFetch = useBeginFetch();
   const [state, setState] = useState<FetchState<T>>({
     data: null,
     loading: !!fetcher,
@@ -76,6 +83,9 @@ function useAsyncData<T>(
         setState({ data: null, loading: true, error: null });
       }
 
+      // 向 RefreshContext 回報在途狀態，手動刷新的忙碌狀態才能撐到資料真正抵達
+      const endFetch = beginFetch();
+
       fetcher()
         .then((data) => {
           if (!cancelled) setState({ data, loading: false, error: null });
@@ -87,7 +97,8 @@ function useAsyncData<T>(
               loading: false,
               error: refreshTriggered && prev.data ? null : err.message,
             }));
-        });
+        })
+        .finally(endFetch);
     };
 
     // refreshKey 觸發時加 debounce 300ms
@@ -167,24 +178,38 @@ export function useChange(slug: string, wt?: string): FetchState<ChangeDetail> {
   );
 }
 
-// --- Resync hook ---
+// --- Manual refresh hook ---
 
-export function useResync(): { resync: () => Promise<void>; loading: boolean } {
+/**
+ * 手動 Refresh：讓伺服端該失效的失效，然後重新取數。
+ *
+ * 核心不變式：**快取失效失敗不得阻擋重新取數**。resync 是 best-effort —— 宿主可能根本沒有這個
+ * 端點、或沒有任何快取需要失效。因此它的錯誤在此吞掉（不得逸出成 unhandled rejection），
+ * `refresh(true)` 一律在 finally 執行。這個保證放在 hook 裡而非呼叫端，否則下一個呼叫者就會漏掉。
+ *
+ * `loading` 涵蓋整段操作：resync 的往返，加上 refreshKey 觸發的重取直到資料抵達（refreshing）。
+ * 只涵蓋 resync 那個 POST 的話，spinner 會在資料落地前就停 —— 一顆對「我做完了」說謊的按鈕。
+ */
+export function useRefreshData(): { refreshData: () => Promise<void>; loading: boolean } {
   const { repoPath } = useRepo();
   const adapter = useApiAdapter();
-  const [loading, setLoading] = useState(false);
+  const refresh = useRefresh();
+  const refreshing = useRefreshing();
+  const [resyncing, setResyncing] = useState(false);
+  const loading = resyncing || refreshing;
 
-  const resync = useCallback(async () => {
-    if (!repoPath || loading) return;
-    setLoading(true);
+  const refreshData = useCallback(async () => {
+    if (!repoPath || resyncing) return;
+    setResyncing(true);
     try {
-      await adapter.resync();
+      // 不變式（resync 失敗不得阻擋重新取數）住在 runManualRefresh 裡，見 refreshTracker.ts
+      await runManualRefresh(() => adapter.resync(), refresh);
     } finally {
-      setLoading(false);
+      setResyncing(false);
     }
-  }, [repoPath, loading, adapter]);
+  }, [repoPath, resyncing, adapter, refresh]);
 
-  return { resync, loading };
+  return { refreshData, loading };
 }
 
 // --- Graph data hook ---

@@ -81,7 +81,9 @@ class SpekHttpRequestHandler : HttpRequestHandler() {
         }
     }
 
-    private fun routeRequest(
+    // internal 而非 private：路由表本身要能單測。缺 projectPath 的 400 由 process() 的共用檢查負責，
+    // 那段需要 Netty channel，不在此層。
+    internal fun routeRequest(
         apiPath: String,
         projectPath: String,
         params: Map<String, List<String>>,
@@ -134,6 +136,11 @@ class SpekHttpRequestHandler : HttpRequestHandler() {
             return handleSearch(projectPath, query)
         }
 
+        // openspec/resync
+        if (apiPath == "openspec/resync") {
+            return handleResync()
+        }
+
         // fs/detect
         if (apiPath == "fs/detect") {
             val path = params["path"]?.firstOrNull() ?: projectPath
@@ -141,6 +148,22 @@ class SpekHttpRequestHandler : HttpRequestHandler() {
         }
 
         return null
+    }
+
+    /**
+     * 讓本宿主實際持有、且可能供出陳舊視圖的伺服端狀態失效。
+     *
+     * 少了這條路由，前端（三個宿主共用）的 Refresh 每按一次就在 IntelliJ 收到一個 404 —— 一個假的
+     * 錯誤訊號。缺 projectPath 時的 400 由上游 openspec/ 前綴的共用檢查負責，此處毋須重複。
+     *
+     * 這裡清的是 schema-order 快取，**不是** git timestamp 快取：Kotlin scanner 根本沒有後者
+     * （ChangeInfo.timestamp 恆為 null），不該為了跟 Web / VS Code 形式對齊而假造一份不存在的工作。
+     * 而清 schema-order 正是 plugin 的 file watcher 在刷新 webview 前已經會做的事
+     * （見 SpekBrowserPanel 的 SchemaOrder.clearCache()）：手動 Refresh 沒有理由失效得比自動刷新少。
+     */
+    private fun handleResync(): String {
+        SchemaOrder.clearCache()
+        return """{"ok":true}"""
     }
 
     private fun handleOverview(projectPath: String): String {

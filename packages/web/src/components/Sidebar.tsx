@@ -1,6 +1,7 @@
 import { NavLink, useLocation } from "react-router-dom";
 import { useEffect } from "react";
-import { useResync } from "../hooks/useOpenSpec";
+import { useRefreshData } from "../hooks/useOpenSpec";
+import { useLiveStatus } from "../contexts/RefreshContext";
 
 const links = [
   {
@@ -59,14 +60,16 @@ interface SidebarProps {
   onToggle: () => void;
 }
 
-function ResyncButton({ collapsed }: { collapsed: boolean }) {
-  const { resync, loading } = useResync();
+function RefreshButton({ collapsed }: { collapsed: boolean }) {
+  const { refreshData, loading } = useRefreshData();
   return (
     <button
-      onClick={resync}
+      onClick={refreshData}
       disabled={loading}
       className={`w-full flex items-center gap-2 rounded text-sm text-text-secondary hover:text-text-primary hover:bg-bg-tertiary transition-colors disabled:opacity-50 cursor-pointer disabled:cursor-not-allowed ${collapsed ? "justify-center px-2 py-2" : "px-3 py-2"}`}
-      title="Resync git timestamps"
+      title="Refresh"
+      // 收合時圖示是這顆按鈕的全部 affordance，無障礙名稱不能只靠被隱藏的文字
+      aria-label="Refresh"
     >
       <svg
         className={`w-4 h-4 shrink-0 ${loading ? "animate-spin" : ""}`}
@@ -81,8 +84,35 @@ function ResyncButton({ collapsed }: { collapsed: boolean }) {
           d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"
         />
       </svg>
-      {!collapsed && (loading ? "Syncing..." : "Resync")}
+      {!collapsed && (loading ? "Refreshing..." : "Refresh")}
     </button>
+  );
+}
+
+/**
+ * 只在 live-update 管道確實斷掉時出聲。常駐的「正常」指示燈是純噪音，
+ * 而且會鈍化真正出事時的訊號，所以 live / unsupported 一律不顯示。
+ */
+function LiveStatusNotice({ collapsed }: { collapsed: boolean }) {
+  const liveStatus = useLiveStatus();
+  if (liveStatus !== "offline") return null;
+
+  return (
+    <div
+      className={`flex items-center gap-2 rounded text-xs text-amber-400/90 ${collapsed ? "justify-center px-2 py-2" : "px-3 py-2"}`}
+      title="Live updates offline — press Refresh to see the latest content"
+      role="status"
+    >
+      <svg className="w-4 h-4 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path
+          strokeLinecap="round"
+          strokeLinejoin="round"
+          strokeWidth={2}
+          d="M12 9v3.75m0 3.75h.008M10.34 3.94l-8.02 13.9A1.5 1.5 0 003.62 20.1h16.76a1.5 1.5 0 001.3-2.26l-8.02-13.9a1.5 1.5 0 00-2.6 0z"
+        />
+      </svg>
+      {!collapsed && <span className="leading-snug">Live updates offline</span>}
+    </div>
   );
 }
 
@@ -142,8 +172,9 @@ export function Sidebar({ open, isMobile, collapsed, onClose, onToggle }: Sideba
               </NavLink>
             ))}
           </nav>
-          <div className="p-4 border-t border-border">
-            <ResyncButton collapsed={false} />
+          <div className="p-4 border-t border-border space-y-1">
+            <RefreshButton collapsed={false} />
+            <LiveStatusNotice collapsed={false} />
           </div>
         </aside>
       </>
@@ -175,7 +206,8 @@ export function Sidebar({ open, isMobile, collapsed, onClose, onToggle }: Sideba
       </nav>
       <div className={`border-t border-border space-y-1 ${collapsed ? "p-2" : "p-4"}`}>
         <ToggleButton collapsed={collapsed} onToggle={onToggle} />
-        <ResyncButton collapsed={collapsed} />
+        <RefreshButton collapsed={collapsed} />
+        <LiveStatusNotice collapsed={collapsed} />
       </div>
     </aside>
   );

@@ -195,7 +195,10 @@ GET /api/openspec/search?dir=...&q=...   # 全文搜尋
 - **深色主題**：背景 #0a0c0f 系列，accent 琥珀色 #f59e0b，文字 #e2e8f0
 - **tasks.md 解析**：`- [x]`/`- [ ]` checkbox + `##` section 分組，回傳 `{ total, completed, sections }`
 - **Webview CSP**：IIFE 格式 + nonce script + unsafe-inline styles（Tailwind 需要）
-- **acquireVsCodeApi**：只呼叫一次存到 `window.__vscodeApi`，MessageAdapter 從全域取得
+- **宿主標記（全域旗標）**：VS Code 設 `window.__vscodeApi`（`acquireVsCodeApi` 只呼叫一次存到全域，MessageAdapter 從全域取得）、IntelliJ 設 `window.__spekIntellij`、Demo 設 `window.__DEMO_DATA__`。`useFileWatcher` 靠這三個旗標選擇刷新管道，**每個非 Web 宿主都必須有自己的旗標** —— IntelliJ 曾因為沒有旗標而被誤判為 Web，對 `/api/openspec/watch` 開 `EventSource`；IntelliJ 內建 server 只服務 `/api/spek/` 前綴，該路徑必然 404，於是它永遠重連、永遠失敗
+- **刷新（`RefreshContext` + `refreshTracker.ts`）**：`refresh(manual)` 區分「使用者按下 Refresh」與「watcher 觸發的自動刷新」—— 只有前者 arm 忙碌狀態（自動刷新時憑空冒出 spinner 是噪音）。忙碌狀態必須撐到**重取的資料真正抵達**，而非 resync 那個 POST 回來就停：`useAsyncData` 每次 fetch 前後向 context 回報在途狀態，`refreshTracker` 以世代（generation）區分「這次刷新引發的 fetch」與「刷新前就已在途的 fetch」，並以 500ms 逾時保護避免沒有取數 hook 掛載時卡死。狀態機是與 React 無關的純邏輯，故可單測（同 `TreeRefreshGate` / `decidePolling` 的慣例）
+- **Refresh 的核心不變式**：**快取失效（resync）失敗不得阻擋重新取數**。resync 是 best-effort —— 宿主可能沒有這個端點、或沒有任何快取需要失效。此保證寫死在 `runManualRefresh` 單一位置，不在呼叫端拼裝：IntelliJ 缺 resync 路由時的一個 404，就足以讓整顆按鈕啞掉（issue #18）。resync 的語意是「讓**本宿主實際持有**、可能供出陳舊視圖的伺服端狀態失效」，不是「執行某一組固定動作」—— Web / VS Code 清 git timestamp 快取，IntelliJ 沒有該快取（`timestamp` 恆為 `null`）故清 schema-order 快取
+- **live-update 斷線只在壞掉時出聲**：`liveStatus`（`live` / `offline` / `unsupported`）由 `useFileWatcher` 回報，sidebar 僅在 `offline` 時顯示提示。不做常駐的「正常」指示燈 —— 永遠亮著的燈是純噪音，還會鈍化真正出事時的訊號。VS Code / IntelliJ 的刷新管道沒有可觀測的失敗訊號，一律回報 `live`（謊報 offline 比不報更糟）
 
 ## Conventions
 
