@@ -410,16 +410,6 @@ export function findRelatedChanges(repoDir: string, topic: string): string[] {
 }
 
 /**
- * 跨 worktree 聚合掃描。探索 repoDir 所屬 repo 的所有 worktree，
- * active changes 聯集不去重並附 source、archived changes 依 slug 去重（主 worktree 優先）、
- * specs 取主 worktree。關閉聚合、非 git、或單一 worktree 時等同 scanOpenSpec(repoDir)。
- */
-/**
- * 決定每個 active change slug 由哪個 worktree 的副本勝出：非主 worktree 一律優先於主 worktree；
- * 若同一 slug 存在於多個非主 worktree（例如尚未動工、剛從 main 分岔繼承而來），
- * 以該 change 目錄最新檔案 mtime 較新者勝出——這正是「目前正在編輯」的訊號。
- */
-/**
  * 跨 worktree 為每個 active change slug 選出勝出的副本，回傳 `slug → WorktreeInfo`。
  *
  * 勝出訊號是 **git 分歧**，非檔案 mtime：非主 worktree 只有在對該 slug 確實分歧（`HEAD` 超前
@@ -479,6 +469,11 @@ export async function pickActiveWinners(
   return winners;
 }
 
+/**
+ * 跨 worktree 聚合掃描。探索 repoDir 所屬 repo 的所有 worktree，active changes 依 slug 去重
+ * （以 git 分歧選舉勝出的副本，見 pickActiveWinners）並附 source、archived changes 依 slug 去重
+ * （主 worktree 優先）、specs 取主 worktree。關閉聚合、非 git、或單一 worktree 時等同 scanOpenSpec(repoDir)。
+ */
 export async function scanOpenSpecAggregated(
   repoDir: string,
   options: { aggregate?: boolean } = {},
@@ -547,8 +542,9 @@ export async function scanOpenSpecAggregated(
 }
 
 /**
- * 跨 worktree 聚合的關聯圖。change 節點涵蓋所有 worktree（active 不去重、archived 依 slug 去重），
- * 節點 id 命名為 `change:<worktreeKey>:<slug>` 避免碰撞；spec 節點只取主 worktree。
+ * 跨 worktree 聚合的關聯圖。change 節點涵蓋所有 worktree（active 以分歧選舉去重、archived 依 slug
+ * 去重，與 list 路徑同一套 pickActiveWinners），節點 id 命名為 `change:<worktreeKey>:<slug>` 避免碰撞；
+ * spec 節點只取主 worktree。
  * 關閉聚合、非 git、或單一 worktree 時等同 buildGraphData(repoDir)。
  */
 export async function buildGraphDataAggregated(

@@ -3,6 +3,20 @@
 `@spekjs/core` has its own version line, independent of the spek product releases tracked in the
 repository root `CHANGELOG.md`.
 
+## 1.1.2
+
+- `scanOpenSpecAggregated` and `buildGraphDataAggregated` now **deduplicate active changes across
+  worktrees by slug** instead of returning one entry (or graph node) per worktree that inherited a
+  copy. The surviving copy is elected by **git divergence**: a non-main worktree wins a slug only
+  when it has advanced that change beyond the main worktree's `HEAD` — committed (`git diff` between
+  the two worktrees' `HEAD`s under `openspec/changes/`) or uncommitted (`git status`). When no
+  worktree diverges, the slug stays on the main worktree; ties among multiple diverging copies break
+  by most-recently-modified file (mtime). A worktree that merely inherited an untouched copy no
+  longer shadows the copy being edited, so a change's `taskStats` no longer roll back to the
+  fork-point snapshot. **No signature changes** — only which entries survive deduplication differs.
+- `buildGraphDataAggregated` no longer runs a `scanOpenSpec` per worktree solely to obtain slugs; it
+  derives them from the per-worktree graph it already builds, one fewer subprocess pass per worktree.
+
 ## 1.1.0
 
 > [!WARNING]
