@@ -202,12 +202,14 @@ test("scanOpenSpecAggregated: active change absent from every worktree stays on 
   addActiveChange(wtA, "other");
   commitAll(wtA, "a");
   addActiveChange(repo, "main-only");
+  writeTasks(repo, "main-only", 2, 3);
   commitAll(repo, "main change after fork");
 
   const r = await scanOpenSpecAggregated(repo);
   const mainOnly = r.activeChanges.filter((c) => c.slug === "main-only");
   assert.equal(mainOnly.length, 1);
   assert.equal(mainOnly[0].source?.isMain, true);
+  assert.deepEqual(mainOnly[0].taskStats, { total: 3, completed: 2 });
 });
 
 test("scanOpenSpecAggregated: carries the main worktree's defaultSchema", async () => {
@@ -229,17 +231,17 @@ test("scanOpenSpecAggregated: each change carries its own worktree's defaultSche
   // 主 worktree 預設 spec-driven；worktree B 的 config.yaml 分歧為 agent-driven。
   // B 的 change 未宣告自己的 schema → 繼承 B 的預設；其 defaultSchema 必須是 B 的（agent-driven），
   // 而非主 worktree 的（spec-driven），否則 list badge 會對錯基準而誤顯示。
-  // wtB 先分岔，main-change 之後才加到主 repo，兩個 change 才不會因 dedup 而合併成一筆。
+  // 自然建立順序：main-change 先於 fork 提交，wtB 繼承但從未編輯 → 分歧選舉讓 main-change 留在 main、
+  // b-change 歸 wtB，兩者不因 dedup 合併（不需舊 mtime 規則下「先分岔」的 fixture 繞法）。
   const repo = initRepo("spek-agg-divergent-");
   writeFile(path.join(repo, "openspec", "config.yaml"), "schema: spec-driven\n");
-  commitAll(repo, "init");
+  addActiveChange(repo, "main-change");
+  commitAll(repo, "init with main-change");
   const wtB = repo + "-b";
   git(repo, "worktree", "add", "-q", "-b", "wb", wtB);
   writeFile(path.join(wtB, "openspec", "config.yaml"), "schema: agent-driven\n");
   addActiveChange(wtB, "b-change");
   commitAll(wtB, "b diverge");
-  addActiveChange(repo, "main-change");
-  commitAll(repo, "main change after fork");
 
   const r = await scanOpenSpecAggregated(repo);
   const bChange = r.activeChanges.find((c) => c.slug === "b-change");
