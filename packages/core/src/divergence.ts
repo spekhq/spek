@@ -27,8 +27,8 @@ function runGit(args: string[], cwd: string): Promise<string | null> {
 /**
  * 回傳某個 worktree 相對於 main 的 `HEAD` 而言、在 `openspec/changes/` 下**確實分歧**的 active
  * change slug 集合。分歧來源有二，取聯集：
- *  - 已提交：`git diff --name-only <mainHead> <wtHead> -- openspec/changes/`（`wtHead === mainHead`
- *    時整段略過，因為必然無差異）。
+ *  - 已提交：`git diff --name-only <mainHead>...<wtHead> -- openspec/changes/`（三點 diff，對照
+ *    merge-base，只計 worktree 自 fork 點以來自己的推進；`wtHead === mainHead` 時整段略過）。
  *  - 未提交：`git status --porcelain -- openspec/changes/`。
  * 比較對象是 main 的 `HEAD`（而非其工作區），故一個只是繼承目錄、未曾編輯的副本不會被判為分歧。
  * 任一指令失敗時該來源視為無分歧（該 worktree 傾向被判為未分歧 → 由 main 勝出）。
@@ -40,7 +40,9 @@ export async function divergedSlugs(
 ): Promise<Set<string>> {
   const jobs: Promise<string | null>[] = [];
   if (wtHead && mainHead && wtHead !== mainHead) {
-    jobs.push(runGit(["diff", "--name-only", mainHead, wtHead, "--", "openspec/changes/"], wtPath));
+    // 三點 diff（對照 merge-base，非兩端）：只計 worktree 自 fork 點以來「自己的」推進，不含 main
+    // 之後對某 slug 的推進——否則一個只是繼承、未曾編輯的副本會因 main 前進而被誤判為分歧。
+    jobs.push(runGit(["diff", "--name-only", `${mainHead}...${wtHead}`, "--", "openspec/changes/"], wtPath));
   }
   jobs.push(runGit(["status", "--porcelain", "--", "openspec/changes/"], wtPath));
 

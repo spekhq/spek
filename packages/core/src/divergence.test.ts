@@ -55,24 +55,32 @@ test("divergedSlugs: committed progress under a change dir diverges that slug", 
   assert.ok(diverged.has("foo"), "committed advance is detected as divergence");
 });
 
-test("divergedSlugs: uncommitted edit diverges; inherited-but-untouched does not", async () => {
+test("divergedSlugs: uncommitted edit diverges; a slug main later advanced does not", async () => {
   const repo = initRepo("spek-div-uncommitted-");
   change(repo, "foo");
   commitAll(repo, "init");
-  const mainHead = head(repo);
 
   // wtEdit inherits foo, then edits it WITHOUT committing → uncommitted divergence.
   const wtEdit = repo + "-edit";
   git(repo, "worktree", "add", "-q", "-b", "wedit", wtEdit);
   fs.writeFileSync(path.join(wtEdit, "openspec", "changes", "foo", "proposal.md"), "## Why\ndirty\n");
-  const edited = await divergedSlugs(wtEdit, head(wtEdit), mainHead);
-  assert.ok(edited.has("foo"), "uncommitted edit under the change dir diverges the slug");
+  assert.ok(
+    (await divergedSlugs(wtEdit, head(wtEdit), head(repo))).has("foo"),
+    "uncommitted edit under the change dir diverges the slug",
+  );
 
-  // wtIdle inherits foo and never touches it → no divergence (heads equal, clean status).
+  // wtIdle inherits foo and never touches it; then MAIN commits its own advance to foo, so
+  // mainHead !== wtIdle's head and the committed-diff branch actually runs. The worktree still must
+  // NOT be diverged — it inherited, it did not advance. A two-dot diff wrongly flags this because
+  // the endpoints differ on foo; a three-dot diff against the merge-base counts only the worktree's
+  // own advances (none), which is the point of this guard.
   const wtIdle = repo + "-idle";
   git(repo, "worktree", "add", "-q", "-b", "widle", wtIdle);
-  const idle = await divergedSlugs(wtIdle, head(wtIdle), mainHead);
-  assert.equal(idle.size, 0, "an untouched inherited copy does not diverge");
+  const wtIdleHead = head(wtIdle);
+  fs.writeFileSync(path.join(repo, "openspec", "changes", "foo", "proposal.md"), "## Why\nmain advances\n");
+  commitAll(repo, "main advances foo after the fork");
+  const idle = await divergedSlugs(wtIdle, wtIdleHead, head(repo));
+  assert.equal(idle.size, 0, "a slug main advanced (but the worktree never touched) does not diverge");
 });
 
 test("divergedSlugs: a failing git command yields no divergence (resolve-empty-on-error)", async () => {

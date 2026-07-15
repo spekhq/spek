@@ -174,6 +174,25 @@ test("scanOpenSpecAggregated: main's uncommitted progress wins over an idle fork
   assert.deepEqual(changeX[0].taskStats, { total: 4, completed: 4 });
 });
 
+test("scanOpenSpecAggregated: main's committed advance wins over an idle fork that inherited the baseline", async () => {
+  // main 有 change-x（基準 0/4）；建立 wb 繼承 0/4；之後 main 把 change-x 推進到 4/4 並「提交」。
+  // wb 只是繼承、從未編輯 → 不因 main 自己的提交而分歧（三點 diff 對照 merge-base）→ main 以 4/4 勝出。
+  const repo = initRepo("spek-agg-main-committed-");
+  addActiveChange(repo, "change-x");
+  writeTasks(repo, "change-x", 0, 4);
+  commitAll(repo, "init change-x at 0/4");
+  const wb = repo + "-b";
+  git(repo, "worktree", "add", "-q", "-b", "wb", wb); // inherits 0/4
+  writeTasks(repo, "change-x", 4, 4);
+  commitAll(repo, "main advances change-x to 4/4"); // COMMITTED, mainHead now != wb's head
+
+  const r = await scanOpenSpecAggregated(repo);
+  const changeX = r.activeChanges.filter((c) => c.slug === "change-x");
+  assert.equal(changeX.length, 1);
+  assert.equal(changeX[0].source?.isMain, true);
+  assert.deepEqual(changeX[0].taskStats, { total: 4, completed: 4 });
+});
+
 test("pickActiveWinners: a worktree whose divergence check fails does not shadow main", async () => {
   // 注入一個永遠回空集合的 divergence provider，模擬對該 worktree 的 git 指令失敗。
   // fork 持有 foo 但被判為未分歧 → main 保留 foo（不因 git 失敗而錯顯 fork 的繼承副本）。

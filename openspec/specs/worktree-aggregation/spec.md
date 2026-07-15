@@ -71,6 +71,12 @@ When aggregation runs over multiple worktrees, the aggregated active changes SHA
 - **THEN** the aggregated `add-foo` entry's `source` points to main
 - **AND** its `taskStats` report 4 of 4
 
+#### Scenario: Main's committed advance wins over an idle fork
+
+- **WHEN** the main worktree commits progress advancing `add-foo` to 4 of 4 tasks after a worktree B was created that inherits `add-foo` without touching it
+- **THEN** the aggregated `add-foo` entry's `source` points to main, not the idle fork whose copy still reflects the fork-point snapshot
+- **AND** its `taskStats` report 4 of 4
+
 #### Scenario: Untouched change stays on main
 
 - **WHEN** an active change with slug `add-foo` exists only on the main worktree, with no worktree having forked or edited it

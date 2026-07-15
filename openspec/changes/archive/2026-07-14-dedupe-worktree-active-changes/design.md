@@ -24,7 +24,7 @@ The tempting signal — filesystem mtime — does not work. `git worktree add` w
 
 For a given slug, candidates are `main` plus any non-main worktree that **provably diverges** on `openspec/changes/<slug>/`:
 
-- **Committed divergence:** the slug appears in `git diff --name-only <main.head> <wt.head> -- openspec/changes/`. `WorktreeInfo.head` is already supplied by `git worktree list --porcelain`, so no ref resolution is needed; when `wt.head === main.head` the diff is skipped entirely.
+- **Committed divergence:** the slug appears in `git diff --name-only <main.head>...<wt.head> -- openspec/changes/`. The **three-dot** form compares against the merge-base, so it counts only the worktree's *own* advances since the fork — a two-dot (endpoint) diff would also fire when *main* advances a slug the worktree merely inherited, wrongly electing the idle fork's stale copy. `WorktreeInfo.head` is already supplied by `git worktree list --porcelain`, so no ref resolution is needed; when `wt.head === main.head` the diff is skipped entirely.
 - **Uncommitted divergence:** the slug appears in `git status --porcelain -- openspec/changes/` for that worktree (covers the mid-edit, not-yet-committed case).
 
 **Key:** the comparison is against **main's `HEAD` tree, not main's working tree.** When `main` itself has an uncommitted edit to a slug, an idle fork's inherited copy equals main's `HEAD` version but not main's working tree — only comparing against `HEAD` correctly recognises the fork as a pure inherited copy and leaves the slug on `main`.
