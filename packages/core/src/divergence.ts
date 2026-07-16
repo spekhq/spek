@@ -36,24 +36,33 @@ function parseSlugs(out: string | null): Set<string> {
 }
 
 /**
- * 已提交分歧：三點 diff（`git diff --name-only <mainHead>...<wtHead>`，對照 merge-base）列出 `wtHead`
- * 自 fork 點以來**自己**更動到的 slug，不含 main 之後對某 slug 的推進——否則只是繼承、未曾編輯的副本
- * 會因 main 前進而被誤判為分歧。`wtHead === mainHead` 時必然無差異，直接回空集合。指令失敗即回空。
+ * 已提交分歧：三點 diff（`git diff --name-only <baseHead>...<aheadHead>`，對照 merge-base）列出
+ * `aheadHead` 自 merge-base 以來**自己**推進到的 slug，不含 `baseHead` 那側的推進——否則只是繼承、
+ * 未曾編輯的副本會因對方前進而被誤判為分歧。`aheadHead === baseHead` 時必然無差異，直接回空集合。
+ * 指令失敗即回空。
+ *
+ * 參數刻意取方向中性的名字：同一個函式要服務兩個相反方向——worktree 對 main（ahead = worktree），
+ * 以及 main 對某個 contender 的反向（ahead = main，見 pickActiveWinners）。若以 wt/main 命名，
+ * 反向那個呼叫點會讀成完全相反的意思。
  */
 export async function committedDivergedSlugs(
-  wtPath: string,
-  wtHead: string | null,
-  mainHead: string | null,
+  repoPath: string,
+  aheadHead: string | null,
+  baseHead: string | null,
 ): Promise<Set<string>> {
-  if (!wtHead || !mainHead || wtHead === mainHead) return new Set();
+  if (!aheadHead || !baseHead || aheadHead === baseHead) return new Set();
   return parseSlugs(
-    await runGit(["diff", "--name-only", `${mainHead}...${wtHead}`, "--", "openspec/changes/"], wtPath),
+    await runGit(["diff", "--name-only", `${baseHead}...${aheadHead}`, "--", "openspec/changes/"], repoPath),
   );
 }
 
-/** 未提交分歧：`git status --porcelain` 列出工作區在 `openspec/changes/` 下未提交更動的 slug（與比較對象無關）。指令失敗即回空。 */
-export async function uncommittedDivergedSlugs(wtPath: string): Promise<Set<string>> {
-  return parseSlugs(await runGit(["status", "--porcelain", "--", "openspec/changes/"], wtPath));
+/**
+ * 未提交分歧：`git status --porcelain` 列出 `repoPath` 工作區在 `openspec/changes/` 下未提交更動的
+ * slug（與比較對象無關，故不吃 head 參數）。worktree 與 main 兩側都會呼叫，故參數名同樣取中性。
+ * 指令失敗即回空。
+ */
+export async function uncommittedDivergedSlugs(repoPath: string): Promise<Set<string>> {
+  return parseSlugs(await runGit(["status", "--porcelain", "--", "openspec/changes/"], repoPath));
 }
 
 /**
