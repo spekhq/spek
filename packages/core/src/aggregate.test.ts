@@ -4,7 +4,8 @@ import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
 import { execFileSync } from "node:child_process";
-import { scanOpenSpecAggregated, buildGraphDataAggregated } from "./scanner.js";
+import { scanOpenSpecAggregated, buildGraphDataAggregated, pickActiveWinners } from "./scanner.js";
+import type { WorktreeInfo } from "./types.js";
 
 function git(cwd: string, ...args: string[]): void {
   execFileSync("git", args, {
@@ -38,6 +39,12 @@ function addActiveChange(repoDir: string, slug: string, specTopic?: string): voi
   if (specTopic) {
     writeFile(path.join(base, "specs", specTopic, "spec.md"), "## ADDED Requirements\n");
   }
+}
+
+// 在指定目錄（worktree）為某 change 寫入 tasks.md，completed/total 決定勾選數，供 taskStats 斷言。
+function writeTasks(dir: string, slug: string, completed: number, total: number): void {
+  const lines = Array.from({ length: total }, (_, i) => `- [${i < completed ? "x" : " "}] task ${i}`);
+  writeFile(path.join(dir, "openspec", "changes", slug, "tasks.md"), `## Tasks\n${lines.join("\n")}\n`);
 }
 
 // 主 repo（branch main）含 1 spec + 1 archived change；worktree A 帶 add-a（含 delta spec）；
@@ -81,23 +88,217 @@ test("scanOpenSpecAggregated: deduplicates archived changes by slug", async () =
   assert.equal(r.archivedChanges.filter((c) => c.slug === "2026-01-01-old").length, 1);
 });
 
-test("scanOpenSpecAggregated: same active slug in two worktrees kept separately", async () => {
+test("scanOpenSpecAggregated: when two worktrees both diverge on a slug, newest mtime wins the tiebreak", async () => {
   const repo = initRepo("spek-agg-dup-");
   writeFile(path.join(repo, "openspec", "config.yaml"), "schema: spec-driven\n");
   commitAll(repo, "init");
   const wtA = repo + "-a";
   git(repo, "worktree", "add", "-q", "-b", "wa", wtA);
   addActiveChange(wtA, "shared");
+  writeTasks(wtA, "shared", 1, 2);
   commitAll(wtA, "a");
   const wtB = repo + "-b";
   git(repo, "worktree", "add", "-q", "-b", "wb", wtB);
   addActiveChange(wtB, "shared");
+  writeTasks(wtB, "shared", 2, 2);
   commitAll(wtB, "b");
+  // 兩者皆確實分歧（各自 commit 了 shared）；tiebreak 才輪到 mtime。B 的副本給予明確較新的
+  // mtime，模擬 B 才是目前正在編輯此 change 的 worktree。
+  const past = new Date("2020-01-01T00:00:00Z");
+  const future = new Date("2030-01-01T00:00:00Z");
+  for (const f of ["proposal.md", "tasks.md"]) {
+    fs.utimesSync(path.join(wtA, "openspec", "changes", "shared", f), past, past);
+    fs.utimesSync(path.join(wtB, "openspec", "changes", "shared", f), future, future);
+  }
 
   const r = await scanOpenSpecAggregated(repo);
   const shared = r.activeChanges.filter((c) => c.slug === "shared");
-  assert.equal(shared.length, 2);
-  assert.notEqual(shared[0].source?.key, shared[1].source?.key);
+  assert.equal(shared.length, 1);
+  assert.equal(shared[0].source?.branch, "wb");
+  assert.deepEqual(shared[0].taskStats, { total: 2, completed: 2 });
+});
+
+test("scanOpenSpecAggregated: a worktree that edits a change shadows main's copy of that slug", async () => {
+  const repo = initRepo("spek-agg-shadow-");
+  addActiveChange(repo, "shared");
+  writeTasks(repo, "shared", 0, 2);
+  commitAll(repo, "init");
+  const wtA = repo + "-a";
+  git(repo, "worktree", "add", "-q", "-b", "wa", wtA);
+  writeTasks(wtA, "shared", 2, 2); // wa 實際編輯（未提交分歧）
+
+  const r = await scanOpenSpecAggregated(repo);
+  const shared = r.activeChanges.filter((c) => c.slug === "shared");
+  assert.equal(shared.length, 1);
+  assert.equal(shared[0].source?.isMain, false);
+  assert.equal(shared[0].source?.branch, "wa");
+  assert.deepEqual(shared[0].taskStats, { total: 2, completed: 2 });
+});
+
+test("scanOpenSpecAggregated: an idle fork created later does not roll back the editing worktree's progress", async () => {
+  // main 有 change-a（基準 0/4）；wa 提交推進到 3/4；之後才建立 wb（繼承 0/4，從未編輯）。
+  // wb 的 checkout mtime 較新，舊的 mtime 規則會讓 wb 勝出而回捲成 0/4；分歧選舉須讓 wa 以 3/4 勝出。
+  const repo = initRepo("spek-agg-scenario1-");
+  addActiveChange(repo, "change-a");
+  writeTasks(repo, "change-a", 0, 4);
+  commitAll(repo, "init change-a at 0/4");
+  const wa = repo + "-a";
+  git(repo, "worktree", "add", "-q", "-b", "wa", wa);
+  writeTasks(wa, "change-a", 3, 4);
+  commitAll(wa, "advance change-a to 3/4");
+  const wb = repo + "-b";
+  git(repo, "worktree", "add", "-q", "-b", "wb", wb);
+
+  const r = await scanOpenSpecAggregated(repo);
+  const changeA = r.activeChanges.filter((c) => c.slug === "change-a");
+  assert.equal(changeA.length, 1);
+  assert.equal(changeA[0].source?.branch, "wa");
+  assert.deepEqual(changeA[0].taskStats, { total: 4, completed: 3 });
+});
+
+test("scanOpenSpecAggregated: main's uncommitted progress wins over an idle fork that inherited the baseline", async () => {
+  // main 有 change-x（基準 0/4）；建立 wb 繼承 0/4；之後 main 把 change-x 編輯到 4/4 但未提交。
+  // wb 繼承的副本 == main 的 HEAD、但 != main 工作區 → wb 未分歧 → main 以工作區的 4/4 勝出。
+  const repo = initRepo("spek-agg-scenario2-");
+  addActiveChange(repo, "change-x");
+  writeTasks(repo, "change-x", 0, 4);
+  commitAll(repo, "init change-x at 0/4");
+  const wb = repo + "-b";
+  git(repo, "worktree", "add", "-q", "-b", "wb", wb);
+  writeTasks(repo, "change-x", 4, 4); // main 編輯到 4/4，未提交
+
+  const r = await scanOpenSpecAggregated(repo);
+  const changeX = r.activeChanges.filter((c) => c.slug === "change-x");
+  assert.equal(changeX.length, 1);
+  assert.equal(changeX[0].source?.isMain, true);
+  assert.deepEqual(changeX[0].taskStats, { total: 4, completed: 4 });
+});
+
+test("scanOpenSpecAggregated: main's committed advance wins over an idle fork that inherited the baseline", async () => {
+  // main 有 change-x（基準 0/4）；建立 wb 繼承 0/4；之後 main 把 change-x 推進到 4/4 並「提交」。
+  // wb 只是繼承、從未編輯 → 不因 main 自己的提交而分歧（三點 diff 對照 merge-base）→ main 以 4/4 勝出。
+  const repo = initRepo("spek-agg-main-committed-");
+  addActiveChange(repo, "change-x");
+  writeTasks(repo, "change-x", 0, 4);
+  commitAll(repo, "init change-x at 0/4");
+  const wb = repo + "-b";
+  git(repo, "worktree", "add", "-q", "-b", "wb", wb); // inherits 0/4
+  writeTasks(repo, "change-x", 4, 4);
+  commitAll(repo, "main advances change-x to 4/4"); // COMMITTED, mainHead now != wb's head
+
+  const r = await scanOpenSpecAggregated(repo);
+  const changeX = r.activeChanges.filter((c) => c.slug === "change-x");
+  assert.equal(changeX.length, 1);
+  assert.equal(changeX[0].source?.isMain, true);
+  assert.deepEqual(changeX[0].taskStats, { total: 4, completed: 4 });
+});
+
+// 建立「main 與 worktree 皆自 merge-base 推進同一 slug」的競賽場景；mainNewer 決定哪一方的副本 mtime 較新。
+function bothAdvance(prefix: string, mainNewer: boolean): string {
+  const repo = initRepo(prefix);
+  addActiveChange(repo, "change-a");
+  writeTasks(repo, "change-a", 0, 4);
+  commitAll(repo, "fork point 0/4");
+  const wa = repo + "-a";
+  git(repo, "worktree", "add", "-q", "-b", "wa", wa);
+  writeTasks(wa, "change-a", 3, 4);
+  commitAll(wa, "wa advances to 3/4"); // wa diverges past merge-base
+  writeTasks(repo, "change-a", 4, 4);
+  commitAll(repo, "main advances to 4/4"); // main diverges past merge-base too
+  // 兩者皆真的推進 → mtime 是決勝訊號；此處確定性地設定較新者。
+  const past = new Date("2020-01-01T00:00:00Z");
+  const future = new Date("2030-01-01T00:00:00Z");
+  const newer = mainNewer ? repo : wa;
+  const older = mainNewer ? wa : repo;
+  for (const f of ["proposal.md", "tasks.md"]) {
+    fs.utimesSync(path.join(older, "openspec", "changes", "change-a", f), past, past);
+    fs.utimesSync(path.join(newer, "openspec", "changes", "change-a", f), future, future);
+  }
+  return repo;
+}
+
+test("scanOpenSpecAggregated: both main and a worktree advance a slug — main can win on recency", async () => {
+  // 兩邊都真的推進了 change-a；main 的副本較新 → main 勝出（B：main 不再被分歧 worktree 無條件擊敗）
+  const repo = bothAdvance("spek-agg-both-main-", true);
+  const r = await scanOpenSpecAggregated(repo);
+  const c = r.activeChanges.filter((c) => c.slug === "change-a");
+  assert.equal(c.length, 1);
+  assert.equal(c[0].source?.isMain, true);
+  assert.deepEqual(c[0].taskStats, { total: 4, completed: 4 });
+});
+
+test("scanOpenSpecAggregated: both main and a worktree advance a slug — worktree can win on recency", async () => {
+  // 對稱情形：worktree 的副本較新 → worktree 勝出
+  const repo = bothAdvance("spek-agg-both-wt-", false);
+  const r = await scanOpenSpecAggregated(repo);
+  const c = r.activeChanges.filter((c) => c.slug === "change-a");
+  assert.equal(c.length, 1);
+  assert.equal(c[0].source?.branch, "wa");
+  assert.deepEqual(c[0].taskStats, { total: 4, completed: 3 });
+});
+
+test("scanOpenSpecAggregated: main's UNCOMMITTED advance competes in a live contest", async () => {
+  // wa 提交推進 change-a（分歧，競賽成立）；main 對 change-a 有「未提交」編輯（也算推進）；main 副本較新
+  // → main 勝。此路徑走只算一次的 main git status（mainUncommitted），與「idle fork」的無競賽情形不同。
+  const repo = initRepo("spek-agg-main-uncommitted-contest-");
+  addActiveChange(repo, "change-a");
+  writeTasks(repo, "change-a", 0, 4);
+  commitAll(repo, "fork 0/4");
+  const wa = repo + "-a";
+  git(repo, "worktree", "add", "-q", "-b", "wa", wa);
+  writeTasks(wa, "change-a", 3, 4);
+  commitAll(wa, "wa advances to 3/4 (committed)"); // wa diverges (committed)
+  writeTasks(repo, "change-a", 4, 4); // main advances 4/4, UNCOMMITTED → diverges via status
+  const past = new Date("2020-01-01T00:00:00Z");
+  const future = new Date("2030-01-01T00:00:00Z");
+  for (const f of ["proposal.md", "tasks.md"]) {
+    fs.utimesSync(path.join(wa, "openspec", "changes", "change-a", f), past, past);
+    fs.utimesSync(path.join(repo, "openspec", "changes", "change-a", f), future, future);
+  }
+
+  const r = await scanOpenSpecAggregated(repo);
+  const c = r.activeChanges.filter((c) => c.slug === "change-a");
+  assert.equal(c.length, 1);
+  assert.equal(c[0].source?.isMain, true);
+  assert.deepEqual(c[0].taskStats, { total: 4, completed: 4 });
+});
+
+test("pickActiveWinners: a worktree whose divergence check fails does not shadow main", async () => {
+  // 注入一個永遠回空集合的 divergence provider，模擬對該 worktree 的 git 指令失敗。
+  // fork 持有 foo 但被判為未分歧 → main 保留 foo（不因 git 失敗而錯顯 fork 的繼承副本）。
+  const mainWt: WorktreeInfo = { path: "/repo", branch: "main", head: "aaa", isMain: true, isBare: false, key: "m" };
+  const fork: WorktreeInfo = { path: "/repo-x", branch: "wx", head: "bbb", isMain: false, isBare: false, key: "x" };
+  const failing = async () => new Set<string>();
+
+  const winners = await pickActiveWinners(
+    [
+      { wt: mainWt, slugs: ["foo"] },
+      { wt: fork, slugs: ["foo"] },
+    ],
+    mainWt,
+    failing,
+  );
+  assert.equal(winners.get("foo"), mainWt);
+});
+
+test("scanOpenSpecAggregated: active change absent from every worktree stays on main", async () => {
+  // wtA 先分岔，之後才在主 repo 新增 main-only → wtA 的樹裡根本沒有這個 change 目錄
+  const repo = initRepo("spek-agg-main-only-");
+  writeFile(path.join(repo, "openspec", "specs", "alpha", "spec.md"), "## Requirements\n");
+  commitAll(repo, "init");
+  const wtA = repo + "-a";
+  git(repo, "worktree", "add", "-q", "-b", "wa", wtA);
+  addActiveChange(wtA, "other");
+  commitAll(wtA, "a");
+  addActiveChange(repo, "main-only");
+  writeTasks(repo, "main-only", 2, 3);
+  commitAll(repo, "main change after fork");
+
+  const r = await scanOpenSpecAggregated(repo);
+  const mainOnly = r.activeChanges.filter((c) => c.slug === "main-only");
+  assert.equal(mainOnly.length, 1);
+  assert.equal(mainOnly[0].source?.isMain, true);
+  assert.deepEqual(mainOnly[0].taskStats, { total: 3, completed: 2 });
 });
 
 test("scanOpenSpecAggregated: carries the main worktree's defaultSchema", async () => {
@@ -119,10 +320,12 @@ test("scanOpenSpecAggregated: each change carries its own worktree's defaultSche
   // 主 worktree 預設 spec-driven；worktree B 的 config.yaml 分歧為 agent-driven。
   // B 的 change 未宣告自己的 schema → 繼承 B 的預設；其 defaultSchema 必須是 B 的（agent-driven），
   // 而非主 worktree 的（spec-driven），否則 list badge 會對錯基準而誤顯示。
+  // 自然建立順序：main-change 先於 fork 提交，wtB 繼承但從未編輯 → 分歧選舉讓 main-change 留在 main、
+  // b-change 歸 wtB，兩者不因 dedup 合併（不需舊 mtime 規則下「先分岔」的 fixture 繞法）。
   const repo = initRepo("spek-agg-divergent-");
   writeFile(path.join(repo, "openspec", "config.yaml"), "schema: spec-driven\n");
   addActiveChange(repo, "main-change");
-  commitAll(repo, "init");
+  commitAll(repo, "init with main-change");
   const wtB = repo + "-b";
   git(repo, "worktree", "add", "-q", "-b", "wb", wtB);
   writeFile(path.join(wtB, "openspec", "config.yaml"), "schema: agent-driven\n");
@@ -170,4 +373,85 @@ test("buildGraphDataAggregated: namespaces change node ids by worktree", async (
   assert.match(changeNodes[0].id, /^change:[0-9a-f]{8}:add-a$/);
   assert.ok(changeNodes[0].source);
   assert.ok(g.nodes.some((n) => n.id === "spec:alpha"));
+});
+
+test("buildGraphDataAggregated: deduplicates active change nodes shared with main", async () => {
+  // add-foo 存在於主 repo（先 commit）與 wtA（分岔後繼承並實際編輯 → 分歧）→ 合併成一個節點，來源為 wtA
+  const repo = initRepo("spek-agg-graph-dedup-");
+  writeFile(path.join(repo, "openspec", "specs", "alpha", "spec.md"), "## Requirements\n");
+  addActiveChange(repo, "add-foo", "alpha");
+  commitAll(repo, "init");
+  const wtA = repo + "-a";
+  git(repo, "worktree", "add", "-q", "-b", "wa", wtA);
+  writeFile(path.join(wtA, "openspec", "changes", "add-foo", "proposal.md"), "## Why\nedited in wa\n");
+
+  const g = await buildGraphDataAggregated(repo);
+  const changeNodes = g.nodes.filter((n) => n.type === "change");
+  assert.equal(changeNodes.length, 1);
+  assert.equal(changeNodes[0].source?.isMain, false);
+
+  const changeEdges = g.edges.filter((e) => e.source === changeNodes[0].id);
+  assert.equal(changeEdges.length, 1);
+  const specNode = g.nodes.find((n) => n.id === "spec:alpha");
+  assert.ok(specNode);
+  assert.equal(specNode.historyCount, 1);
+});
+
+test("buildGraphDataAggregated: an inherited-but-untouched fork does not own the change node", async () => {
+  // main 有 add-foo（含 delta spec）；wtB 分岔後繼承但從未編輯 → 節點歸 main，非 wtB；
+  // 且與 list 路徑選出相同的勝出者（both via pickActiveWinners），historyCount 去重為 1。
+  const repo = initRepo("spek-agg-graph-inherit-");
+  writeFile(path.join(repo, "openspec", "specs", "alpha", "spec.md"), "## Requirements\n");
+  addActiveChange(repo, "add-foo", "alpha");
+  commitAll(repo, "init");
+  const wtB = repo + "-b";
+  git(repo, "worktree", "add", "-q", "-b", "wb", wtB);
+
+  const g = await buildGraphDataAggregated(repo);
+  const changeNodes = g.nodes.filter((n) => n.type === "change");
+  assert.equal(changeNodes.length, 1);
+  assert.equal(changeNodes[0].source?.isMain, true);
+  const changeEdges = g.edges.filter((e) => e.source === changeNodes[0].id);
+  assert.equal(changeEdges.length, 1);
+  const specNode = g.nodes.find((n) => n.id === "spec:alpha");
+  assert.equal(specNode?.historyCount, 1);
+});
+
+test("buildGraphDataAggregated: graph election matches the list even when a slug's spec exists in only one worktree", async () => {
+  // main 有 change-foo（無 delta spec）並推進到 4/4；wtA 繼承後才加了 delta spec 並推進到 3/4。
+  // list 依 mtime 選 main（較新）。graph 的選舉輸入若只取「有 spec 的節點」會漏掉 main（它沒有節點）
+  // → 誤把 change-foo 當成 wtA 擁有的節點。改以各 worktree 的 changes 目錄列出全部 active slug 後，
+  // 兩條路徑選出相同勝出者：main 勝且無 spec → 圖上不出現 change-foo 節點。
+  const repo = initRepo("spek-agg-graph-specless-");
+  addActiveChange(repo, "change-foo"); // no spec
+  writeTasks(repo, "change-foo", 0, 4);
+  commitAll(repo, "fork: change-foo (no spec) 0/4");
+  const wtA = repo + "-a";
+  git(repo, "worktree", "add", "-q", "-b", "wa", wtA);
+  writeFile(
+    path.join(wtA, "openspec", "changes", "change-foo", "specs", "alpha", "spec.md"),
+    "## ADDED Requirements\n",
+  );
+  writeTasks(wtA, "change-foo", 3, 4);
+  commitAll(wtA, "wa adds a delta spec + advances to 3/4");
+  writeTasks(repo, "change-foo", 4, 4);
+  commitAll(repo, "main advances to 4/4");
+  // main 的副本較新 → 依 B 應由 main 勝出
+  const past = new Date("2020-01-01T00:00:00Z");
+  const future = new Date("2030-01-01T00:00:00Z");
+  for (const f of ["proposal.md", "tasks.md", "specs/alpha/spec.md"]) {
+    fs.utimesSync(path.join(wtA, "openspec", "changes", "change-foo", f), past, past);
+  }
+  for (const f of ["proposal.md", "tasks.md"]) {
+    fs.utimesSync(path.join(repo, "openspec", "changes", "change-foo", f), future, future);
+  }
+
+  // list 選 main
+  const list = await scanOpenSpecAggregated(repo);
+  assert.equal(list.activeChanges.find((c) => c.slug === "change-foo")?.source?.isMain, true);
+
+  // graph 必須一致：勝出者是 main（無 spec）→ 不得出現由落敗的 wtA 擁有的 change-foo 節點
+  const g = await buildGraphDataAggregated(repo);
+  const fooNodes = g.nodes.filter((n) => n.type === "change" && n.id.endsWith(":change-foo"));
+  assert.equal(fooNodes.length, 0, "graph must not show change-foo owned by the losing worktree");
 });

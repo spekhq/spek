@@ -67,6 +67,16 @@ function specsMtime(changePath: string): number {
   return newest;
 }
 
+/** change 目錄整體最新 mtime（root *.md 與 specs/ delta 檔案取最大值），供跨 worktree 判斷「哪份最近被編輯」 */
+export function changeDirMtime(changePath: string): number {
+  let newest = specsMtime(changePath);
+  for (const file of listChangeMarkdownFiles(changePath)) {
+    const m = fs.statSync(path.join(changePath, file)).mtimeMs;
+    if (m > newest) newest = m;
+  }
+  return newest;
+}
+
 /** 配置一個尚未被占用的 artifact id：base 若已被占用，以 base-2 / base-3 … 遞增直到未占用，
  *  並將結果登記進 used。用於化解 root 檔（如 specs.md）與 specs delta tree 對 "specs" id 的碰撞。 */
 function uniqueId(base: string, used: Set<string>): string {

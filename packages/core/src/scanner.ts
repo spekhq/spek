@@ -3,7 +3,13 @@ import path from "node:path";
 import { parseTasks } from "./tasks.js";
 import { getTimestamps } from "./git-cache.js";
 import { listWorktrees, toWorktreeSource } from "./worktrees.js";
-import { discoverArtifacts, countArtifacts } from "./artifacts.js";
+import { discoverArtifacts, countArtifacts, changeDirMtime } from "./artifacts.js";
+import {
+  cliDivergence,
+  committedDivergedSlugs,
+  uncommittedDivergedSlugs,
+  type DivergenceProvider,
+} from "./divergence.js";
 import { cliSchemaOrderProvider, resolveSchemaOrder, type SchemaOrderProvider } from "./schema-order.js";
 import type {
   SpecInfo,
@@ -16,6 +22,7 @@ import type {
   GraphData,
   GraphNode,
   GraphEdge,
+  WorktreeInfo,
 } from "./types.js";
 
 function openspecDir(repoDir: string): string {
@@ -38,6 +45,15 @@ export function parseSlug(slug: string): { date: string | null; description: str
 function safeReadDir(dirPath: string): string[] {
   if (!fs.existsSync(dirPath)) return [];
   return fs.readdirSync(dirPath).filter((name) => !name.startsWith("."));
+}
+
+// 列出某 worktree 中所有 active（非 archive）change 的 slug。list 與 graph 兩條聚合路徑共用此函式，
+// 確保餵給 pickActiveWinners 的 slug 集合「由建構保證一致」，而非各自實作、靠人工比對才相同。
+function listActiveChangeSlugs(repoDir: string): string[] {
+  const changesDir = path.join(openspecDir(repoDir), "changes");
+  return safeReadDir(changesDir).filter(
+    (name) => name !== "archive" && fs.statSync(path.join(changesDir, name)).isDirectory(),
+  );
 }
 
 // 讀取 .openspec.yaml 的頂層 key:value 欄位（不支援 nested 結構，目前需求內僅有 schema/created）
@@ -163,9 +179,7 @@ export async function scanOpenSpec(repoDir: string): Promise<ScanResult> {
     return tb.localeCompare(ta);
   };
 
-  const activeChanges: ChangeInfo[] = safeReadDir(changesDir)
-    .filter((name) => name !== "archive")
-    .filter((name) => fs.statSync(path.join(changesDir, name)).isDirectory())
+  const activeChanges: ChangeInfo[] = listActiveChangeSlugs(repoDir)
     .map((slug) => {
       const info = scanChangeDir(path.join(changesDir, slug), slug, "active", defaultSchema);
       info.timestamp = timestamps.get(slug) || null;
@@ -408,9 +422,98 @@ export function findRelatedChanges(repoDir: string, topic: string): string[] {
 }
 
 /**
- * 跨 worktree 聚合掃描。探索 repoDir 所屬 repo 的所有 worktree，
- * active changes 聯集不去重並附 source、archived changes 依 slug 去重（主 worktree 優先）、
- * specs 取主 worktree。關閉聚合、非 git、或單一 worktree 時等同 scanOpenSpec(repoDir)。
+ * 跨 worktree 為每個 active change slug 選出勝出的副本，回傳 `slug → WorktreeInfo`。
+ *
+ * 勝出訊號是 **git 分歧**，非檔案 mtime。候選是「已自 merge-base 推進」的副本：非主 worktree 在其
+ * `HEAD` 對該 slug 超前與 main 的 merge-base（三點 diff）或有未提交修改時分歧。**main 以同等條件參賽**
+ * —— 當該 slug 至少有一個 worktree 分歧（競賽成立）且 main 自己也對某個分歧 worktree 的 merge-base
+ * 有推進（反向三點 diff）或有未提交修改時，main 亦為候選；沒有 main 特例、也沒有「非主一律優先」的
+ * 無條件規則。沒有任何 worktree 分歧時 slug 留在 main。只是繼承、未曾推進的副本永不入選。在所有候選
+ * 之間以 `changeDirMtime` 較新者 tiebreak。非主 worktree 的分歧走可注入的 `diverge`（利於測試）；
+ * main 的反向分歧直接用 `committedDivergedSlugs`／`uncommittedDivergedSlugs`——後者（工作區狀態）與
+ * contender 無關，只算一次，不必每個 contender 重跑 main 的 `git status`。
+ */
+export async function pickActiveWinners(
+  entries: { wt: WorktreeInfo; slugs: string[] }[],
+  mainWt: WorktreeInfo,
+  diverge: DivergenceProvider = cliDivergence,
+): Promise<Map<string, WorktreeInfo>> {
+  // 每個非主 worktree 平行算一次其分歧 slug 集合
+  const nonMain = entries.filter((e) => e.wt !== mainWt);
+  const divergedByWt = new Map<WorktreeInfo, Set<string>>();
+  await Promise.all(
+    nonMain.map(async (e) => {
+      divergedByWt.set(e.wt, await diverge(e.wt, mainWt.head));
+    }),
+  );
+
+  // main 以同等條件參賽：對每個「確實分歧」的 worktree，看 main 是否也自該 worktree 的 merge-base
+  // 有推進。「已提交」需對照各 contender 的 merge-base（反向三點）分別算；「未提交」是 main 的工作區
+  // 狀態、與 contender 無關，只算一次（避免每個 contender 重跑一次 main 的 git status）。
+  const contenders = nonMain.filter((e) => (divergedByWt.get(e.wt)?.size ?? 0) > 0);
+  let mainUncommitted = new Set<string>();
+  const mainCommittedVsWt = new Map<WorktreeInfo, Set<string>>();
+  if (contenders.length > 0) {
+    await Promise.all([
+      uncommittedDivergedSlugs(mainWt.path).then((s) => {
+        mainUncommitted = s;
+      }),
+      ...contenders.map((e) =>
+        committedDivergedSlugs(mainWt.path, mainWt.head, e.wt.head).then((s) => {
+          mainCommittedVsWt.set(e.wt, s);
+        }),
+      ),
+    ]);
+  }
+  const mainAdvancedOn = (slug: string, wt: WorktreeInfo): boolean =>
+    mainUncommitted.has(slug) || (mainCommittedVsWt.get(wt)?.has(slug) ?? false);
+
+  // slug → 持有它的 worktree 清單
+  const holders = new Map<string, WorktreeInfo[]>();
+  for (const { wt, slugs } of entries) {
+    for (const slug of slugs) {
+      const list = holders.get(slug);
+      if (list) list.push(wt);
+      else holders.set(slug, [wt]);
+    }
+  }
+
+  const pickByMtime = (slug: string, candidates: WorktreeInfo[]): WorktreeInfo => {
+    if (candidates.length === 1) return candidates[0];
+    let best = candidates[0];
+    let bestMtime = changeDirMtime(path.join(openspecDir(best.path), "changes", slug));
+    for (const wt of candidates.slice(1)) {
+      const m = changeDirMtime(path.join(openspecDir(wt.path), "changes", slug));
+      if (m > bestMtime) {
+        best = wt;
+        bestMtime = m;
+      }
+    }
+    return best;
+  };
+
+  const winners = new Map<string, WorktreeInfo>();
+  for (const [slug, wts] of holders) {
+    const diverging = wts.filter((wt) => wt !== mainWt && divergedByWt.get(wt)?.has(slug));
+    if (diverging.length === 0) {
+      // 無人分歧：留在 main；main 未持有的罕見情形（如 git 失敗）以持有者中最新 mtime 者保底。
+      winners.set(slug, pickByMtime(slug, wts.includes(mainWt) ? [mainWt] : wts));
+      continue;
+    }
+    // 競賽成立：分歧的非主副本入選；main 若也持有且對某個分歧 worktree 的 merge-base 有推進，亦入選。
+    const candidates = [...diverging];
+    if (wts.includes(mainWt) && diverging.some((wt) => mainAdvancedOn(slug, wt))) {
+      candidates.push(mainWt);
+    }
+    winners.set(slug, pickByMtime(slug, candidates));
+  }
+  return winners;
+}
+
+/**
+ * 跨 worktree 聚合掃描。探索 repoDir 所屬 repo 的所有 worktree，active changes 依 slug 去重
+ * （以 git 分歧選舉勝出的副本，見 pickActiveWinners）並附 source、archived changes 依 slug 去重
+ * （主 worktree 優先）、specs 取主 worktree。關閉聚合、非 git、或單一 worktree 時等同 scanOpenSpec(repoDir)。
  */
 export async function scanOpenSpecAggregated(
   repoDir: string,
@@ -433,12 +536,20 @@ export async function scanOpenSpecAggregated(
   // 主 worktree = 第一個非 bare（通常即 worktrees[0]）
   const main = scans.find((s) => !s.wt.isBare) ?? scans[0];
 
-  // active changes：所有 worktree 聯集、不去重、附 source
+  // active changes：依 slug 去重，勝出者為對該 slug 確實分歧（超前 main HEAD 或有未提交修改）的
+  // 非主 worktree；無人分歧時留在 main，多個分歧副本間以 mtime tiebreak（見 pickActiveWinners）
+  const activeEntries = scans.map((s) => ({
+    wt: s.wt,
+    slugs: s.scan.activeChanges.map((c) => c.slug),
+  }));
+  const activeWinners = await pickActiveWinners(activeEntries, main.wt);
   const activeChanges: ChangeInfo[] = [];
   for (const { wt, scan } of scans) {
     const source = toWorktreeSource(wt);
     for (const c of scan.activeChanges) {
-      activeChanges.push({ ...c, source });
+      if (activeWinners.get(c.slug) === wt) {
+        activeChanges.push({ ...c, source });
+      }
     }
   }
 
@@ -472,8 +583,9 @@ export async function scanOpenSpecAggregated(
 }
 
 /**
- * 跨 worktree 聚合的關聯圖。change 節點涵蓋所有 worktree（active 不去重、archived 依 slug 去重），
- * 節點 id 命名為 `change:<worktreeKey>:<slug>` 避免碰撞；spec 節點只取主 worktree。
+ * 跨 worktree 聚合的關聯圖。change 節點涵蓋所有 worktree（active 以分歧選舉去重、archived 依 slug
+ * 去重，與 list 路徑同一套 pickActiveWinners），節點 id 命名為 `change:<worktreeKey>:<slug>` 避免碰撞；
+ * spec 節點只取主 worktree。
  * 關閉聚合、非 git、或單一 worktree 時等同 buildGraphData(repoDir)。
  */
 export async function buildGraphDataAggregated(
@@ -489,19 +601,37 @@ export async function buildGraphDataAggregated(
 
   const main = worktrees.find((w) => !w.isBare) ?? worktrees[0];
 
+  // 每個非 bare worktree 只建一次 graph，重用於「取 active slug 做選舉」與「輸出節點」，
+  // 不再為了取 slug 而額外 scanOpenSpec（pickActiveWinners 只需 {wt, slugs}）。主 worktree 先處理，
+  // 確保 archived 去重以主 worktree 為準。
+  const ordered = [main, ...worktrees.filter((w) => w !== main)];
+  const graphs = new Map<WorktreeInfo, GraphData>();
+  for (const wt of ordered) {
+    if (wt.isBare) continue;
+    graphs.set(wt, buildGraphData(wt.path));
+  }
+
+  // 與 scanOpenSpecAggregated 共用同一套 active-change 勝出邏輯（分歧選舉），避免 list 與 graph
+  // 兩處對「哪個 worktree 擁有這個 slug」給出不同答案。選舉輸入用 listActiveChangeSlugs（與 list
+  // 路徑同一函式），而非 graph 節點——後者只含有 delta spec 的 change，會漏掉無 spec 的 active change
+  // 而讓兩條路徑選出不同勝出者。仍不做完整 scanOpenSpec（僅列目錄取 slug）。
+  const activeEntries = [...graphs.keys()].map((wt) => ({
+    wt,
+    slugs: listActiveChangeSlugs(wt.path),
+  }));
+  const activeWinners = await pickActiveWinners(activeEntries, main);
+
   // spec 節點：只取主 worktree
-  const nodes: GraphNode[] = buildGraphData(main.path).nodes
+  const nodes: GraphNode[] = (graphs.get(main)?.nodes ?? [])
     .filter((n) => n.type === "spec")
     .map((n) => ({ ...n }));
   const edges: GraphEdge[] = [];
   const seenArchivedSlugs = new Set<string>();
   const historyCounts = new Map<string, number>();
 
-  // 主 worktree 先處理，確保 archived 去重以主 worktree 為準
-  const ordered = [main, ...worktrees.filter((w) => w !== main)];
   for (const wt of ordered) {
-    if (wt.isBare) continue;
-    const g = buildGraphData(wt.path);
+    const g = graphs.get(wt);
+    if (!g) continue;
     const source = toWorktreeSource(wt);
     const idMap = new Map<string, string>();
     for (const node of g.nodes) {
@@ -510,6 +640,8 @@ export async function buildGraphDataAggregated(
       if (node.status === "archived") {
         if (seenArchivedSlugs.has(slug)) continue;
         seenArchivedSlugs.add(slug);
+      } else if (activeWinners.get(slug) !== wt) {
+        continue;
       }
       const newId = `change:${wt.key}:${slug}`;
       idMap.set(node.id, newId);
