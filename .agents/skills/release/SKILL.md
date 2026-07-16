@@ -5,7 +5,7 @@ license: MIT
 compatibility: Requires npm, git.
 metadata:
   author: spek
-  version: "1.2"
+  version: "1.3"
 ---
 
 Automate the spek release process — update CHANGELOGs, bump version, create tag, and push to trigger CI/CD.
@@ -33,14 +33,42 @@ Automate the spek release process — update CHANGELOGs, bump version, create ta
 
 3. **Update CHANGELOGs**
 
-   Update ALL THREE changelog files (they must stay in sync per project convention):
-   - `CHANGELOG.md` (root)
+   Update ALL THREE changelog files:
+   - `CHANGELOG.md` (root) — the superset; write it first and filter down from it
    - `packages/vscode/CHANGELOG.md`
    - `packages/intellij/CHANGELOG.md`
 
-   Add a new version section at the top with the changelog content.
+   Add a new version section at the top. They share one version history, but each channel's file drops the entries that don't apply to it — a Web-only change does not appear in the vscode / intellij files.
 
-4. **Update plugin.xml change-notes**
+   Check whether each entry actually reaches each channel before copying it across. IntelliJ in particular reimplements the core scanning logic in Kotlin, so a fix landing in `@spekjs/core` reaches Web and VS Code but **not** IntelliJ unless `packages/intellij/` was touched too:
+
+   ```bash
+   git diff --name-only v<last-version>..HEAD | grep intellij
+   ```
+
+   A channel with nothing to report still gets a section — `npm version` bumps and publishes it at the new version either way, and a version with no notes reads as an oversight. Say what didn't apply and why (see 1.7.0 and 1.8.1).
+
+4. **Credit external contributors in BOTH READMEs**
+
+   A credit has to land in four separate files — two CHANGELOGs, two READMEs — and **nothing checks that they agree**. v1.8.1 shipped with the credit missing from the CHANGELOG entry and from both READMEs; each was found and patched separately, after the tag.
+
+   Find who contributed since the last release:
+
+   ```bash
+   git log v<last-version>..HEAD --format='%an <%ae>' | sort -u
+   ```
+
+   Any author other than the maintainer is an external contribution — confirm the handle with `gh pr view <n> --json author` (the commit's email is often a `users.noreply.github.com` alias, not the handle).
+
+   For each one, add the credit to **both** files:
+   - `README.md` — under `## Contributors`
+   - `README.zh-TW.md` — under `## 貢獻者`
+
+   Follow the shape already in each file: `- [@handle](https://github.com/handle) (Name)` with one sub-bullet per contribution, appending a sub-bullet if the handle is already listed. Match each file's own typography — `README.zh-TW.md` uses full-width parentheses（）and `——` dashes.
+
+   The same credit belongs in the CHANGELOG entry (step 3) and the GitHub Release notes (step 11). Word it as a `Thanks to [@handle](https://github.com/handle) (Name)` clause, matching the existing entries.
+
+5. **Update plugin.xml change-notes**
 
    Update `packages/intellij/src/main/resources/META-INF/plugin.xml` — replace the `<change-notes>` block with the new version's changelog content in HTML format:
 
@@ -55,14 +83,21 @@ Automate the spek release process — update CHANGELOGs, bump version, create ta
 
    Only include the latest version's changes (not cumulative history).
 
-5. **Commit changelog updates**
+6. **Commit changelog updates**
 
    ```bash
    git add CHANGELOG.md packages/vscode/CHANGELOG.md packages/intellij/CHANGELOG.md packages/intellij/src/main/resources/META-INF/plugin.xml
    git commit -m "Update CHANGELOG for v<version>"
    ```
 
-6. **Rebuild demo page**
+   If step 4 touched the READMEs, commit them too — **before** `npm version`, so the credit is inside the release rather than trailing the tag:
+
+   ```bash
+   git add README.md README.zh-TW.md
+   git commit -m "docs(readme): credit @<handle> for <what>"
+   ```
+
+7. **Rebuild demo page**
 
    Rebuild `docs/demo.html` and badges so they reflect the latest code and openspec content:
 
@@ -78,7 +113,7 @@ Automate the spek release process — update CHANGELOGs, bump version, create ta
    git commit -m "Rebuild demo for v<version>"
    ```
 
-7. **Run npm version**
+8. **Run npm version**
 
    ```bash
    npm version <type-or-version> --no-git-tag-version
@@ -97,7 +132,7 @@ Automate the spek release process — update CHANGELOGs, bump version, create ta
    - Create git commit with version
    - Create `v<version>` git tag
 
-8. **Push to trigger CI/CD**
+9. **Push to trigger CI/CD**
 
    Ask the user for confirmation before pushing:
    > "Ready to push v<version> to origin? This will trigger the CI/CD pipelines to publish to VS Code Marketplace and JetBrains Marketplace."
@@ -106,7 +141,7 @@ Automate the spek release process — update CHANGELOGs, bump version, create ta
    git push --follow-tags
    ```
 
-9. **Update `v1` major version tag**
+10. **Update `v1` major version tag**
 
    After push, update the `v1` floating tag to point to the new release commit:
 
@@ -117,7 +152,7 @@ Automate the spek release process — update CHANGELOGs, bump version, create ta
 
    This follows the GitHub Action versioning convention — users referencing `spekhq/spek@v1` will automatically get the latest release.
 
-10. **Create GitHub Release**
+11. **Create GitHub Release**
 
     Create a GitHub Release with Marketplace publishing:
 
@@ -127,7 +162,7 @@ Automate the spek release process — update CHANGELOGs, bump version, create ta
 
     The release will be published to the GitHub Actions Marketplace (action.yml with branding is auto-detected by GitHub).
 
-11. **Show summary**
+12. **Show summary**
 
    Display:
    - New version number
@@ -138,7 +173,8 @@ Automate the spek release process — update CHANGELOGs, bump version, create ta
    - Remind: "Monitor the workflows at: https://github.com/<owner>/<repo>/actions"
 
 **Guardrails**
-- ALWAYS update all three CHANGELOGs (root + vscode + intellij) — they must be identical
+- ALWAYS update all three CHANGELOGs (root + vscode + intellij). They share one version history but are NOT identical — each drops entries irrelevant to its channel (see CLAUDE.md). A channel with nothing to report still gets a section saying so, because `npm version` publishes it at the new version regardless.
+- A credit for an external contribution goes in FOUR places — root CHANGELOG, the channel's CHANGELOG, `README.md`, `README.zh-TW.md` — plus the GitHub Release notes. Nothing verifies they agree; a missing one is only ever caught by a human reading the file.
 - ALWAYS confirm with user before `git push`
 - If there are uncommitted changes, warn and ask to stash or commit first
 - If the working tree is dirty after changelog update, stage only changelog files
