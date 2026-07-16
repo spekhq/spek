@@ -3,6 +3,23 @@
 `@spekjs/core` has its own version line, independent of the spek product releases tracked in the
 repository root `CHANGELOG.md`.
 
+## 1.1.3
+
+- `cliSchemaOrderProvider` now caches the authoritative artifact order under
+  `${repoRoot}::${schema}` instead of `${repoRoot}::${slug}`. The order returned by
+  `openspec status` (`planningArtifacts` + `artifactPaths`) is a property of the change's **schema**,
+  not of the individual change, so changes sharing a schema now share **one** CLI spawn per 30s TTL
+  window rather than paying one each. Changes whose schema cannot be resolved locally share a
+  repo-level default bucket, since the CLI resolves the same built-in default for all of them.
+  `resolveSchemaOrder` still runs on every read, so the `schemaOrder` delivered for any given change
+  is unchanged.
+- `SchemaOrderProvider` takes a third argument, `schema` (`string | null`) — the change's locally
+  resolved schema name, which `readChange` passes through. It is used only to bucket the cache and
+  never reaches the CLI's argv. Two-parameter providers stay assignable to the type, so injected
+  providers need no change.
+- `readChange` now returns `null` for an empty slug rather than resolving it to the `changes/`
+  directory itself and reporting that directory as an active change.
+
 ## 1.1.2
 
 - `scanOpenSpecAggregated` and `buildGraphDataAggregated` now **deduplicate active changes across
