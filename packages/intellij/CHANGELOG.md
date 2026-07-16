@@ -1,5 +1,9 @@
 # Changelog
 
+## 1.8.1
+
+- No user-facing changes for the plugin in this release. The Web and VS Code fix for changes appearing once per git worktree does not apply here — the plugin has its own copy of the scanning logic, which still lists every worktree's copy.
+
 ## 1.8.0
 
 - **The Refresh button now actually refreshes.** The circular-arrow button at the bottom of the sidebar — previously labelled "Resync" — only rebuilt an internal cache. It never re-fetched what was on screen, so if you edited a file and pressed it, nothing happened; you had to navigate away and back before your change showed up. It now re-fetches, and it keeps spinning until the new data has actually arrived instead of stopping before it lands (which made a working refresh look like a broken one). Thanks to [@deniskrizanovic](https://github.com/deniskrizanovic) for reporting.

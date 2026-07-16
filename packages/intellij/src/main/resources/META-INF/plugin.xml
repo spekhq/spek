@@ -25,11 +25,9 @@
     ]]></description>
 
     <change-notes><![CDATA[
-        <p><b>1.8.0</b></p>
+        <p><b>1.8.1</b></p>
         <ul>
-            <li><b>The Refresh button now actually refreshes.</b> The circular-arrow button at the bottom of the sidebar — previously labelled "Resync" — only rebuilt an internal cache. It never re-fetched what was on screen, so if you edited a file and pressed it, nothing happened; you had to navigate away and back before your change showed up. It now re-fetches, and it keeps spinning until the new data has actually arrived instead of stopping before it lands. Thanks to @deniskrizanovic for reporting.</li>
-            <li><b>The Refresh button was completely dead in this plugin.</b> The built-in server had no endpoint for it, so every click returned HTTP 404 and the frontend gave up silently. The endpoint now exists, and Refresh no longer depends on it succeeding.</li>
-            <li><b>Stopped a pointless background retry loop.</b> The webview mistook itself for the web app and kept reconnecting, forever, to a path the plugin's server never serves.</li>
+            <li>No user-facing changes for the plugin in this release. The Web and VS Code fix for changes appearing once per git worktree does not apply here — the plugin has its own copy of the scanning logic, which still lists every worktree's copy.</li>
         </ul>
     ]]></change-notes>
 
