@@ -20,9 +20,13 @@ data class SchemaArtifactRef(
 /**
  * 提供某個 change 的權威 artifact 順序。回 null 代表無法取得（CLI 不存在、archived change、
  * 或任何錯誤），此時 schemaOrder 為 null。對齊 @spekjs/core 的 SchemaOrderProvider。
+ *
+ * `slug` 是實際餵給 CLI 的 change；`schema` 是該 change 的 schema 名稱，只用於快取分桶。呼叫端保證
+ * 只在 change **有** schema 時才呼叫（無 schema 即無權威順序，由呼叫端提前回 null，見 ChangeReader），
+ * 故 `schema` 為非空、非 null 的 `String`（Kotlin 於此以型別強制非 null，不是靠約定）。見 issue #15。
  */
 fun interface SchemaOrderProvider {
-    fun order(repoRoot: String, slug: String): List<SchemaArtifactRef>?
+    fun order(repoRoot: String, slug: String, schema: String): List<SchemaArtifactRef>?
 }
 
 object SchemaOrder {
@@ -104,13 +108,16 @@ object SchemaOrder {
      * 預設 SchemaOrderProvider：呼叫 openspec CLI 取得權威順序。
      * openspec 未安裝 / 非 0 結束 / archived change / 解析失敗時一律回 null。
      */
-    val cli = SchemaOrderProvider { repoRoot, slug ->
-        val cacheKey = "$repoRoot::$slug"
+    val cli = SchemaOrderProvider { repoRoot, slug, schema ->
+        // 權威順序（planningArtifacts + artifactPaths）是 schema 的屬性、非個別 change 的屬性，
+        // 故以 schema 分桶：同一 repo 內共用該 schema 的所有 change 至多 spawn 一次 CLI（issue #15）。
+        // 呼叫端保證 schema 非 null（無 schema 者提前回 null），故 key 不需 slug fallback。
+        val key = "$repoRoot::$schema"
         // TTL ≥ CLI timeout：TTL 內的 hit 必已完成計算（CLI 至多 10s），復用安全、不重複 spawn。
         // 過期後（openspec 之後才安裝、artifact 順序改變）自動重查，避免 null / 舊順序被永久快取。
-        cache[cacheKey]?.let {
+        cache[key]?.let {
             if (System.currentTimeMillis() - it.at <= CACHE_TTL_MS) return@SchemaOrderProvider it.value
-            cache.remove(cacheKey)
+            cache.remove(key)
         }
 
         var result: List<SchemaArtifactRef>? = null
@@ -150,7 +157,7 @@ object SchemaOrder {
         }
 
         if (cache.size >= CACHE_MAX) cache.keys.firstOrNull()?.let { cache.remove(it) }
-        cache[cacheKey] = CacheEntry(System.currentTimeMillis(), result)
+        cache[key] = CacheEntry(System.currentTimeMillis(), result)
         result
     }
 

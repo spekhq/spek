@@ -4,7 +4,16 @@ import java.io.File
 
 object ChangeReader {
 
-    fun read(projectPath: String, slug: String): ChangeDetail? {
+    // orderProvider 可注入以利測試（對齊 @spekjs/core 的 readChange）；預設走真實 CLI provider。
+    fun read(
+        projectPath: String,
+        slug: String,
+        orderProvider: SchemaOrderProvider = SchemaOrder.cli,
+    ): ChangeDetail? {
+        // 空 slug 不是 change：File(base, "") 會指向 changes/ 目錄本身（存在），若不擋下會被當成
+        // active change，並以 repo 預設 schema 為 key 把 null 寫進該 schema 的快取桶而污染真實 change。
+        if (slug.isEmpty()) return null
+
         val base = File(projectPath, "openspec/changes")
 
         // 在 active 和 archive 中尋找
@@ -27,7 +36,10 @@ object ChangeReader {
         val artifacts = ArtifactDiscovery.discover(changeDir)
         // schema 權威順序（供前端 schema-order 排序用）：只對 active change 查詢 CLI，
         // archived change 無 planningArtifacts，直接為 null（前端顯示 archived 退回訊息）
-        val refs = if (status == "active") SchemaOrder.cli.order(projectPath, slug) else null
+        // 無 schema 即無權威順序可言（也不必 spawn CLI）；archived 亦不追蹤 → 兩者皆提前為 null。
+        // !isNullOrEmpty() 在此把 schema 平滑轉型（smart-cast）成非 null String 供 order() 使用。
+        val refs = if (status == "active" && !schema.isNullOrEmpty())
+            orderProvider.order(projectPath, slug, schema) else null
         val schemaOrder = SchemaOrder.resolveSchemaOrder(refs, artifacts.map { it.id })
         // Timeline 生命週期：重用 scanner 的 createdDate 解析；archivedDate 依 status 判定
         val createdDate = OpenSpecScanner.readCreatedDate(changeDir)

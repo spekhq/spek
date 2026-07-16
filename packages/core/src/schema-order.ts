@@ -12,10 +12,16 @@ export interface SchemaArtifactRef {
  * 提供某個 change 的權威 artifact 順序。回 null 代表無法取得（CLI 不存在、change 為
  * archived、或任何錯誤），此時 schemaOrder 為 null（前端退回預設 spec-driven 順序）。
  * 可為同步（測試常注入同步 fake）或非同步（預設 CLI provider 以子行程非阻塞取得）。
+ *
+ * `slug` 是實際餵給 CLI 的 change（`--change <slug>`）；`schema` 是該 change 的 schema 名稱，
+ * 只用於快取分桶（同一 schema 的所有 change 得到相同權威順序，issue #15）。呼叫端保證只在 change
+ * **有** schema 時才呼叫（無 schema 即無權威順序可言，由呼叫端提前回 null，見 scanner.ts readChange），
+ * 故 `schema` 為非空字串。
  */
 export type SchemaOrderProvider = (
   repoRoot: string,
   slug: string,
+  schema: string,
 ) => SchemaArtifactRef[] | null | Promise<SchemaArtifactRef[] | null>;
 
 /**
@@ -81,7 +87,10 @@ export function resolveSchemaOrder(
 // Stryker disable all: 對 openspec CLI 的薄整合層（非阻塞 spawn 子行程）；以整合而非單元測試覆蓋。
 // 萃取邏輯在 parseOrderFromStatus（已單元測試）；此處只負責呼叫、快取與容錯。
 
-// 以 (repoRoot, slug) 記憶結果並附建立時間戳（存 Promise，順帶去重同時併發的呼叫）。
+// 以 (repoRoot, schema) 記憶結果並附建立時間戳（存 Promise，順帶去重同時併發的呼叫）。
+// 權威順序（planningArtifacts + artifactPaths）是 schema 的屬性、非個別 change 的屬性，故以
+// schema 為 key，同一 repo 內共用該 schema 的所有 change 至多 spawn 一次 CLI（issue #15）。
+// 呼叫端只在 change 有 schema 時才進來（無 schema → 無權威順序，提前回 null），故 key 不需 slug fallback。
 // 過去的版本永久快取（含 null），導致：openspec 之後才安裝也永遠拿不到順序、artifact 順序
 // 變更後仍供舊值、且條目無上限累積。改為短 TTL：
 //   - TTL 必須 ≥ CLI timeout（10s），使進行中的 spawn 永遠不會被判為過期而觸發第二次 spawn；
@@ -99,8 +108,9 @@ const cache = new Map<string, CacheEntry>();
  * 以 async spawn 取代同步呼叫，避免在 change detail 讀取時卡住 Node event loop。
  * openspec 未安裝 / 非 0 結束 / archived change / 逾時 / 解析失敗時一律 resolve 為 null。
  */
-export const cliSchemaOrderProvider: SchemaOrderProvider = (repoRoot, slug) => {
-  const cacheKey = `${repoRoot}::${slug}`;
+export const cliSchemaOrderProvider: SchemaOrderProvider = (repoRoot, slug, schema) => {
+  // 以 schema 分桶：共用 schema 的 change 復用同一結果。schema 僅用於組 key，不進 argv。
+  const cacheKey = `${repoRoot}::${schema}`;
   const hit = cache.get(cacheKey);
   // TTL ≥ CLI timeout，故 hit 若仍在 TTL 內必尚未過期即安全復用（含仍進行中的 Promise，不重複 spawn）
   if (hit && Date.now() - hit.at <= CACHE_TTL_MS) return hit.promise;
