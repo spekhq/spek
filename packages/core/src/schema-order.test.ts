@@ -182,3 +182,20 @@ test("cliSchemaOrderProvider: different schemas are spawned separately", async (
   assert.notEqual(a, b);
   await Promise.allSettled([a, b]);
 });
+
+test("cliSchemaOrderProvider: two schema-less (null) changes share one spawn — the repo default bucket", async () => {
+  // 本地無 schema 的 change 都由 CLI 解析出同一 repo 級預設順序，故正確地共用一個桶（每 repo 一次 spawn）
+  const root = noRepo("null-schema");
+  const a = cliSchemaOrderProvider(root, "add-foo", null);
+  const b = cliSchemaOrderProvider(root, "add-bar", null);
+  assert.equal(a, b); // 同一 Promise → 兩個 schema-less change 只 spawn 一次
+  await Promise.allSettled([a, b]);
+});
+
+test("cliSchemaOrderProvider: null and empty-string schema share the same default bucket", async () => {
+  const root = noRepo("null-empty");
+  const a = cliSchemaOrderProvider(root, "add-foo", null);
+  const b = cliSchemaOrderProvider(root, "add-bar", "");
+  assert.equal(a, b); // "" 與 null 都折進預設桶
+  await Promise.allSettled([a, b]);
+});

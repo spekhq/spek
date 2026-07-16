@@ -167,36 +167,36 @@ test("readChange: passes the change's schema to the provider (for cache bucketin
   assert.equal(seen[0].schema, "superpowers-bridge");
 });
 
-test("readChange: no schema at all (no repo config, no change schema) → provider is NOT called", async () => {
-  const repo = mkRepo(); // 無 openspec/config.yaml，故無 repo 預設 schema
-  // change 自身也未宣告 schema → readChangeSchema 回 null → 根本沒有 `::spec-driven` 桶可查
+test("readChange: no schema locally (no config, no change schema) STILL consults the provider — the CLI resolves a default", async () => {
+  const repo = mkRepo(); // 無 openspec/config.yaml，故 spek 本地解析不出 schema 名稱
   writeChange(repo, "active", "no-schema", "created: 2026-01-01\n");
-  let calls = 0;
-  const provider = () => {
-    calls += 1;
+  const seen: Array<string | null> = [];
+  const provider = (_r: string, _s: string, schema: string | null) => {
+    seen.push(schema);
     return [{ id: "proposal", outputPath: "proposal.md" }];
   };
   const detail = await readChange(repo, "no-schema", provider);
   assert.ok(detail);
-  assert.equal(detail.schema, null); // 確認確實無 schema
-  assert.equal(calls, 0); // 無 schema 即無權威順序可言 → 不查 CLI
-  assert.equal(detail.schemaOrder, undefined);
+  assert.equal(detail.schema, null); // spek 本地確實解析不出
+  // 但 null 不代表無權威順序：CLI 會自行解析出內建預設 → provider 仍須被呼叫（schema=null 傳入）
+  assert.deepEqual(seen, [null]);
+  assert.deepEqual(detail.schemaOrder, ["proposal"]); // 順序仍交付（master 的行為，不再被丟棄）
 });
 
-test('readChange: an empty-string schema (schema: "") is treated as no schema → provider NOT called', async () => {
+test('readChange: an empty-string schema (schema: "") STILL consults the provider', async () => {
   const repo = mkRepo();
-  // schema: "" 經 cleanScalar 會產出空字串（非 null）；空 schema 名不是有效 schema，須等同無 schema
+  // schema: "" 經 cleanScalar 產出空字串（非 null）；空 schema 名一樣本地解析不出，仍須查 CLI
   writeChange(repo, "active", "empty-schema", 'schema: ""\ncreated: 2026-01-01\n');
-  let calls = 0;
-  const provider = () => {
-    calls += 1;
+  const seen: Array<string | null> = [];
+  const provider = (_r: string, _s: string, schema: string | null) => {
+    seen.push(schema);
     return [{ id: "proposal", outputPath: "proposal.md" }];
   };
   const detail = await readChange(repo, "empty-schema", provider);
   assert.ok(detail);
-  assert.equal(detail.schema, ""); // 釘住：readChangeSchema 確實產出 ""（我們正防的 case）
-  assert.equal(calls, 0); // 空 schema → 不查 CLI（否則會以 `${repo}::` 這種退化 key 污染快取）
-  assert.equal(detail.schemaOrder, undefined);
+  assert.equal(detail.schema, ""); // 釘住：readChangeSchema 確實產出 ""
+  assert.deepEqual(seen, [""]); // 仍呼叫（provider 內把 "" 折進 repo 級預設桶）
+  assert.deepEqual(detail.schemaOrder, ["proposal"]);
 });
 
 test("readChange: an empty slug is not a change → returns null without calling the provider", async () => {

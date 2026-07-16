@@ -36,10 +36,9 @@ object ChangeReader {
         val artifacts = ArtifactDiscovery.discover(changeDir)
         // schema 權威順序（供前端 schema-order 排序用）：只對 active change 查詢 CLI，
         // archived change 無 planningArtifacts，直接為 null（前端顯示 archived 退回訊息）
-        // 無 schema 即無權威順序可言（也不必 spawn CLI）；archived 亦不追蹤 → 兩者皆提前為 null。
-        // !isNullOrEmpty() 在此把 schema 平滑轉型（smart-cast）成非 null String 供 order() 使用。
-        val refs = if (status == "active" && !schema.isNullOrEmpty())
-            orderProvider.order(projectPath, slug, schema) else null
+        // 只對 active change 查 CLI（archived 無 planningArtifacts）。schema 為 null 不代表無權威順序——
+        // CLI 會自行解析出內建預設並回傳（provider 內以 repo 級預設桶快取），故 null schema 仍要查。
+        val refs = if (status == "active") orderProvider.order(projectPath, slug, schema) else null
         val schemaOrder = SchemaOrder.resolveSchemaOrder(refs, artifacts.map { it.id })
         // Timeline 生命週期：重用 scanner 的 createdDate 解析；archivedDate 依 status 判定
         val createdDate = OpenSpecScanner.readCreatedDate(changeDir)

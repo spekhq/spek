@@ -266,8 +266,9 @@ export async function readChange(
 
   // schema 權威順序（供前端 schema-order 排序用）：只對 active change 查詢 CLI，
   // archived change 無 planningArtifacts，直接為 null（前端顯示 archived 退回訊息）
-  // 無 schema 即無權威順序可言（也不必 spawn CLI）；archived change 亦不追蹤 → 兩者皆提前為 null
-  const refs = status === "active" && schema ? await orderProvider(repoDir, slug, schema) : null;
+  // 只對 active change 查 CLI（archived 無 planningArtifacts）。schema 為 null 不代表無權威順序——
+  // CLI 會自行解析出內建預設並回傳（provider 內以 repo 級預設桶快取），故 null schema 仍要查。
+  const refs = status === "active" ? await orderProvider(repoDir, slug, schema) : null;
   const schemaOrder = resolveSchemaOrder(refs, artifacts.map((a) => a.id)) ?? undefined;
 
   const createdDate = readCreatedDate(changePath);
