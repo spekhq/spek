@@ -237,6 +237,32 @@ test("scanOpenSpecAggregated: both main and a worktree advance a slug — worktr
   assert.deepEqual(c[0].taskStats, { total: 4, completed: 3 });
 });
 
+test("scanOpenSpecAggregated: main's UNCOMMITTED advance competes in a live contest", async () => {
+  // wa 提交推進 change-a（分歧，競賽成立）；main 對 change-a 有「未提交」編輯（也算推進）；main 副本較新
+  // → main 勝。此路徑走只算一次的 main git status（mainUncommitted），與「idle fork」的無競賽情形不同。
+  const repo = initRepo("spek-agg-main-uncommitted-contest-");
+  addActiveChange(repo, "change-a");
+  writeTasks(repo, "change-a", 0, 4);
+  commitAll(repo, "fork 0/4");
+  const wa = repo + "-a";
+  git(repo, "worktree", "add", "-q", "-b", "wa", wa);
+  writeTasks(wa, "change-a", 3, 4);
+  commitAll(wa, "wa advances to 3/4 (committed)"); // wa diverges (committed)
+  writeTasks(repo, "change-a", 4, 4); // main advances 4/4, UNCOMMITTED → diverges via status
+  const past = new Date("2020-01-01T00:00:00Z");
+  const future = new Date("2030-01-01T00:00:00Z");
+  for (const f of ["proposal.md", "tasks.md"]) {
+    fs.utimesSync(path.join(wa, "openspec", "changes", "change-a", f), past, past);
+    fs.utimesSync(path.join(repo, "openspec", "changes", "change-a", f), future, future);
+  }
+
+  const r = await scanOpenSpecAggregated(repo);
+  const c = r.activeChanges.filter((c) => c.slug === "change-a");
+  assert.equal(c.length, 1);
+  assert.equal(c[0].source?.isMain, true);
+  assert.deepEqual(c[0].taskStats, { total: 4, completed: 4 });
+});
+
 test("pickActiveWinners: a worktree whose divergence check fails does not shadow main", async () => {
   // 注入一個永遠回空集合的 divergence provider，模擬對該 worktree 的 git 指令失敗。
   // fork 持有 foo 但被判為未分歧 → main 保留 foo（不因 git 失敗而錯顯 fork 的繼承副本）。
