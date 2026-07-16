@@ -3,7 +3,7 @@
 - [x] 1.1 Add a failing test: given two real git worktrees (`git worktree add`, no `fs.utimesSync`), the helper reports a slug as diverged when the linked worktree has committed progress under `openspec/changes/<slug>/`
 - [x] 1.2 Add a failing test: the helper reports a slug as diverged when the linked worktree has uncommitted modifications under that path, and as NOT diverged when it merely inherited the directory untouched
 - [x] 1.3 Add a failing test: when the git command errors for a worktree, the helper reports no divergence for it (resolve-empty-on-error, mirroring `git-cache.ts`)
-- [x] 1.4 Implement the helper: per non-main worktree, `git diff --name-only <main.head> <wt.head> -- openspec/changes/` (skipped when `wt.head === main.head`) unioned with `git status --porcelain -- openspec/changes/`, parsed into the set of diverged slugs; compare against main's `HEAD`, not its working tree; run the two git calls per worktree in parallel with the existing scans
+- [x] 1.4 Implement the helper: per non-main worktree, three-dot `git diff --name-only <main.head>...<wt.head> -- openspec/changes/` (merge-base–relative, so only the worktree's own advances count; skipped when `wt.head === main.head`) unioned with `git status --porcelain -- openspec/changes/`, parsed into the set of diverged slugs; compare against main's `HEAD`, not its working tree; run the two git calls per worktree in parallel with the existing scans
 - [x] 1.5 Run `npm run test -w @spekjs/core` — 1.1–1.3 now pass
 
 ## 2. Divergence-based election in `pickActiveWinners` (TDD)

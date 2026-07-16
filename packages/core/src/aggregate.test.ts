@@ -390,3 +390,42 @@ test("buildGraphDataAggregated: an inherited-but-untouched fork does not own the
   const specNode = g.nodes.find((n) => n.id === "spec:alpha");
   assert.equal(specNode?.historyCount, 1);
 });
+
+test("buildGraphDataAggregated: graph election matches the list even when a slug's spec exists in only one worktree", async () => {
+  // main 有 change-foo（無 delta spec）並推進到 4/4；wtA 繼承後才加了 delta spec 並推進到 3/4。
+  // list 依 mtime 選 main（較新）。graph 的選舉輸入若只取「有 spec 的節點」會漏掉 main（它沒有節點）
+  // → 誤把 change-foo 當成 wtA 擁有的節點。改以各 worktree 的 changes 目錄列出全部 active slug 後，
+  // 兩條路徑選出相同勝出者：main 勝且無 spec → 圖上不出現 change-foo 節點。
+  const repo = initRepo("spek-agg-graph-specless-");
+  addActiveChange(repo, "change-foo"); // no spec
+  writeTasks(repo, "change-foo", 0, 4);
+  commitAll(repo, "fork: change-foo (no spec) 0/4");
+  const wtA = repo + "-a";
+  git(repo, "worktree", "add", "-q", "-b", "wa", wtA);
+  writeFile(
+    path.join(wtA, "openspec", "changes", "change-foo", "specs", "alpha", "spec.md"),
+    "## ADDED Requirements\n",
+  );
+  writeTasks(wtA, "change-foo", 3, 4);
+  commitAll(wtA, "wa adds a delta spec + advances to 3/4");
+  writeTasks(repo, "change-foo", 4, 4);
+  commitAll(repo, "main advances to 4/4");
+  // main 的副本較新 → 依 B 應由 main 勝出
+  const past = new Date("2020-01-01T00:00:00Z");
+  const future = new Date("2030-01-01T00:00:00Z");
+  for (const f of ["proposal.md", "tasks.md", "specs/alpha/spec.md"]) {
+    fs.utimesSync(path.join(wtA, "openspec", "changes", "change-foo", f), past, past);
+  }
+  for (const f of ["proposal.md", "tasks.md"]) {
+    fs.utimesSync(path.join(repo, "openspec", "changes", "change-foo", f), future, future);
+  }
+
+  // list 選 main
+  const list = await scanOpenSpecAggregated(repo);
+  assert.equal(list.activeChanges.find((c) => c.slug === "change-foo")?.source?.isMain, true);
+
+  // graph 必須一致：勝出者是 main（無 spec）→ 不得出現由落敗的 wtA 擁有的 change-foo 節點
+  const g = await buildGraphDataAggregated(repo);
+  const fooNodes = g.nodes.filter((n) => n.type === "change" && n.id.endsWith(":change-foo"));
+  assert.equal(fooNodes.length, 0, "graph must not show change-foo owned by the losing worktree");
+});

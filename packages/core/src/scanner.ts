@@ -588,13 +588,16 @@ export async function buildGraphDataAggregated(
   }
 
   // 與 scanOpenSpecAggregated 共用同一套 active-change 勝出邏輯（分歧選舉），避免 list 與 graph
-  // 兩處對「哪個 worktree 擁有這個 slug」給出不同答案
-  const activeEntries = [...graphs].map(([wt, g]) => ({
-    wt,
-    slugs: g.nodes
-      .filter((n) => n.type === "change" && n.status !== "archived")
-      .map((n) => n.id.slice("change:".length)),
-  }));
+  // 兩處對「哪個 worktree 擁有這個 slug」給出不同答案。選舉輸入取自各 worktree 的 changes 目錄
+  // （與 list 的 scanOpenSpec 同源），而非 graph 節點——後者只含有 delta spec 的 change，會漏掉無
+  // spec 的 active change 而讓兩條路徑選出不同勝出者。仍不做完整 scanOpenSpec（僅列目錄取 slug）。
+  const activeEntries = [...graphs.keys()].map((wt) => {
+    const changesDir = path.join(openspecDir(wt.path), "changes");
+    const slugs = safeReadDir(changesDir).filter(
+      (n) => n !== "archive" && fs.statSync(path.join(changesDir, n)).isDirectory(),
+    );
+    return { wt, slugs };
+  });
   const activeWinners = await pickActiveWinners(activeEntries, main);
 
   // spec 節點：只取主 worktree

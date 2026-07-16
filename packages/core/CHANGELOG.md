@@ -13,8 +13,8 @@ repository root `CHANGELOG.md`.
   terms (reverse three-dot for its side); when no copy diverges the slug stays on main, and ties
   among the advanced copies — main included — break by most-recently-modified file (mtime). A copy
   that merely inherited an untouched change no longer shadows the copy being edited, so a change's
-  `taskStats` no longer roll back to the fork-point snapshot. **No signature changes** — only which
-  entries survive deduplication differs.
+  `taskStats` no longer roll back to the fork-point snapshot. **No public API signature changes** —
+  only which entries survive deduplication differs.
 - `buildGraphDataAggregated` no longer runs a `scanOpenSpec` per worktree solely to obtain slugs; it
   derives them from the per-worktree graph it already builds, one fewer subprocess pass per worktree.
 
