@@ -67,4 +67,74 @@ class ChangeReaderTest {
     fun `missing change returns null`() {
         assertNull(ChangeReader.read(repo.absolutePath, "does-not-exist"))
     }
+
+    // --- schema-order provider guard（注入 provider 以確定性驗證「有沒有真的呼叫」，不觸真實 CLI）---
+
+    private fun writeActive(slug: String, yaml: String?) {
+        val base = File(repo, "openspec/changes/$slug")
+        base.mkdirs()
+        if (yaml != null) File(base, ".openspec.yaml").writeText(yaml)
+        File(base, "proposal.md").writeText("## Why\n")
+    }
+
+    /** 計數用 provider：記錄呼叫次數與收到的 schema，回一個固定 refs（若被呼叫）。 */
+    private class CountingProvider : SchemaOrderProvider {
+        var calls = 0
+        var sawNullSchema = false
+        var lastSchema: String? = null
+        override fun order(repoRoot: String, slug: String, schema: String?): List<SchemaArtifactRef>? {
+            calls++
+            if (schema == null) sawNullSchema = true
+            lastSchema = schema
+            return listOf(SchemaArtifactRef("proposal", "proposal.md"))
+        }
+    }
+
+    @Test
+    fun `active change with no schema locally still consults the provider (CLI resolves a default)`() {
+        // 無 openspec/config.yaml、change 也未宣告 schema → spek 本地解析不出 → schema 為 null。
+        // 但 null 不代表無權威順序：CLI 會自行解析出內建預設 → provider 仍須被呼叫。
+        writeActive("no-schema", "created: 2026-01-01\n")
+        val provider = CountingProvider()
+        val detail = ChangeReader.read(repo.absolutePath, "no-schema", provider)
+        assertNotNull(detail)
+        assertNull(detail!!.schema)
+        assertEquals(1, provider.calls)
+        assertEquals(true, provider.sawNullSchema)
+        assertEquals(listOf("proposal"), detail.schemaOrder)
+    }
+
+    @Test
+    fun `active change with an empty-string schema still consults the provider`() {
+        // schema: "" → cleanScalar 產出 ""；一樣本地解析不出，仍須查 CLI（provider 內把 "" 折進預設桶）
+        writeActive("empty-schema", "schema: \"\"\ncreated: 2026-01-01\n")
+        val provider = CountingProvider()
+        val detail = ChangeReader.read(repo.absolutePath, "empty-schema", provider)
+        assertNotNull(detail)
+        assertEquals("", detail!!.schema)
+        assertEquals(1, provider.calls)
+        assertEquals(listOf("proposal"), detail.schemaOrder)
+    }
+
+    @Test
+    fun `an empty slug is not a change and never calls the provider`() {
+        File(repo, "openspec").mkdirs()
+        File(repo, "openspec/config.yaml").writeText("schema: spec-driven\n")
+        File(repo, "openspec/changes").mkdirs()
+        val provider = CountingProvider()
+        val detail = ChangeReader.read(repo.absolutePath, "", provider)
+        assertNull(detail)
+        assertEquals(0, provider.calls)
+    }
+
+    @Test
+    fun `active change with a schema calls the provider with that schema`() {
+        writeActive("add-bridge", "schema: superpowers-bridge\ncreated: 2026-01-01\n")
+        val provider = CountingProvider()
+        val detail = ChangeReader.read(repo.absolutePath, "add-bridge", provider)
+        assertNotNull(detail)
+        assertEquals(1, provider.calls)
+        assertEquals("superpowers-bridge", provider.lastSchema)
+        assertEquals(listOf("proposal"), detail!!.schemaOrder)
+    }
 }

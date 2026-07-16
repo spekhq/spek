@@ -1,6 +1,13 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { parseOrderFromStatus, resolveSchemaOrder, type SchemaArtifactRef } from "./schema-order.js";
+import os from "node:os";
+import path from "node:path";
+import {
+  cliSchemaOrderProvider,
+  parseOrderFromStatus,
+  resolveSchemaOrder,
+  type SchemaArtifactRef,
+} from "./schema-order.js";
 
 // 模擬 `openspec status --change <slug> --json` 的輸出
 function statusJson(order: string[], paths: Record<string, string>): unknown {
@@ -149,4 +156,46 @@ test("resolveSchemaOrder: null refs yields null", () => {
 
 test("resolveSchemaOrder: no matches yields null", () => {
   assert.equal(resolveSchemaOrder(refs(["ghost", "ghost.md"]), ["proposal"]), null);
+});
+
+// --- cliSchemaOrderProvider cache bucketing ---
+// 分桶以 Promise 物件同一性驗證：cache hit 回傳同一個 Promise 參照（provider「存 Promise、
+// 順帶去重併發呼叫」的設計），即同一桶只 spawn 一次。用不存在的 repoRoot，spawn 立即以 error
+// 收斂為 null，不觸發真正的 ~1.25s CLI 啟動。
+
+function noRepo(suffix: string): string {
+  return path.join(os.tmpdir(), `spek-nonexistent-${suffix}`);
+}
+
+test("cliSchemaOrderProvider: changes sharing a schema reuse one spawn (identical promise)", async () => {
+  const root = noRepo("shared-schema");
+  const a = cliSchemaOrderProvider(root, "add-foo", "spec-driven");
+  const b = cliSchemaOrderProvider(root, "add-bar", "spec-driven");
+  assert.equal(a, b); // 同一 Promise 參照 → 第二個 change 未再 spawn
+  await Promise.allSettled([a, b]);
+});
+
+test("cliSchemaOrderProvider: different schemas are spawned separately", async () => {
+  const root = noRepo("diff-schema");
+  const a = cliSchemaOrderProvider(root, "add-foo", "spec-driven");
+  const b = cliSchemaOrderProvider(root, "add-foo", "agent-driven");
+  assert.notEqual(a, b);
+  await Promise.allSettled([a, b]);
+});
+
+test("cliSchemaOrderProvider: two schema-less (null) changes share one spawn — the repo default bucket", async () => {
+  // 本地無 schema 的 change 都由 CLI 解析出同一 repo 級預設順序，故正確地共用一個桶（每 repo 一次 spawn）
+  const root = noRepo("null-schema");
+  const a = cliSchemaOrderProvider(root, "add-foo", null);
+  const b = cliSchemaOrderProvider(root, "add-bar", null);
+  assert.equal(a, b); // 同一 Promise → 兩個 schema-less change 只 spawn 一次
+  await Promise.allSettled([a, b]);
+});
+
+test("cliSchemaOrderProvider: null and empty-string schema share the same default bucket", async () => {
+  const root = noRepo("null-empty");
+  const a = cliSchemaOrderProvider(root, "add-foo", null);
+  const b = cliSchemaOrderProvider(root, "add-bar", "");
+  assert.equal(a, b); // "" 與 null 都折進預設桶
+  await Promise.allSettled([a, b]);
 });

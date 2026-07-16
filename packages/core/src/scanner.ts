@@ -250,6 +250,10 @@ export async function readChange(
   slug: string,
   orderProvider: SchemaOrderProvider = cliSchemaOrderProvider,
 ): Promise<ChangeDetail | null> {
+  // 空 slug 不是 change：path.join(changesDir, "") 會指向 changes/ 目錄本身（存在），若不擋下會被
+  // 當成 active change，並以 repo 預設 schema 為 key 把 null 寫進該 schema 的快取桶而污染真實 change。
+  if (!slug) return null;
+
   const base = openspecDir(repoDir);
   const changesDir = path.join(base, "changes");
 
@@ -276,7 +280,9 @@ export async function readChange(
 
   // schema 權威順序（供前端 schema-order 排序用）：只對 active change 查詢 CLI，
   // archived change 無 planningArtifacts，直接為 null（前端顯示 archived 退回訊息）
-  const refs = status === "active" ? await orderProvider(repoDir, slug) : null;
+  // 只對 active change 查 CLI（archived 無 planningArtifacts）。schema 為 null 不代表無權威順序——
+  // CLI 會自行解析出內建預設並回傳（provider 內以 repo 級預設桶快取），故 null schema 仍要查。
+  const refs = status === "active" ? await orderProvider(repoDir, slug, schema) : null;
   const schemaOrder = resolveSchemaOrder(refs, artifacts.map((a) => a.id)) ?? undefined;
 
   const createdDate = readCreatedDate(changePath);

@@ -135,6 +135,7 @@ test("readChange: attaches schemaOrder from the provider for an active change", 
   const repo = mkRepo();
   const base = path.join(repo, "openspec", "changes", "bridge-change");
   fs.mkdirSync(base, { recursive: true });
+  fs.writeFileSync(path.join(base, ".openspec.yaml"), "schema: superpowers-bridge\n"); // 有 schema → provider 會被呼叫
   fs.writeFileSync(path.join(base, "proposal.md"), "## Why\n");
   fs.writeFileSync(path.join(base, "plan.md"), "plan\n");
   fs.writeFileSync(path.join(base, "brainstorm.md"), "raw\n");
@@ -149,10 +150,101 @@ test("readChange: attaches schemaOrder from the provider for an active change", 
   assert.deepEqual(detail.schemaOrder, ["brainstorm", "proposal", "plan"]);
 });
 
+test("readChange: passes the change's schema to the provider (for cache bucketing)", async () => {
+  const repo = mkRepo();
+  const base = path.join(repo, "openspec", "changes", "bridge-change");
+  fs.mkdirSync(base, { recursive: true });
+  fs.writeFileSync(path.join(base, ".openspec.yaml"), "schema: superpowers-bridge\n");
+  fs.writeFileSync(path.join(base, "proposal.md"), "## Why\n");
+  const seen: Array<{ repoRoot: string; slug: string; schema: string | null }> = [];
+  const provider = (repoRoot: string, slug: string, schema: string | null) => {
+    seen.push({ repoRoot, slug, schema });
+    return null;
+  };
+  await readChange(repo, "bridge-change", provider);
+  assert.equal(seen.length, 1);
+  assert.equal(seen[0].slug, "bridge-change");
+  assert.equal(seen[0].schema, "superpowers-bridge");
+});
+
+test("readChange: no schema locally (no config, no change schema) STILL consults the provider — the CLI resolves a default", async () => {
+  const repo = mkRepo(); // 無 openspec/config.yaml，故 spek 本地解析不出 schema 名稱
+  writeChange(repo, "active", "no-schema", "created: 2026-01-01\n");
+  const seen: Array<string | null> = [];
+  const provider = (_r: string, _s: string, schema: string | null) => {
+    seen.push(schema);
+    return [{ id: "proposal", outputPath: "proposal.md" }];
+  };
+  const detail = await readChange(repo, "no-schema", provider);
+  assert.ok(detail);
+  assert.equal(detail.schema, null); // spek 本地確實解析不出
+  // 但 null 不代表無權威順序：CLI 會自行解析出內建預設 → provider 仍須被呼叫（schema=null 傳入）
+  assert.deepEqual(seen, [null]);
+  assert.deepEqual(detail.schemaOrder, ["proposal"]); // 順序仍交付（master 的行為，不再被丟棄）
+});
+
+test('readChange: an empty-string schema (schema: "") STILL consults the provider', async () => {
+  const repo = mkRepo();
+  // schema: "" 經 cleanScalar 產出空字串（非 null）；空 schema 名一樣本地解析不出，仍須查 CLI
+  writeChange(repo, "active", "empty-schema", 'schema: ""\ncreated: 2026-01-01\n');
+  const seen: Array<string | null> = [];
+  const provider = (_r: string, _s: string, schema: string | null) => {
+    seen.push(schema);
+    return [{ id: "proposal", outputPath: "proposal.md" }];
+  };
+  const detail = await readChange(repo, "empty-schema", provider);
+  assert.ok(detail);
+  assert.equal(detail.schema, ""); // 釘住：readChangeSchema 確實產出 ""
+  assert.deepEqual(seen, [""]); // 仍呼叫（provider 內把 "" 折進 repo 級預設桶）
+  assert.deepEqual(detail.schemaOrder, ["proposal"]);
+});
+
+test("readChange: an empty slug is not a change → returns null without calling the provider", async () => {
+  const repo = mkRepo();
+  fs.mkdirSync(path.join(repo, "openspec", "changes"), { recursive: true }); // 先建 openspec/ 再寫 config
+  fs.writeFileSync(path.join(repo, "openspec", "config.yaml"), "schema: spec-driven\n"); // 有預設 schema
+  let calls = 0;
+  const provider = () => {
+    calls += 1;
+    return [{ id: "proposal", outputPath: "proposal.md" }];
+  };
+  // 空 slug 會讓 changePath 指向 changes/ 目錄本身（存在）；若不擋，會以 `${repo}::spec-driven`
+  // 為 key 把 null 寫進真實 spec-driven change 共用的桶而污染之
+  const detail = await readChange(repo, "", provider);
+  assert.equal(detail, null);
+  assert.equal(calls, 0);
+});
+
+test("readChange: two changes sharing a schema each map the authoritative order onto their own artifacts", async () => {
+  const repo = mkRepo();
+  // 兩個 change 宣告同一 schema、拿到同一份權威順序（模擬 per-schema 快取供出的結果），
+  // 但各自的 artifact 集合不同 —— 每個 change 的 schemaOrder 必須只反映自身探索到的 ids。
+  const authoritative = () => [
+    { id: "proposal", outputPath: "proposal.md" },
+    { id: "plan", outputPath: "plan.md" },
+    { id: "tasks", outputPath: "tasks.md" },
+  ];
+  const a = path.join(repo, "openspec", "changes", "change-a");
+  fs.mkdirSync(a, { recursive: true });
+  fs.writeFileSync(path.join(a, ".openspec.yaml"), "schema: spec-driven\n");
+  fs.writeFileSync(path.join(a, "proposal.md"), "## Why\n");
+  fs.writeFileSync(path.join(a, "plan.md"), "plan\n");
+  const b = path.join(repo, "openspec", "changes", "change-b");
+  fs.mkdirSync(b, { recursive: true });
+  fs.writeFileSync(path.join(b, ".openspec.yaml"), "schema: spec-driven\n");
+  fs.writeFileSync(path.join(b, "proposal.md"), "## Why\n");
+  fs.writeFileSync(path.join(b, "tasks.md"), "## Tasks\n- [ ] x\n");
+  const da = await readChange(repo, "change-a", authoritative);
+  const db = await readChange(repo, "change-b", authoritative);
+  assert.deepEqual(da!.schemaOrder, ["proposal", "plan"]);
+  assert.deepEqual(db!.schemaOrder, ["proposal", "tasks"]);
+});
+
 test("readChange: awaits an async (Promise) provider for an active change", async () => {
   const repo = mkRepo();
   const base = path.join(repo, "openspec", "changes", "bridge-change");
   fs.mkdirSync(base, { recursive: true });
+  fs.writeFileSync(path.join(base, ".openspec.yaml"), "schema: spec-driven\n"); // 有 schema → provider 會被呼叫
   fs.writeFileSync(path.join(base, "proposal.md"), "## Why\n");
   fs.writeFileSync(path.join(base, "plan.md"), "plan\n");
   // 預設 CLI provider 是非同步的：readChange 必須 await Promise 結果

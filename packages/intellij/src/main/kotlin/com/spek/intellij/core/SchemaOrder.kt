@@ -20,9 +20,13 @@ data class SchemaArtifactRef(
 /**
  * 提供某個 change 的權威 artifact 順序。回 null 代表無法取得（CLI 不存在、archived change、
  * 或任何錯誤），此時 schemaOrder 為 null。對齊 @spekjs/core 的 SchemaOrderProvider。
+ *
+ * `slug` 是實際餵給 CLI 的 change；`schema` 是 spek **本地**解析出的 schema 名稱，只用於快取分桶。
+ * schema 為 null 代表本地解析不出名稱——**不代表無權威順序**：CLI 會自行解析出內建預設並回傳，故這類
+ * change 仍要查，並共用一個 repo 級預設桶。見 issue #15。
  */
 fun interface SchemaOrderProvider {
-    fun order(repoRoot: String, slug: String): List<SchemaArtifactRef>?
+    fun order(repoRoot: String, slug: String, schema: String?): List<SchemaArtifactRef>?
 }
 
 object SchemaOrder {
@@ -33,6 +37,9 @@ object SchemaOrder {
     // null value，而 CLI 不可用時的結果本身是 null，故不可直接存 null——包一層即可安全快取「已算過、
     // 無順序」。get→測 TTL→spawn→put 之間的競態是良性的（重複做一次等冪工作、後寫覆蓋、值相同）。
     private data class CacheEntry(val at: Long, val value: List<SchemaArtifactRef>?)
+    // schema 為 null/空（本地解析不出）時的分桶哨兵：這類 change 由 CLI 解析出同一 repo 級預設順序，
+    // 故全部共用此桶。NUL 字元前綴確保絕不與真實 schema 名撞。對齊 @spekjs/core。
+    private const val DEFAULT_SCHEMA_BUCKET = "\u0000default"
     private const val CACHE_TTL_MS = 30_000L
     // size cap（對齊 TS 版）：SchemaOrder 為整個 IDE 生命週期的 application 級 singleton，跨所有專案
     // 視窗共用，比 TS 的 dev-server 行程更長壽，更需要上限。CHM 無插入序，故非嚴格 FIFO——僅在超限時
@@ -104,13 +111,16 @@ object SchemaOrder {
      * 預設 SchemaOrderProvider：呼叫 openspec CLI 取得權威順序。
      * openspec 未安裝 / 非 0 結束 / archived change / 解析失敗時一律回 null。
      */
-    val cli = SchemaOrderProvider { repoRoot, slug ->
-        val cacheKey = "$repoRoot::$slug"
+    val cli = SchemaOrderProvider { repoRoot, slug, schema ->
+        // 權威順序（planningArtifacts + artifactPaths）是 schema 的屬性、非個別 change 的屬性，
+        // 故以 schema 分桶：同一 repo 內共用該 schema 的所有 change 至多 spawn 一次 CLI（issue #15）。
+        // schema 為 null/空（本地解析不出名稱）→ 共用 repo 級預設桶：CLI 會解析出同一內建預設順序。
+        val key = "$repoRoot::${if (schema.isNullOrEmpty()) DEFAULT_SCHEMA_BUCKET else schema}"
         // TTL ≥ CLI timeout：TTL 內的 hit 必已完成計算（CLI 至多 10s），復用安全、不重複 spawn。
         // 過期後（openspec 之後才安裝、artifact 順序改變）自動重查，避免 null / 舊順序被永久快取。
-        cache[cacheKey]?.let {
+        cache[key]?.let {
             if (System.currentTimeMillis() - it.at <= CACHE_TTL_MS) return@SchemaOrderProvider it.value
-            cache.remove(cacheKey)
+            cache.remove(key)
         }
 
         var result: List<SchemaArtifactRef>? = null
@@ -150,7 +160,7 @@ object SchemaOrder {
         }
 
         if (cache.size >= CACHE_MAX) cache.keys.firstOrNull()?.let { cache.remove(it) }
-        cache[cacheKey] = CacheEntry(System.currentTimeMillis(), result)
+        cache[key] = CacheEntry(System.currentTimeMillis(), result)
         result
     }
 
