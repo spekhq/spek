@@ -7,13 +7,14 @@ repository root `CHANGELOG.md`.
 
 - `scanOpenSpecAggregated` and `buildGraphDataAggregated` now **deduplicate active changes across
   worktrees by slug** instead of returning one entry (or graph node) per worktree that inherited a
-  copy. The surviving copy is elected by **git divergence**: a non-main worktree wins a slug only
-  when it has advanced that change beyond the main worktree's `HEAD` — committed (`git diff` between
-  the two worktrees' `HEAD`s under `openspec/changes/`) or uncommitted (`git status`). When no
-  worktree diverges, the slug stays on the main worktree; ties among multiple diverging copies break
-  by most-recently-modified file (mtime). A worktree that merely inherited an untouched copy no
-  longer shadows the copy being edited, so a change's `taskStats` no longer roll back to the
-  fork-point snapshot. **No signature changes** — only which entries survive deduplication differs.
+  copy. The surviving copy is elected by **git divergence**: a copy is a candidate only when it has
+  advanced that change past its merge-base — committed (three-dot `git diff <mainHead>...<wtHead>`
+  under `openspec/changes/`) or uncommitted (`git status`). The main worktree competes on the same
+  terms (reverse three-dot for its side); when no copy diverges the slug stays on main, and ties
+  among the advanced copies — main included — break by most-recently-modified file (mtime). A copy
+  that merely inherited an untouched change no longer shadows the copy being edited, so a change's
+  `taskStats` no longer roll back to the fork-point snapshot. **No signature changes** — only which
+  entries survive deduplication differs.
 - `buildGraphDataAggregated` no longer runs a `scanOpenSpec` per worktree solely to obtain slugs; it
   derives them from the per-worktree graph it already builds, one fewer subprocess pass per worktree.
 

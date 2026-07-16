@@ -22,23 +22,24 @@ The tempting signal — filesystem mtime — does not work. `git worktree add` w
 
 ### 1. Election signal is git divergence, not mtime
 
-For a given slug, candidates are `main` plus any non-main worktree that **provably diverges** on `openspec/changes/<slug>/`:
+For a given slug, the candidates are the copies that have **advanced past their merge-base**. A non-main worktree is a candidate when it **provably diverges** on `openspec/changes/<slug>/`:
 
 - **Committed divergence:** the slug appears in `git diff --name-only <main.head>...<wt.head> -- openspec/changes/`. The **three-dot** form compares against the merge-base, so it counts only the worktree's *own* advances since the fork — a two-dot (endpoint) diff would also fire when *main* advances a slug the worktree merely inherited, wrongly electing the idle fork's stale copy. `WorktreeInfo.head` is already supplied by `git worktree list --porcelain`, so no ref resolution is needed; when `wt.head === main.head` the diff is skipped entirely.
 - **Uncommitted divergence:** the slug appears in `git status --porcelain -- openspec/changes/` for that worktree (covers the mid-edit, not-yet-committed case).
 
 **Key:** the comparison is against **main's `HEAD` tree, not main's working tree.** When `main` itself has an uncommitted edit to a slug, an idle fork's inherited copy equals main's `HEAD` version but not main's working tree — only comparing against `HEAD` correctly recognises the fork as a pure inherited copy and leaves the slug on `main`.
 
-When no non-main worktree diverges for a slug, it stays on `main`. The unconditional "non-main beats main" rule is deleted — divergence subsumes it, and it is what prevents an idle fork from shadowing work happening on `main`.
+When no worktree diverges for a slug, it stays on `main`. There is no unconditional "non-main beats main" rule; instead **`main` competes on the same terms as every worktree**. When the contest is live (some worktree diverges on the slug) and `main` has itself advanced past that worktree's merge-base — the reverse three-dot `git diff <wt.head>...<main.head>`, or `main` has uncommitted edits there — `main` joins the candidate pool, and the mtime tiebreak among all candidates decides. `divergedSlugs` is symmetric, so `main`'s side is just `divergedSlugs(main.path, main.head, wt.head)` — the same helper with its arguments swapped, one extra git pair per genuinely-competing worktree. This keeps it a single rule (advanced-then-recency) with no `main` carve-out, and it prevents an idle, half-done fork from shadowing a finished copy on *either* side.
 
 *Alternatives considered:*
+- **worktree unconditionally beats `main`** (the first cut of this change) — rejected: it is the version *with* a special case. When `main` and a worktree both genuinely advance the same slug, it would always hide `main`'s copy even when `main` holds the finished one. Folding `main` into the same divergence-then-mtime contest removes the carve-out. (In practice #3 is narrow: the common "finished on `main`" path is a merge of the worktree's branch back, after which `merge-base(main, wt) == wt.head`, the worktree's three-dot diff is empty, and it drops out on its own.)
 - **mtime as the primary signal** — rejected: `git worktree add` rewrites file mtimes to checkout time, so the most-recently-created worktree would win every slug it merely inherited, and an idle fork would permanently shadow `main`. mtime measures checkout time, not edit time.
 - **"exclude copies bit-identical to main"** — tempting but wrong: it must compare against main's `HEAD`, not its working tree, or scenario 2 (main mid-edit) leaks the fork's copy through the filter. Divergence detection *is* the "compare against HEAD" check, so we adopt it directly.
 - **latest-commit recency as the primary signal** — needs an extra `git log` per slug and, worse, ignores uncommitted edits, which are precisely the "currently active" signal we want.
 
-### 2. mtime retained only as the tiebreak among diverging copies
+### 2. mtime retained only as the tiebreak among candidates
 
-When 2+ non-main worktrees both diverge on the same slug (a rare, genuine editing conflict), the copy whose change directory has the most recently modified file (`changeDirMtime`, computed the same way `artifacts.ts` computes artifact recency) wins. Scoped to copies already proven to carry real edits, mtime here reflects real edit time; it is also the only signal that captures uncommitted in-progress edits, and it is already computed elsewhere — no new mechanism.
+When two or more candidates advance the same slug — two worktrees, or `main` and a worktree (a rare, genuine editing conflict) — the copy whose change directory has the most recently modified file (`changeDirMtime`, computed the same way `artifacts.ts` computes artifact recency) wins. The tiebreak pool includes `main` on the same footing as any worktree. Scoped to copies already proven to carry real edits, mtime here reflects real edit time; it is also the only signal that captures uncommitted in-progress edits, and it is already computed elsewhere — no new mechanism.
 
 ### 3. git command failure → treat the worktree as not diverging (main wins)
 

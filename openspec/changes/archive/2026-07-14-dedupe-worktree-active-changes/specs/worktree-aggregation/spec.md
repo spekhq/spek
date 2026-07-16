@@ -2,7 +2,7 @@
 
 ### Requirement: Aggregate active changes across worktrees
 
-When aggregation runs over multiple worktrees, the aggregated active changes SHALL contain exactly one entry per active change slug, deduplicated across all worktrees. For a given slug, a non-main worktree SHALL be a **candidate** only when its copy has **diverged** from the main worktree's `HEAD` for that change — that is, its `HEAD` advances `openspec/changes/<slug>/` beyond the main worktree's `HEAD`, OR it has uncommitted modifications under that path. A non-main worktree that merely inherited the change directory without advancing it (e.g. a freshly created worktree) SHALL NOT be a candidate, regardless of filesystem mtime. When no non-main worktree diverges for a slug, the main worktree's copy SHALL win. When more than one non-main worktree diverges for the same slug, the copy whose change directory has the most recently modified file (by filesystem mtime) SHALL win. When divergence cannot be determined for a worktree because a git command fails, that worktree SHALL be treated as not diverging. Each aggregated active change SHALL carry a `source` (`WorktreeSource`) identifying the worktree whose copy won, and the aggregated entry's content (including `taskStats`) SHALL be read from that winning copy.
+When aggregation runs over multiple worktrees, the aggregated active changes SHALL contain exactly one entry per active change slug, deduplicated across all worktrees. For a given slug, the **candidates** are the copies that have **advanced past their merge-base**. A non-main worktree is a candidate when its `HEAD` advances `openspec/changes/<slug>/` beyond its merge-base with the main worktree (three-dot `git diff <mainHead>...<wtHead>`), OR it has uncommitted modifications under that path. The main worktree competes on the same terms: it is a candidate only when the contest is live (at least one worktree diverges on the slug) AND it has itself advanced past that worktree's merge-base (reverse three-dot `git diff <wtHead>...<mainHead>`) or has uncommitted modifications there — the main worktree is never automatically beaten by a diverging worktree. A copy that merely inherited the change directory without advancing it (e.g. a freshly created worktree) SHALL NOT be a candidate, regardless of filesystem mtime. When no worktree diverges for a slug, the main worktree's copy SHALL win. Among the candidates, the copy whose change directory has the most recently modified file (by filesystem mtime) SHALL win. When divergence cannot be determined because a git command fails, that copy SHALL be treated as not diverging. Each aggregated active change SHALL carry a `source` (`WorktreeSource`) identifying the worktree whose copy won, and the aggregated entry's content (including `taskStats`) SHALL be read from that winning copy.
 
 #### Scenario: Active changes union with source
 
@@ -33,6 +33,12 @@ When aggregation runs over multiple worktrees, the aggregated active changes SHA
 - **WHEN** the main worktree commits progress advancing `add-foo` to 4 of 4 tasks after a worktree B was created that inherits `add-foo` without touching it
 - **THEN** the aggregated `add-foo` entry's `source` points to main, not the idle fork whose copy still reflects the fork-point snapshot
 - **AND** its `taskStats` report 4 of 4
+
+#### Scenario: Both main and a worktree advance the same slug — most recently modified wins
+
+- **WHEN** the main worktree and worktree A have each advanced `add-foo` past their merge-base (each independently committed progress or edited it)
+- **THEN** the aggregated `add-foo` entry is the copy whose change directory was modified most recently — the diverging worktree does not automatically beat main
+- **AND** its `source` and `taskStats` reflect that most-recently-modified copy
 
 #### Scenario: Untouched change stays on main
 

@@ -193,6 +193,50 @@ test("scanOpenSpecAggregated: main's committed advance wins over an idle fork th
   assert.deepEqual(changeX[0].taskStats, { total: 4, completed: 4 });
 });
 
+// 建立「main 與 worktree 皆自 merge-base 推進同一 slug」的競賽場景；mainNewer 決定哪一方的副本 mtime 較新。
+function bothAdvance(prefix: string, mainNewer: boolean): string {
+  const repo = initRepo(prefix);
+  addActiveChange(repo, "change-a");
+  writeTasks(repo, "change-a", 0, 4);
+  commitAll(repo, "fork point 0/4");
+  const wa = repo + "-a";
+  git(repo, "worktree", "add", "-q", "-b", "wa", wa);
+  writeTasks(wa, "change-a", 3, 4);
+  commitAll(wa, "wa advances to 3/4"); // wa diverges past merge-base
+  writeTasks(repo, "change-a", 4, 4);
+  commitAll(repo, "main advances to 4/4"); // main diverges past merge-base too
+  // 兩者皆真的推進 → mtime 是決勝訊號；此處確定性地設定較新者。
+  const past = new Date("2020-01-01T00:00:00Z");
+  const future = new Date("2030-01-01T00:00:00Z");
+  const newer = mainNewer ? repo : wa;
+  const older = mainNewer ? wa : repo;
+  for (const f of ["proposal.md", "tasks.md"]) {
+    fs.utimesSync(path.join(older, "openspec", "changes", "change-a", f), past, past);
+    fs.utimesSync(path.join(newer, "openspec", "changes", "change-a", f), future, future);
+  }
+  return repo;
+}
+
+test("scanOpenSpecAggregated: both main and a worktree advance a slug — main can win on recency", async () => {
+  // 兩邊都真的推進了 change-a；main 的副本較新 → main 勝出（B：main 不再被分歧 worktree 無條件擊敗）
+  const repo = bothAdvance("spek-agg-both-main-", true);
+  const r = await scanOpenSpecAggregated(repo);
+  const c = r.activeChanges.filter((c) => c.slug === "change-a");
+  assert.equal(c.length, 1);
+  assert.equal(c[0].source?.isMain, true);
+  assert.deepEqual(c[0].taskStats, { total: 4, completed: 4 });
+});
+
+test("scanOpenSpecAggregated: both main and a worktree advance a slug — worktree can win on recency", async () => {
+  // 對稱情形：worktree 的副本較新 → worktree 勝出
+  const repo = bothAdvance("spek-agg-both-wt-", false);
+  const r = await scanOpenSpecAggregated(repo);
+  const c = r.activeChanges.filter((c) => c.slug === "change-a");
+  assert.equal(c.length, 1);
+  assert.equal(c[0].source?.branch, "wa");
+  assert.deepEqual(c[0].taskStats, { total: 4, completed: 3 });
+});
+
 test("pickActiveWinners: a worktree whose divergence check fails does not shadow main", async () => {
   // 注入一個永遠回空集合的 divergence provider，模擬對該 worktree 的 git 指令失敗。
   // fork 持有 foo 但被判為未分歧 → main 保留 foo（不因 git 失敗而錯顯 fork 的繼承副本）。

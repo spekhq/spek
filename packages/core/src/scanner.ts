@@ -412,11 +412,13 @@ export function findRelatedChanges(repoDir: string, topic: string): string[] {
 /**
  * 跨 worktree 為每個 active change slug 選出勝出的副本，回傳 `slug → WorktreeInfo`。
  *
- * 勝出訊號是 **git 分歧**，非檔案 mtime：非主 worktree 只有在對該 slug 確實分歧（`HEAD` 超前
- * main 的 `HEAD`，或有未提交修改）時才是候選。沒有非主 worktree 分歧時，slug 留在 main —— 一個
- * 只是繼承目錄、未曾編輯的副本永不勝出。當 2+ 非主 worktree 皆分歧（罕見的真實編輯衝突），才以
- * `changeDirMtime` 較新者 tiebreak。分歧以每個非主 worktree 批次計算一次（見 `divergence.ts`），
- * 與各 worktree 掃描的精神一致；`diverge` 可注入以利測試。
+ * 勝出訊號是 **git 分歧**，非檔案 mtime。候選是「已自 merge-base 推進」的副本：非主 worktree 在其
+ * `HEAD` 對該 slug 超前與 main 的 merge-base（三點 diff）或有未提交修改時分歧。**main 以同等條件參賽**
+ * —— 當該 slug 至少有一個 worktree 分歧（競賽成立）且 main 自己也對某個分歧 worktree 的 merge-base
+ * 有推進（反向三點 diff）或有未提交修改時，main 亦為候選；沒有 main 特例、也沒有「非主一律優先」的
+ * 無條件規則。沒有任何 worktree 分歧時 slug 留在 main。只是繼承、未曾推進的副本永不入選。在所有候選
+ * 之間以 `changeDirMtime` 較新者 tiebreak。分歧以每個 worktree 批次計算一次（見 `divergence.ts`）；
+ * `diverge` 可注入以利測試（main 的反向分歧以 `diverge(mainWt, wt.head)` 取得，因 helper 本身對稱）。
  */
 export async function pickActiveWinners(
   entries: { wt: WorktreeInfo; slugs: string[] }[],
@@ -424,13 +426,22 @@ export async function pickActiveWinners(
   diverge: DivergenceProvider = cliDivergence,
 ): Promise<Map<string, WorktreeInfo>> {
   // 每個非主 worktree 平行算一次其分歧 slug 集合
+  const nonMain = entries.filter((e) => e.wt !== mainWt);
   const divergedByWt = new Map<WorktreeInfo, Set<string>>();
   await Promise.all(
-    entries
-      .filter((e) => e.wt !== mainWt)
-      .map(async (e) => {
-        divergedByWt.set(e.wt, await diverge(e.wt, mainWt.head));
-      }),
+    nonMain.map(async (e) => {
+      divergedByWt.set(e.wt, await diverge(e.wt, mainWt.head));
+    }),
+  );
+
+  // main 以同等條件參賽：對每個「確實分歧」的 worktree，反向算一次 main 是否也自該 worktree 的
+  // merge-base 有推進（helper 對稱，故 diverge(mainWt, wt.head) 即為反向三點 + main 的未提交）。
+  const contenders = nonMain.filter((e) => (divergedByWt.get(e.wt)?.size ?? 0) > 0);
+  const mainDivergedVsWt = new Map<WorktreeInfo, Set<string>>();
+  await Promise.all(
+    contenders.map(async (e) => {
+      mainDivergedVsWt.set(e.wt, await diverge(mainWt, e.wt.head));
+    }),
   );
 
   // slug → 持有它的 worktree 清單
@@ -460,10 +471,16 @@ export async function pickActiveWinners(
   const winners = new Map<string, WorktreeInfo>();
   for (const [slug, wts] of holders) {
     const diverging = wts.filter((wt) => wt !== mainWt && divergedByWt.get(wt)?.has(slug));
-    // 分歧的非主副本優先；否則留在 main；兩者皆無（罕見，如 git 失敗且 main 未持有）時不丟棄該
-    // slug，以持有者中最新 mtime 者保底。
-    const candidates =
-      diverging.length > 0 ? diverging : wts.includes(mainWt) ? [mainWt] : wts;
+    if (diverging.length === 0) {
+      // 無人分歧：留在 main；main 未持有的罕見情形（如 git 失敗）以持有者中最新 mtime 者保底。
+      winners.set(slug, pickByMtime(slug, wts.includes(mainWt) ? [mainWt] : wts));
+      continue;
+    }
+    // 競賽成立：分歧的非主副本入選；main 若也持有且對某個分歧 worktree 的 merge-base 有推進，亦入選。
+    const candidates = [...diverging];
+    if (wts.includes(mainWt) && diverging.some((wt) => mainDivergedVsWt.get(wt)?.has(slug))) {
+      candidates.push(mainWt);
+    }
     winners.set(slug, pickByMtime(slug, candidates));
   }
   return winners;
