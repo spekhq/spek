@@ -110,6 +110,21 @@ function processChildren(children: ReactNode): ReactNode {
   return children;
 }
 
+// marker 溝槽寬度：ul/ol 的左內距與 checkbox 的負左邊距必須是同一個量（後者為前者的負值），
+// checkbox 才會精準落在 marker 溝槽。兩個字面值集中於此，改一個務必改另一個。
+const LIST_GUTTER_PAD = "pl-6"; // ul / ol 左內距（marker 溝槽）
+const LIST_GUTTER_PULL = "-ml-6"; // checkbox 負左邊距（＝ LIST_GUTTER_PAD 的負值，見 input override）
+
+// ul / ol 共用的 list 樣式，集中一處避免兩邊各自漂移：
+// - list-outside（而非 inside 定位）：把 marker 放進內容流時，loose list（項目間有空行）的
+//   項目內容被 remark 包成 block <p>，block 無法與 inline marker 共用 line box，marker 因此被
+//   擠到自己一行。outside 讓 marker 待在內容盒外，與首行同列，續行自動 hanging indent。
+// - [&_li>p:last-of-type]:mb-0：p override 的 mb-4 會在項目尾端多出一段空隙，使單一項目讀起來
+//   像數段。只歸零每個項目的最後一段 —— 不可歸零全部：同一項目內若有多個段落，段間仍需要 mb-4，
+//   否則兩段黏成一塊、間距反而比項目之間還小。亦不可用 :last-child —— processChildren 會把空白
+//   包成 <span>，li 的子節點是 SPAN,P,SPAN,... 沒有任何 p 會是 :last-child。
+const LIST_BASE = `list-outside ${LIST_GUTTER_PAD} mb-4 space-y-1 [&_li>p:last-of-type]:mb-0`;
+
 export function MarkdownRenderer({ content, specTopics, idPrefix }: MarkdownRendererProps) {
   return (
     <div className="markdown-body">
@@ -121,9 +136,20 @@ export function MarkdownRenderer({ content, specTopics, idPrefix }: MarkdownRend
           p({ children }) {
             return <p className="mb-4 leading-relaxed">{processChildren(children)}</p>;
           },
-          // 列表項：套用 BDD 高亮
-          li({ children }) {
-            return <li className="mb-1">{processChildren(children)}</li>;
+          // 列表項：套用 BDD 高亮。className 需向下傳遞，remark-gfm 的 task-list-item
+          // 才會抵達 DOM（原本只解構 children，class 被丟棄，樣式無從掛載）。
+          //
+          // marker 的取消必須以「項目」為單位，不能以「容器」為單位 —— remark-gfm 只要
+          // list 內有任一 task item 就會在容器掛上 contains-task-list，但 task-list-item
+          // 是逐項的。若在 ul 上取消 marker，混合清單（task + 一般項目並存）的一般項目會
+          // 連 marker 都沒有，變成沒有任何前導記號的裸文字；ol 的數字也會被 checkbox 蓋掉。
+          // 這也是 GitHub 把 list-style: none 掛在 .task-list-item 而非容器上的原因。
+          li({ className, children }) {
+            const isTaskItem = className?.includes("task-list-item");
+            const cls = ["mb-1", isTaskItem ? "list-none" : "", className]
+              .filter(Boolean)
+              .join(" ");
+            return <li className={cls}>{processChildren(children)}</li>;
           },
           // 標題
           h1({ children }) {
@@ -225,12 +251,20 @@ export function MarkdownRenderer({ content, specTopics, idPrefix }: MarkdownRend
               </td>
             );
           },
-          // 列表
-          ul({ children }) {
-            return <ul className="list-disc list-inside mb-4 space-y-1">{children}</ul>;
+          // 列表（樣式見 LIST_BASE；marker 的取消在 li override，不在此處）
+          ul({ className, children }) {
+            return (
+              <ul className={[`list-disc ${LIST_BASE}`, className].filter(Boolean).join(" ")}>
+                {children}
+              </ul>
+            );
           },
-          ol({ children }) {
-            return <ol className="list-decimal list-inside mb-4 space-y-1">{children}</ol>;
+          ol({ className, children }) {
+            return (
+              <ol className={[`list-decimal ${LIST_BASE}`, className].filter(Boolean).join(" ")}>
+                {children}
+              </ol>
+            );
           },
           // 分隔線
           hr() {
@@ -245,18 +279,33 @@ export function MarkdownRenderer({ content, specTopics, idPrefix }: MarkdownRend
             );
           },
           // 輸入（checkbox）
-          input({ checked, type }) {
-            if (type === "checkbox") {
+          //
+          // LIST_GUTTER_PULL（-ml-6）把 checkbox 拉進 ul 的 marker 溝槽（LIST_GUTTER_PAD），
+          // 使其後的文字落在內容邊緣、續行以 hanging indent 對齊首行。
+          // （remark-gfm 只在 task list item 內產生 checkbox，故負邊距不會誤傷其他情境。）
+          //
+          // 這是唯讀檢視，checkbox 應為 inert。readonly 對 checkbox 無效（HTML 規範只作用於
+          // 文字類 input），單獨用它會留下一個可聚焦、可點的幽靈 tab stop。
+          // 不用 disabled —— 它會把 checkbox 打灰、蓋掉 owner 的 accent-accent（琥珀）配色，
+          // 屬非必要的視覺改動。改以 tabIndex=-1 移出 tab 序、pointer-events-none 擋滑鼠聚焦／點擊，
+          // 外觀不變、互動移除。readOnly 保留以抑制 React「controlled input 缺 onChange」的警告。
+          input({ node, ...props }) {
+            if (props.type === "checkbox") {
               return (
                 <input
                   type="checkbox"
-                  checked={checked}
+                  checked={props.checked}
                   readOnly
-                  className="mr-2 accent-accent"
+                  tabIndex={-1}
+                  className={`w-4 h-4 ${LIST_GUTTER_PULL} mr-2 align-middle accent-accent pointer-events-none`}
                 />
               );
             }
-            return <input type={type} />;
+            // 非 checkbox（實務上不會出現 —— 沒有 rehype-raw，原始 <input> 會被跳脫成文字）：
+            // 原樣轉發所有 prop，不再丟棄 value / name / checked 等。node 是 react-markdown 的
+            // ExtraProps、非 DOM 屬性，故排除以免 React 對未知屬性發警告。
+            void node;
+            return <input {...props} />;
           },
         }}
       >
