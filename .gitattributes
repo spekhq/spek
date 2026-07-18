@@ -1,0 +1,14 @@
+# Normalize line endings: store LF in the repo and check out LF everywhere,
+# so no platform re-flips a whole file's endings. Binary assets are left untouched.
+* text=auto eol=lf
+
+# Binary assets — never apply text conversion.
+*.png  binary
+*.jpg  binary
+*.jpeg binary
+*.gif  binary
+*.ico  binary
+*.webp binary
+*.woff  binary
+*.woff2 binary
+*.zip  binary
