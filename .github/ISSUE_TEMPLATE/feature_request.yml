@@ -1,0 +1,51 @@
+name: 💡 Feature request
+description: Suggest a new capability or an improvement
+labels: ["enhancement"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for the idea! The more concrete the problem and use case, the easier it is to evaluate.
+  - type: checkboxes
+    id: preflight
+    attributes:
+      label: Preflight
+      options:
+        - label: I searched [existing issues](https://github.com/spekhq/spek/issues) and this isn't already requested.
+          required: true
+  - type: dropdown
+    id: surface
+    attributes:
+      label: Which surface?
+      description: Where would this feature live?
+      options:
+        - Web app
+        - VS Code extension
+        - IntelliJ plugin
+        - GitHub Action (spekhq/spek)
+        - "@spekjs/core (npm package)"
+        - "@spekjs/ui (npm package)"
+        - Cross-cutting / not sure
+    validations:
+      required: true
+  - type: textarea
+    id: problem
+    attributes:
+      label: What problem does this solve?
+      description: Describe the pain point or the workflow you're trying to support. Focus on the "why".
+    validations:
+      required: true
+  - type: textarea
+    id: proposal
+    attributes:
+      label: Proposed solution
+      description: What would you like spek to do? Sketch the behavior or UI if you can.
+    validations:
+      required: true
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: Alternatives considered
+      description: Other approaches you thought about, and why they fall short.
+    validations:
+      required: false

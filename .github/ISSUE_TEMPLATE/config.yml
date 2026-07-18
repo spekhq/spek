@@ -1,0 +1,8 @@
+blank_issues_enabled: true
+contact_links:
+  - name: 🔒 Report a security vulnerability
+    url: https://github.com/spekhq/spek/blob/master/SECURITY.md
+    about: Please report vulnerabilities privately — see our security policy, not a public issue.
+  - name: 📖 Try the live demo
+    url: https://spekhq.github.io/spek/demo.html
+    about: See spek in action in your browser before filing an issue.

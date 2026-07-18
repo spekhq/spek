@@ -330,6 +330,16 @@ spek watches `openspec/` and live-reloads on changes. On filesystems that don't 
 - `SPEK_WATCH_POLLING=on` (or `off`) — force polling on/off for all surfaces
 - `CHOKIDAR_USEPOLLING=1` / `CHOKIDAR_INTERVAL=<ms>` — Web and VS Code also honor chokidar's native env vars
 
+## Contributing
+
+Contributions are welcome — from typo fixes to features across the Web, VS Code, and IntelliJ
+surfaces. Start with the [Contributing Guide](CONTRIBUTING.md) for setup, conventions, and the
+pull-request process.
+
+- [Contributing Guide](CONTRIBUTING.md) — dev setup, conventions, how to open a PR
+- [Code of Conduct](CODE_OF_CONDUCT.md)
+- [Security Policy](SECURITY.md) — how to report a vulnerability privately
+
 ## Acknowledgments
 
 This project was inspired by [龍哥（高見龍）](https://kaochenlong.com)'s articles on SDD (Spec Driven Development). Special thanks to him for his contributions to SDD and [OpenSpec](https://github.com/Fission-AI/OpenSpec).

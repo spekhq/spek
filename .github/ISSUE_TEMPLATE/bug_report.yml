@@ -1,0 +1,78 @@
+name: 🐛 Bug report
+description: Report something that isn't working the way it should
+labels: ["bug"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for taking the time to file a bug! Please fill out the sections below so we can
+        reproduce and fix it quickly. For security vulnerabilities, **don't** use this form —
+        follow [SECURITY.md](https://github.com/spekhq/spek/blob/master/SECURITY.md) instead.
+  - type: checkboxes
+    id: preflight
+    attributes:
+      label: Preflight
+      options:
+        - label: I searched [existing issues](https://github.com/spekhq/spek/issues) and this isn't a duplicate.
+          required: true
+        - label: I can reproduce this on the latest released version.
+          required: true
+  - type: dropdown
+    id: surface
+    attributes:
+      label: Which surface?
+      description: Where does the bug happen?
+      options:
+        - Web app
+        - VS Code extension
+        - IntelliJ plugin
+        - GitHub Action (spekhq/spek)
+        - "@spekjs/core (npm package)"
+        - "@spekjs/ui (npm package)"
+        - Demo (docs/demo.html)
+        - Not sure
+    validations:
+      required: true
+  - type: input
+    id: version
+    attributes:
+      label: Version
+      description: spek version, plus host version (e.g. VS Code 1.9x, IntelliJ 2024.x) where relevant.
+      placeholder: "spek 1.8.2, VS Code 1.95"
+    validations:
+      required: true
+  - type: textarea
+    id: what-happened
+    attributes:
+      label: What happened?
+      description: A clear description of the bug, including what you expected instead.
+    validations:
+      required: true
+  - type: textarea
+    id: repro
+    attributes:
+      label: Steps to reproduce
+      description: Minimal steps to trigger the bug. A sample `openspec/` layout helps if the bug is content-specific.
+      placeholder: |
+        1. Open a repo with '...'
+        2. Go to the Changes page
+        3. Click '...'
+        4. See the error
+    validations:
+      required: true
+  - type: textarea
+    id: environment
+    attributes:
+      label: Environment
+      description: OS, Node.js version, and filesystem if relevant (e.g. devcontainer / WSL / network mount).
+      placeholder: "macOS 14, Node 22.22.0"
+    validations:
+      required: false
+  - type: textarea
+    id: logs
+    attributes:
+      label: Logs / screenshots
+      description: Console output, server logs, or screenshots. Paste text in a code block.
+      render: shell
+    validations:
+      required: false
