@@ -225,12 +225,14 @@ export function MarkdownRenderer({ content, specTopics, idPrefix }: MarkdownRend
               </td>
             );
           },
-          // 列表
+          // 列表：用 list-outside + pl-6，marker 落在左內距溝槽並與內容首行同行。
+          // list-inside 會讓 loose list（項目間有空行、內容被包成 block <p>）的 marker 被
+          // 擠到自己一行，因為 inline 的 marker 無法與 block <p> 共用 line box。
           ul({ children }) {
-            return <ul className="list-disc list-inside mb-4 space-y-1">{children}</ul>;
+            return <ul className="list-disc list-outside pl-6 mb-4 space-y-1">{children}</ul>;
           },
           ol({ children }) {
-            return <ol className="list-decimal list-inside mb-4 space-y-1">{children}</ol>;
+            return <ol className="list-decimal list-outside pl-6 mb-4 space-y-1">{children}</ol>;
           },
           // 分隔線
           hr() {
