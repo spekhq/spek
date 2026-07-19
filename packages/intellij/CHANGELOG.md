@@ -1,5 +1,9 @@
 # Changelog
 
+## 1.8.3
+
+- **Lists with blank lines between their items render correctly again.** Every bullet and number was pushed onto its own line, above the text it belonged to, which made proposals and task lists hard to scan. Markers now sit inline with the first line of their item. Thanks to [@nthansen](https://github.com/nthansen) (Norman Hansen) for reporting and contributing this.
+
 ## 1.8.2
 
 - **Opening a change is much faster.** Each change took about a second to open. To order a change's tabs, spek asks the OpenSpec CLI for the artifact order that the change's schema defines — and it repeated that request for every change, even though every change sharing a schema gets the same answer back. The answer is now looked up once per schema instead of once per change, so only the first change you open pays for it and the rest open immediately. Unlike the previous release's worktree fix, this one did land in the plugin — its Kotlin copy of the logic was changed alongside the shared one. Thanks to [@nthansen](https://github.com/nthansen) (Norman Hansen) for contributing this.
