@@ -1,8 +1,8 @@
 # Changelog
 
-## Unreleased
+## 1.9.0
 
-- No user-facing changes for the plugin. The new (experimental) Jujutsu (jj) workspace aggregation is Web / VS Code only — the plugin's Kotlin core has no worktree-aggregation foundation yet, so jj parity there is tracked as a separate, larger effort.
+- No user-facing changes for the plugin. This release's two features — the new (experimental) Jujutsu (jj) workspace aggregation, and moving the aggregation scope into a header control — are Web / VS Code only. The plugin's Kotlin core has no worktree-aggregation foundation yet, so it has no scope to control and jj parity there is tracked as a separate, larger effort. The header control is hidden when there is nothing to aggregate, so nothing changes on screen here.
 
 ## 1.8.3
 

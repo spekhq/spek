@@ -25,9 +25,9 @@
     ]]></description>
 
     <change-notes><![CDATA[
-        <p><b>1.8.3</b></p>
+        <p><b>1.9.0</b></p>
         <ul>
-            <li><b>Lists with blank lines between their items render correctly again.</b> Every bullet and number was pushed onto its own line, above the text it belonged to, which made proposals and task lists hard to scan. Markers now sit inline with the first line of their item. Thanks to <a href="https://github.com/nthansen">@nthansen</a> (Norman Hansen) for reporting and contributing this.</li>
+            <li>No user-facing changes for the plugin. This release's two features &mdash; experimental Jujutsu (jj) workspace aggregation, and moving the aggregation scope into a header control &mdash; are Web / VS Code only. The plugin's Kotlin core has no worktree-aggregation foundation yet, so it has no scope to control and jj parity there is tracked as a separate, larger effort.</li>
         </ul>
     ]]></change-notes>
 

@@ -1,14 +1,20 @@
 # Changelog
 
-## Unreleased
+## 1.9.0
 
-**Highlight: Jujutsu (jj) workspace aggregation (experimental)** — spek can now see OpenSpec changes in jj workspaces, not just git worktrees. In a colocated git+jj repo, jj workspaces are invisible to `git worktree list`, so changes authored there used to be silently missed. This is **experimental and off by default** — enable `spek.aggregateJjWorkspaces` to opt in.
+**Highlight: Jujutsu (jj) workspace aggregation (experimental)** — spek can now see OpenSpec changes in jj workspaces, not just git worktrees. In a colocated git+jj repo, jj workspaces are invisible to `git worktree list`, so changes authored there used to be silently missed. This is **experimental and off by default** — enable `spek.aggregateJjWorkspaces` to opt in. Thanks to [@DannyGoodall](https://github.com/DannyGoodall) (Danny Goodall) for contributing this.
 
 - When enabled, and a repo has jj initialised and the `jj` CLI is available, spek also discovers OpenSpec changes in every jj workspace and merges them into the same aggregated view as git worktrees
 - The colocated main directory (both a git worktree and the jj `default` workspace) is deduplicated by path, so it is never double-counted
 - Because jj workspaces share one commit graph (each materialises the full trunk), a shared change would otherwise appear once per workspace; jj changes are deduplicated by content, so a shared change is shown once. A workspace that has diverged on a change keeps its own entry, flagged "conflicts with &lt;base&gt;" (and "editing" if it's the `@` change)
 - Opt in via the VS Code setting `spek.aggregateJjWorkspaces` (**experimental, off by default**), independent of git worktree aggregation
 - Degrades gracefully: when disabled, or `jj` is not installed, or the repo is not a jj repo, behaviour is identical to before — `jj` is never required
+
+**The aggregation scope is now one control in the panel header.** It used to be a checkbox on the Changes page, which meant it only existed on that page even though it changes what the Dashboard, Graph and Timeline show as well. It is now a single control in the header — `Current dir` / `Worktrees` / `Worktrees + jj` — visible from every page, and it appears only when there is more than one working copy to aggregate.
+
+- The three states are mutually exclusive, so the meaningless combination "don't aggregate, but do include jj" can no longer be selected. The `Worktrees + jj` option is offered only when a jj workspace is actually detected
+- The control writes the settings, not a hidden preference: it edits `spek.aggregateWorktrees` and `spek.aggregateJjWorkspaces` in your workspace `settings.json`, and editing those settings by hand updates the control
+- **New setting: `spek.aggregateWorktrees`** (default on) — git worktree aggregation was previously always on and not configurable
 
 ## 1.8.3
 
