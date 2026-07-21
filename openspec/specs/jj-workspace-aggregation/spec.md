@@ -27,10 +27,11 @@ return an empty array.
 
 ### Requirement: Deduplicate jj active changes by content identity
 
-Because jj workspaces share one commit graph and each materialises the full trunk, the same active
-change appears in every workspace. Active changes sourced from jj workspaces SHALL be deduplicated
-against the base (the main / `default` workspace) and against one another by `slug` + a **content
-fingerprint** (a hash over the relative paths and byte contents of every file in the change directory):
+Active changes sourced from jj workspaces SHALL be deduplicated against the base (the main /
+`default` workspace) and against one another by `slug` + a **content fingerprint** (a hash over the
+relative paths and byte contents of every file in the change directory) — because jj workspaces share
+one commit graph and each materialises the full trunk, the same active change otherwise appears in
+every workspace:
 
 - A jj copy whose fingerprint is byte-identical to an already-seen copy of that slug SHALL be dropped.
 - A jj copy whose `slug` matches an already-seen copy but whose content differs SHALL be kept as a

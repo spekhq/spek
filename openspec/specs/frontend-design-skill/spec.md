@@ -1,6 +1,6 @@
 ## Purpose
 
-提供前端設計指引 skill，產出具設計品質、避免通用 AI 風格的介面。
+Ship the frontend-design skill so generated interfaces carry real design quality instead of a generic AI look.
 
 ## Requirements
 

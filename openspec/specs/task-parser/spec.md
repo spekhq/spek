@@ -1,6 +1,6 @@
 ## Purpose
 
-解析 tasks.md 的 checkbox 與 section 分組，回傳完成度統計。
+Parse tasks.md checkboxes and section groupings into the completion statistics every delivery surface reports.
 
 ## Requirements
 ### Requirement: Parse task checkboxes

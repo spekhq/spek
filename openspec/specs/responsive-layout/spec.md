@@ -1,6 +1,6 @@
 ## Purpose
 
-規範前端在不同視窗寬度下的響應式版面行為。
+Define how the frontend layout adapts across viewport widths, from mobile through desktop.
 
 ## Requirements
 ### Requirement: Mobile breakpoint detection

@@ -1,6 +1,6 @@
 ## Purpose
 
-提供側邊欄的展開與收合控制及狀態記憶。
+Let users collapse and expand the navigation sidebar, and remember that choice across sessions.
 
 ## Requirements
 ### Requirement: Sidebar collapse toggle button

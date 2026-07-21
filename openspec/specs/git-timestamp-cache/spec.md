@@ -1,6 +1,6 @@
 ## Purpose
 
-快取 git 檔案時間戳查詢，加速 change 建立與封存日期等時間資訊的取得。
+Cache git-derived file timestamps so change creation and archive dates resolve without spawning a git process per change.
 
 ## Requirements
 ### Requirement: Build timestamp cache from git log

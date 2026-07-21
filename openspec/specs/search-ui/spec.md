@@ -1,6 +1,6 @@
 ## Purpose
 
-提供搜尋介面與結果呈現，串接搜尋 API 與 Fuse.js。
+Provide the search dialog and result presentation, combining the server-side search API with client-side Fuse.js ranking.
 
 ## Requirements
 

@@ -1,6 +1,6 @@
 ## Purpose
 
-監控 openspec 檔案變更並自動刷新前端內容，讓檢視即時反映磁碟狀態。
+Watch OpenSpec content for file changes and refresh the frontend automatically, so the view always reflects what is on disk.
 ## Requirements
 ### Requirement: File change detection for Web version
 

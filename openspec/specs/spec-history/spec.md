@@ -1,6 +1,6 @@
 ## Purpose
 
-呈現單一 spec 隨各 change 演進的歷史版本。
+Surface how a single spec evolved across the changes that touched it, active and archived alike.
 
 ## Requirements
 ### Requirement: Spec history data in API response

@@ -1,6 +1,6 @@
 ## Purpose
 
-提供 spec 列表與單一 spec 內容檢視（含 TOC 與歷史）。
+Provide the spec list and the single-spec reading experience, including its table of contents and change history.
 
 ## Requirements
 ### Requirement: Spec list with filtering

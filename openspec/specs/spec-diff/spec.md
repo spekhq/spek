@@ -1,6 +1,6 @@
 ## Purpose
 
-比對目前 spec 內容與歷史 change 版本，呈現差異。
+Compare the current content of a spec against the version captured in a change, and present the differences.
 
 ## Requirements
 ### Requirement: Read spec content at a specific change version

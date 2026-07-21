@@ -1,6 +1,6 @@
 ## Purpose
 
-提供總覽頁，彙整 specs、changes、tasks 的統計數據作為進入點。
+Provide the Dashboard landing page that aggregates spec, change, and task statistics into an at-a-glance entry point for a repository.
 
 ## Requirements
 

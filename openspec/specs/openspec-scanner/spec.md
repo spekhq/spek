@@ -1,6 +1,6 @@
 ## Purpose
 
-掃描 openspec/ 目錄結構，解析 specs 與 changes 並產出結構化資料。
+Scan an openspec/ directory and turn its specs and changes into the structured data every spek delivery surface reads.
 
 ## Requirements
 

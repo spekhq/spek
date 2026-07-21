@@ -1,6 +1,6 @@
 ## Purpose
 
-以水平甘特圖呈現各 change 的生命週期時間軸。
+Present change lifecycles as a horizontal Gantt-style timeline, so progress over time is visible at a glance.
 
 ## Requirements
 

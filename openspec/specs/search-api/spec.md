@@ -1,6 +1,6 @@
 ## Purpose
 
-提供 OpenSpec 內容的 server-side 全文搜尋 API。
+Provide server-side full-text search across all OpenSpec specs and changes, returning ranked matches with surrounding context.
 
 ## Requirements
 ### Requirement: Full-text search endpoint

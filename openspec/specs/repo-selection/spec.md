@@ -1,6 +1,6 @@
 ## Purpose
 
-讓 Web 版使用者選擇本地 repo 路徑並偵測其 openspec/ 目錄作為資料來源。
+Let Web users pick a local repository path and detect its openspec/ directory as the data source for the session.
 
 ## Requirements
 ### Requirement: Path input with auto-detection

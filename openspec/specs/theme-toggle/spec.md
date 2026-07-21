@@ -1,6 +1,6 @@
 ## Purpose
 
-提供深色與淺色主題切換，並與環境（IDE / 系統）同步。
+Provide dark and light theme switching, synchronised with the host environment (IDE or system preference).
 
 ## Requirements
 ### Requirement: Theme state management

@@ -1,6 +1,6 @@
 ## Purpose
 
-定義各頁共用的版面框架（導覽、標題列、內容區）。
+Define the layout shell every page shares - header, navigation sidebar, and content area - across all delivery surfaces.
 
 ## Requirements
 ### Requirement: Header component
