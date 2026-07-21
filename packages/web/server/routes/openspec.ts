@@ -11,7 +11,7 @@ import {
   readSpecAtChange,
   resyncTimestamps,
   buildGraphDataAggregated,
-  listWorktrees,
+  listWorkspaces,
   toWorktreeSource,
   listChangeMarkdownFiles,
   shouldUsePolling,
@@ -103,7 +103,8 @@ openspecRouter.use((req: Request, res: Response, next: NextFunction) => {
 openspecRouter.get("/overview", async (req, res) => {
   const dir = req.query.dir as string;
   const aggregate = req.query.aggregate !== "false";
-  const scan = await scanOpenSpecAggregated(dir, { aggregate });
+  const includeJj = req.query.jj === "true";
+  const scan = await scanOpenSpecAggregated(dir, { aggregate, includeJj });
 
   let totalTasks = 0;
   let completedTasks = 0;
@@ -153,7 +154,8 @@ openspecRouter.get("/specs/:topic/at/:slug", (req, res) => {
 openspecRouter.get("/changes", async (req, res) => {
   const dir = req.query.dir as string;
   const aggregate = req.query.aggregate !== "false";
-  const scan = await scanOpenSpecAggregated(dir, { aggregate });
+  const includeJj = req.query.jj === "true";
+  const scan = await scanOpenSpecAggregated(dir, { aggregate, includeJj });
   res.json({
     active: scan.activeChanges,
     archived: scan.archivedChanges,
@@ -171,7 +173,7 @@ openspecRouter.get("/changes/:slug", async (req, res) => {
   let targetDir = dir;
   let source: ReturnType<typeof toWorktreeSource> | undefined;
   if (wt) {
-    const match = (await listWorktrees(dir)).find((w) => w.key === wt);
+    const match = (await listWorkspaces(dir)).find((w) => w.key === wt);
     if (match) {
       targetDir = match.path;
       source = toWorktreeSource(match);
@@ -285,7 +287,8 @@ openspecRouter.get("/search", (req, res) => {
 openspecRouter.get("/graph", async (req, res) => {
   const dir = req.query.dir as string;
   const aggregate = req.query.aggregate !== "false";
-  const graphData = await buildGraphDataAggregated(dir, { aggregate });
+  const includeJj = req.query.jj === "true";
+  const graphData = await buildGraphDataAggregated(dir, { aggregate, includeJj });
   res.json(graphData);
 });
 
@@ -294,6 +297,7 @@ openspecRouter.get("/graph", async (req, res) => {
 openspecRouter.get("/watch", async (req, res) => {
   const dir = req.query.dir as string;
   const aggregate = req.query.aggregate !== "false";
+  const includeJj = req.query.jj === "true";
 
   res.writeHead(200, {
     "Content-Type": "text/event-stream",
@@ -304,15 +308,15 @@ openspecRouter.get("/watch", async (req, res) => {
   // 送一個初始 comment 確認連線
   res.write(": connected\n\n");
 
-  // 聚合時監看所有 worktree 的 openspec/，任一 worktree 變動都推送更新
+  // 聚合時監看所有工作目錄（git worktree 與 jj workspace）的 openspec/，任一變動都推送更新
   let watchDirs = [dir];
   if (aggregate) {
-    const worktrees = await listWorktrees(dir);
+    const worktrees = await listWorkspaces(dir, { includeJj });
     if (worktrees.length > 1) {
       watchDirs = worktrees.map((w) => w.path);
     }
   }
-  const key = `${dir}::${aggregate}`;
+  const key = `${dir}::${aggregate}::${includeJj}`;
   const entry = getOrCreateWatcher(key, watchDirs);
   entry.clients.add(res);
 

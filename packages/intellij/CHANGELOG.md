@@ -1,5 +1,9 @@
 # Changelog
 
+## Unreleased
+
+- No user-facing changes for the plugin. The new (experimental) Jujutsu (jj) workspace aggregation is Web / VS Code only — the plugin's Kotlin core has no worktree-aggregation foundation yet, so jj parity there is tracked as a separate, larger effort.
+
 ## 1.8.3
 
 - **Lists with blank lines between their items render correctly again.** Every bullet and number was pushed onto its own line, above the text it belonged to, which made proposals and task lists hard to scan. Markers now sit inline with the first line of their item. Thanks to [@nthansen](https://github.com/nthansen) (Norman Hansen) for reporting and contributing this.

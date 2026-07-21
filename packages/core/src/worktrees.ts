@@ -2,6 +2,7 @@ import { execFile } from "node:child_process";
 import { createHash } from "node:crypto";
 import path from "node:path";
 import type { WorktreeInfo, WorktreeSource } from "./types.js";
+import { listJjWorkspaces } from "./jj-workspaces.js";
 
 /**
  * 由絕對路徑算出穩定、URL-safe 的 worktree key（sha1 前 8 碼）。
@@ -13,7 +14,7 @@ export function worktreeKey(absPath: string): string {
 
 /** 從完整的 WorktreeInfo 取出附加在 change 上的精簡來源資訊。 */
 export function toWorktreeSource(wt: WorktreeInfo): WorktreeSource {
-  return { key: wt.key, path: wt.path, branch: wt.branch, isMain: wt.isMain };
+  return { key: wt.key, path: wt.path, branch: wt.branch, isMain: wt.isMain, vcs: wt.vcs };
 }
 
 /**
@@ -36,6 +37,7 @@ export function parseWorktreePorcelain(stdout: string): WorktreeInfo[] {
         isMain: result.length === 0,
         isBare: current.isBare,
         key: worktreeKey(absPath),
+        vcs: "git",
       });
     }
     current = null;
@@ -91,4 +93,29 @@ export function listWorktrees(dir: string): Promise<WorktreeInfo[]> {
       },
     );
   });
+}
+
+/**
+ * 列舉同一 repo 的所有工作目錄：git worktree 與（includeJj 時）jj workspace。
+ * 依 key（絕對路徑雜湊）去重——colocated 主目錄同時是 git main 與 jj `default`，
+ * 路徑相同 → key 相同 → 保留 git 那筆以維持 branch 資訊。最後把主工作目錄排到最前。
+ */
+export async function listWorkspaces(
+  dir: string,
+  options: { includeJj?: boolean } = {},
+): Promise<WorktreeInfo[]> {
+  const includeJj = options.includeJj !== false;
+  const [gitWorktrees, jjWorkspaces] = await Promise.all([
+    listWorktrees(dir),
+    includeJj ? listJjWorkspaces(dir) : Promise.resolve<WorktreeInfo[]>([]),
+  ]);
+
+  const byKey = new Map<string, WorktreeInfo>();
+  for (const wt of gitWorktrees) byKey.set(wt.key, wt); // git 先放
+  for (const ws of jjWorkspaces) if (!byKey.has(ws.key)) byKey.set(ws.key, ws);
+
+  const merged = [...byKey.values()];
+  // 主工作目錄置頂（穩定排序，其餘相對順序不變）
+  merged.sort((a, b) => (b.isMain ? 1 : 0) - (a.isMain ? 1 : 0));
+  return merged;
 }

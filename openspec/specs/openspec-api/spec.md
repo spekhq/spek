@@ -1,7 +1,6 @@
 ## Purpose
 
 提供 OpenSpec 內容的 REST API（overview / specs / changes / graph / search），作為前端資料來源。
-
 ## Requirements
 ### Requirement: Overview endpoint
 The system SHALL provide `GET /api/openspec/overview` that returns aggregate statistics for an OpenSpec repository. The endpoint SHALL accept an optional `aggregate` query parameter (default true); when aggregation is active and the repository has multiple worktrees, the statistics SHALL cover all worktrees following the worktree-aggregation rules (active changes unioned, archived changes deduplicated by slug).
@@ -225,3 +224,23 @@ The `ApiAdapter` interface SHALL allow worktree aggregation to be controlled and
 
 - **WHEN** the Demo `StaticAdapter` is asked for changes with worktree parameters
 - **THEN** it returns the static demo data unchanged, as a single non-aggregated source
+
+### Requirement: Workspace-aware API endpoints
+
+The Web server openspec routes `/overview`, `/changes`, `/graph`, and `/watch` SHALL accept a `jj` query
+parameter (default enabled; `jj=false` disables jj inclusion) and thread it into core as `includeJj`,
+independent of the existing `aggregate` parameter. The `/watch` endpoint SHALL enumerate directories to
+watch via `listWorkspaces`, so that jj workspace `openspec/` directories are watched when jj inclusion
+is enabled. The `/changes/:slug` route SHALL accept a `wt` (workspace key) parameter so a same-named
+slug can be resolved to the specific working copy — git worktree or jj workspace — that owns it.
+
+#### Scenario: changes endpoint honors jj toggle
+
+- **WHEN** `GET /api/openspec/changes?dir=...&jj=false` is requested on a colocated repo with jj workspaces
+- **THEN** the response excludes jj-only workspace changes, matching git-worktree-only aggregation
+
+#### Scenario: watch covers jj workspaces
+
+- **WHEN** `/watch` runs with aggregation and jj inclusion enabled on a repo with a jj workspace
+- **THEN** that workspace's `openspec/` directory is watched for changes
+

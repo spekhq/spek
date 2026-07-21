@@ -1,8 +1,10 @@
 import fs from "node:fs";
 import path from "node:path";
+import { createHash } from "node:crypto";
 import { parseTasks } from "./tasks.js";
 import { getTimestamps } from "./git-cache.js";
-import { listWorktrees, toWorktreeSource } from "./worktrees.js";
+import { listWorkspaces, toWorktreeSource } from "./worktrees.js";
+import { jjCurrentChangeSlugs } from "./jj-workspaces.js";
 import { discoverArtifacts, countArtifacts, changeDirMtime } from "./artifacts.js";
 import {
   cliDivergence,
@@ -517,44 +519,139 @@ export async function pickActiveWinners(
 }
 
 /**
- * 跨 worktree 聚合掃描。探索 repoDir 所屬 repo 的所有 worktree，active changes 依 slug 去重
- * （以 git 分歧選舉勝出的副本，見 pickActiveWinners）並附 source、archived changes 依 slug 去重
- * （主 worktree 優先）、specs 取主 worktree。關閉聚合、非 git、或單一 worktree 時等同 scanOpenSpec(repoDir)。
+ * 計算單一 active change 目錄的內容指紋（目錄內所有檔案的相對路徑 + 內容雜湊）。
+ * 用於 jj 聚合判斷不同 workspace 的同名 change 是否內容相同（相同則去重）。
+ */
+function changeContentFingerprint(repoDir: string, slug: string): string {
+  const dir = path.join(openspecDir(repoDir), "changes", slug);
+  const hash = createHash("sha1");
+  const walk = (rel: string) => {
+    const abs = rel ? path.join(dir, rel) : dir;
+    let st: fs.Stats;
+    try {
+      st = fs.statSync(abs);
+    } catch {
+      return;
+    }
+    if (st.isDirectory()) {
+      for (const name of fs.readdirSync(abs).sort()) {
+        walk(rel ? path.join(rel, name) : name);
+      }
+    } else if (st.isFile()) {
+      hash.update(rel + "\0");
+      hash.update(fs.readFileSync(abs));
+      hash.update("\0");
+    }
+  };
+  walk("");
+  return hash.digest("hex");
+}
+
+/**
+ * 跨工作目錄聚合掃描。探索 repoDir 所屬 repo 的所有 git worktree 與 jj workspace，
+ * active changes 分兩套去重機制並存：git worktree 之間以 **git 分歧選舉**去重（勝出者為對該 slug
+ * 確實推進 main HEAD 或有未提交修改的 worktree，見 pickActiveWinners）；jj workspace 因共用 commit
+ * graph 會 materialise 整份 trunk，故以**內容指紋**對基準去重（相同丟棄、分歧者保留並標 conflictsWith、
+ * `@` 正在編輯者標 isCurrent）。jj workspace 對 git 隱形且其 `head` 是 jj change id 而非 git sha，
+ * 無法餵進 git 分歧選舉，故兩者刻意走各自路徑。皆附 source；archived changes 依 slug 去重
+ * （主工作目錄優先）、specs 取主工作目錄。關閉聚合、非版控、或單一工作目錄時等同 scanOpenSpec(repoDir)。
  */
 export async function scanOpenSpecAggregated(
   repoDir: string,
-  options: { aggregate?: boolean } = {},
+  options: { aggregate?: boolean; includeJj?: boolean } = {},
 ): Promise<AggregatedScanResult> {
   const aggregate = options.aggregate !== false;
-  // 一律探索 worktree，讓 UI 即使在關閉聚合時仍知道有多個 worktree（可重新開啟聚合）
-  const worktrees = await listWorktrees(repoDir);
+  // 一律探索工作目錄，讓 UI 即使在關閉聚合時仍知道有多個工作目錄（可重新開啟聚合）
+  const worktrees = await listWorkspaces(repoDir, {
+    includeJj: options.includeJj,
+  });
 
   if (!aggregate || worktrees.length <= 1) {
     const single = await scanOpenSpec(repoDir);
     return { ...single, worktrees, aggregated: false };
   }
 
-  // 各 worktree 平行掃描
+  // 只要 repo 含 jj workspace 就計算 `@` 高亮——colocated 主目錄雖去重成 git 那筆，
+  // 仍可能是使用者實際編輯的 default workspace，故對每個工作目錄都查（非 jj 路徑回空集合）。
+  const repoUsesJj = worktrees.some((w) => w.vcs === "jj");
+
+  // 各工作目錄平行掃描；含 jj 時另平行取 `@` 正在編輯的 change slug
   const scans = await Promise.all(
-    worktrees.map(async (wt) => ({ wt, scan: await scanOpenSpec(wt.path) })),
+    worktrees.map(async (wt) => ({
+      wt,
+      scan: await scanOpenSpec(wt.path),
+      currentSlugs: repoUsesJj
+        ? await jjCurrentChangeSlugs(wt.path)
+        : (null as Set<string> | null),
+    })),
   );
 
-  // 主 worktree = 第一個非 bare（通常即 worktrees[0]）
+  // 主工作目錄 = 第一個非 bare（通常即 worktrees[0]）
   const main = scans.find((s) => !s.wt.isBare) ?? scans[0];
 
-  // active changes：依 slug 去重，勝出者為對該 slug 確實分歧（超前 main HEAD 或有未提交修改）的
-  // 非主 worktree；無人分歧時留在 main，多個分歧副本間以 mtime tiebreak（見 pickActiveWinners）
-  const activeEntries = scans.map((s) => ({
+  // active changes 分兩套去重機制並存（jj workspace 對 git 隱形、其 head 是 jj change id 而非 git
+  // sha，無法餵進 git 分歧選舉，故刻意走各自路徑）：
+  //  - git worktree（含 colocated main）：以 git 分歧選舉去重（勝出者為對該 slug 確實推進 main HEAD
+  //    或有未提交修改的 worktree，多個分歧副本間以 mtime tiebreak；見 pickActiveWinners）
+  //  - jj workspace：因共用 commit graph 而 materialise 整份 trunk，同名且內容相同的 change 會在每個
+  //    workspace 重複出現，故以「slug + 內容指紋」對基準（main）與彼此去重；內容分歧者保留並標 conflictsWith
+  const activeChanges: ChangeInfo[] = [];
+  const sourceLabel = (wt: typeof main.wt) =>
+    wt.isMain ? "main" : (wt.branch ?? (wt.vcs === "jj" ? "jj" : "detached"));
+
+  // git worktree：git 分歧選舉去重。jj workspace 不參選（見上），故先濾掉。
+  const gitScans = scans.filter((s) => s.wt.vcs !== "jj");
+  const activeEntries = gitScans.map((s) => ({
     wt: s.wt,
     slugs: s.scan.activeChanges.map((c) => c.slug),
   }));
   const activeWinners = await pickActiveWinners(activeEntries, main.wt);
-  const activeChanges: ChangeInfo[] = [];
-  for (const { wt, scan } of scans) {
+  for (const { wt, scan, currentSlugs } of gitScans) {
     const source = toWorktreeSource(wt);
     for (const c of scan.activeChanges) {
-      if (activeWinners.get(c.slug) === wt) {
-        activeChanges.push({ ...c, source });
+      if (activeWinners.get(c.slug) !== wt) continue; // 只輸出選舉勝出的副本
+      const isCurrent = currentSlugs?.has(c.slug) ? true : undefined;
+      activeChanges.push({ ...c, source, ...(isCurrent ? { isCurrent } : {}) });
+    }
+  }
+
+  // jj workspace：以內容指紋對基準去重。基準（jjSeen）由 main 的內容種下——main 是 trunk 基準，
+  // 不論它在上面的 git 選舉是否勝出該 slug。colocated repo 的 main 是 git worktree，已由 git 路徑
+  // 輸出；純 jj repo（無 git 後端）的 main 本身是 jj workspace，git 選舉不涵蓋它，於此補上輸出。
+  if (repoUsesJj) {
+    const jjSeen = new Map<string, { fp: string; label: string }[]>();
+    const emitMainAsJj = main.wt.vcs === "jj";
+    for (const c of main.scan.activeChanges) {
+      if (emitMainAsJj) {
+        const isCurrent = main.currentSlugs?.has(c.slug) ? true : undefined;
+        activeChanges.push({
+          ...c,
+          source: toWorktreeSource(main.wt),
+          ...(isCurrent ? { isCurrent } : {}),
+        });
+      }
+      jjSeen.set(c.slug, [
+        { fp: changeContentFingerprint(main.wt.path, c.slug), label: sourceLabel(main.wt) },
+      ]);
+    }
+
+    for (const { wt, scan, currentSlugs } of scans) {
+      if (wt === main.wt || wt.vcs !== "jj") continue;
+      const source = toWorktreeSource(wt);
+      for (const c of scan.activeChanges) {
+        const isCurrent = currentSlugs?.has(c.slug) ? true : undefined;
+        const fp = changeContentFingerprint(wt.path, c.slug);
+        const seen = jjSeen.get(c.slug);
+        if (seen?.some((e) => e.fp === fp)) continue; // 內容相同 → 丟棄重複
+        const conflictsWith = seen?.length ? seen[0].label : undefined;
+        activeChanges.push({
+          ...c,
+          source,
+          ...(isCurrent ? { isCurrent } : {}),
+          ...(conflictsWith ? { conflictsWith } : {}),
+        });
+        if (seen) seen.push({ fp, label: sourceLabel(wt) });
+        else jjSeen.set(c.slug, [{ fp, label: sourceLabel(wt) }]);
       }
     }
   }
@@ -596,10 +693,12 @@ export async function scanOpenSpecAggregated(
  */
 export async function buildGraphDataAggregated(
   repoDir: string,
-  options: { aggregate?: boolean } = {},
+  options: { aggregate?: boolean; includeJj?: boolean } = {},
 ): Promise<GraphData> {
   const aggregate = options.aggregate !== false;
-  const worktrees = aggregate ? await listWorktrees(repoDir) : [];
+  const worktrees = aggregate
+    ? await listWorkspaces(repoDir, { includeJj: options.includeJj })
+    : [];
 
   if (!aggregate || worktrees.length <= 1) {
     return buildGraphData(repoDir);
@@ -621,10 +720,14 @@ export async function buildGraphDataAggregated(
   // 兩處對「哪個 worktree 擁有這個 slug」給出不同答案。選舉輸入用 listActiveChangeSlugs（與 list
   // 路徑同一函式），而非 graph 節點——後者只含有 delta spec 的 change，會漏掉無 spec 的 active change
   // 而讓兩條路徑選出不同勝出者。仍不做完整 scanOpenSpec（僅列目錄取 slug）。
-  const activeEntries = [...graphs.keys()].map((wt) => ({
-    wt,
-    slugs: listActiveChangeSlugs(wt.path),
-  }));
+  // jj workspace 不參與 git 分歧選舉（其 head 是 jj change id、對 git 隱形），故濾掉；
+  // jj 的去重在下方節點迴圈以內容指紋處理，與 list 路徑一致。
+  const activeEntries = [...graphs.keys()]
+    .filter((wt) => wt.vcs !== "jj")
+    .map((wt) => ({
+      wt,
+      slugs: listActiveChangeSlugs(wt.path),
+    }));
   const activeWinners = await pickActiveWinners(activeEntries, main);
 
   // spec 節點：只取主 worktree
@@ -634,6 +737,10 @@ export async function buildGraphDataAggregated(
   const edges: GraphEdge[] = [];
   const seenArchivedSlugs = new Set<string>();
   const historyCounts = new Map<string, number>();
+  // jj active 去重：slug -> 已見內容指紋集合（由 main 種子；僅含 jj 時使用），
+  // 避免共用 commit graph 的 jj workspace 把同一個 change 重複成多個節點。
+  const repoUsesJj = worktrees.some((w) => w.vcs === "jj");
+  const jjSeenActive = new Map<string, Set<string>>();
 
   for (const wt of ordered) {
     const g = graphs.get(wt);
@@ -646,8 +753,21 @@ export async function buildGraphDataAggregated(
       if (node.status === "archived") {
         if (seenArchivedSlugs.has(slug)) continue;
         seenArchivedSlugs.add(slug);
-      } else if (activeWinners.get(slug) !== wt) {
-        continue;
+      } else if (wt.vcs !== "jj") {
+        // git worktree active 節點：只保留 git 分歧選舉勝出的副本（見 pickActiveWinners）。
+        // main 另外種下 jj 去重基準，讓 jj workspace 得以對 main 的內容去重（不論 main 是否勝出）。
+        if (wt === main && repoUsesJj && !jjSeenActive.has(slug)) {
+          jjSeenActive.set(slug, new Set([changeContentFingerprint(wt.path, slug)]));
+        }
+        if (activeWinners.get(slug) !== wt) continue;
+      } else {
+        // jj workspace active 節點：以內容指紋對基準（main）與其他 jj workspace 去重；
+        // jj 重複者跳過（連帶略過其 edges，不灌水 spec historyCount）
+        const fp = changeContentFingerprint(wt.path, slug);
+        const seen = jjSeenActive.get(slug);
+        if (seen?.has(fp)) continue;
+        if (seen) seen.add(fp);
+        else jjSeenActive.set(slug, new Set([fp]));
       }
       const newId = `change:${wt.key}:${slug}`;
       idMap.set(node.id, newId);

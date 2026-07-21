@@ -12,10 +12,16 @@ export {
 } from "./scanner.js";
 export {
   listWorktrees,
+  listWorkspaces,
   parseWorktreePorcelain,
   worktreeKey,
   toWorktreeSource,
 } from "./worktrees.js";
+export {
+  listJjWorkspaces,
+  parseJjWorkspaceList,
+  jjCurrentChangeSlugs,
+} from "./jj-workspaces.js";
 export {
   getTimestamps,
   resyncTimestamps,

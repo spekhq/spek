@@ -72,8 +72,8 @@ export class MessageAdapter implements ApiAdapter {
     });
   }
 
-  getOverview(aggregate?: boolean): Promise<OverviewData> {
-    return this.request("getOverview", { aggregate });
+  getOverview(aggregate?: boolean, includeJj?: boolean): Promise<OverviewData> {
+    return this.request("getOverview", { aggregate, includeJj });
   }
 
   getSpecs(): Promise<SpecInfo[]> {
@@ -88,8 +88,8 @@ export class MessageAdapter implements ApiAdapter {
     return this.request("getSpecAtChange", { topic, slug });
   }
 
-  getChanges(aggregate?: boolean): Promise<ChangesData> {
-    return this.request("getChanges", { aggregate });
+  getChanges(aggregate?: boolean, includeJj?: boolean): Promise<ChangesData> {
+    return this.request("getChanges", { aggregate, includeJj });
   }
 
   getChange(slug: string, wt?: string): Promise<ChangeDetail> {
@@ -112,7 +112,7 @@ export class MessageAdapter implements ApiAdapter {
     return this.request("resync");
   }
 
-  getGraphData(aggregate?: boolean): Promise<GraphData> {
-    return this.request("getGraphData", { aggregate });
+  getGraphData(aggregate?: boolean, includeJj?: boolean): Promise<GraphData> {
+    return this.request("getGraphData", { aggregate, includeJj });
   }
 }

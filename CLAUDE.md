@@ -81,9 +81,14 @@ Pure functions + types, shared by the web server and extension hosts. **Scanning
 behavior lives in `openspec/specs/`; the key entry points:
 
 - `scanOpenSpec(basePath)` — scan a single directory
-- `scanOpenSpecAggregated(basePath, {aggregate})` — cross-worktree aggregation: active changes deduped by slug (a
-  **git-divergence election** picks the winning copy, with `main` competing on equal terms, mtime tiebreak), archived
-  deduped by slug, specs from the main worktree. Single worktree / non-git / aggregation off → same as `scanOpenSpec`
+- `scanOpenSpecAggregated(basePath, {aggregate, includeJj})` — cross-worktree aggregation. Active changes are deduped
+  by slug, **dispatched by VCS**: **git worktrees** via a **git-divergence election** (winning copy is the one advanced
+  past `main`'s HEAD, `main` competing on equal terms, mtime tiebreak); **jj workspaces** (EXPERIMENTAL — `includeJj`,
+  off by default) via a **content fingerprint** — because jj workspaces share one commit graph and materialise the full
+  trunk, identical copies collapse to one, a diverged copy is kept and flagged `conflictsWith`, and the `@`-edited one
+  is flagged `isCurrent`. jj entries are **never** fed into the git election (their `head` is a jj change-id, not a git
+  ref). Archived deduped by slug, specs from the main worktree. Single worktree / non-git / aggregation off →
+  `scanOpenSpec`. `buildGraphDataAggregated` uses the same dual-path logic
 - `readChange(basePath, slug, orderProvider?)` — returns `ChangeDetail`: disk-discovered `artifacts` (mtime order),
   `schema` / `defaultSchema` (that worktree's default, read from `openspec/config.yaml` once per worktree; the badge is
   hidden when a change's schema == its own `defaultSchema`), and `schemaOrder` (see below)
@@ -92,6 +97,12 @@ behavior lives in `openspec/specs/`; the key entry points:
   (`proposal, design, specs, tasks` first, then alphabetical)
 - `readSpec` / `readSpecAtChange`, `buildGraphData` / `buildGraphDataAggregated` (aggregated node ids
   `change:<wtKey>:<slug>` avoid collisions), `listWorktrees`, `parseTasks`
+- **jj workspace support (EXPERIMENTAL)**: `listJjWorkspaces(dir)` (`jj workspace list`),
+  `listWorkspaces(dir, {includeJj})` (merges git worktrees + jj workspaces, dedups the colocated main by path — git
+  entry wins to keep the branch), `jjCurrentChangeSlugs(dir)` (`jj diff --ignore-working-copy -r @`, read-only, drives
+  `isCurrent`). All degrade to `[]`/empty when `jj` is absent — `jj` is **never required**. Off by default; opt in via
+  `includeJj` (Web `jj` query param) or the VS Code `spek.aggregateJjWorkspaces` setting. `WorktreeInfo.vcs` and
+  `ChangeInfo.isCurrent` / `.conflictsWith` carry the jj metadata
 - `extractHeadings` / `slugifyHeading` (h2/h3 → stable slugs for the spec TOC and VS Code sidebar; **import from the
   `@spekjs/core/headings` subpath** so the webview bundle doesn't pull in server-only modules)
 - `ChangeDetail.artifacts: ChangeArtifact[]` is the contract across core / API / frontends, driving both tabs and TOC
@@ -119,7 +130,7 @@ by the watched path's fstype (`decidePolling` precedence: explicit override `SPE
 
 ### API endpoints (Web; all openspec routes accept `dir`)
 
-`/changes`, `/overview`, `/graph`, `/watch` also accept `aggregate` (default true). `/changes/:slug` accepts `wt` (source worktree).
+`/changes`, `/overview`, `/graph`, `/watch` also accept `aggregate` (default true) and `jj` (**EXPERIMENTAL, default false**; `jj=true` includes jj workspaces). `/changes/:slug` accepts `wt` (source working directory, incl. jj workspaces).
 
 ```
 GET /api/fs/browse?path=...                        # directory browse

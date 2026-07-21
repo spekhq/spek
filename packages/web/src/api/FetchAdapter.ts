@@ -26,6 +26,20 @@ export interface FetchAdapterOptions {
   dirParam?: string;
 }
 
+/**
+ * Query-string fragment for the aggregation params. The server defaults differ, so the
+ * "omit when default" polarity differs per param:
+ *  - `aggregate` defaults **on**  → only send `aggregate=false` when explicitly off.
+ *  - `jj`        defaults **off** (experimental, opt-in) → only send `jj=true` when explicitly on.
+ * (Sending `jj=false` when off is a no-op that hid the real bug: the toggle-on case sent nothing.)
+ */
+export function aggQuery(aggregate?: boolean, includeJj?: boolean): string {
+  return (
+    (aggregate === false ? "&aggregate=false" : "") +
+    (includeJj === true ? "&jj=true" : "")
+  );
+}
+
 export class FetchAdapter implements ApiAdapter {
   private baseUrl: string;
   private dirParam: string;
@@ -39,13 +53,12 @@ export class FetchAdapter implements ApiAdapter {
     return `${this.dirParam}=${encodeURIComponent(this.repoPath)}`;
   }
 
-  // 聚合預設開啟，僅在明確關閉時帶 aggregate=false
-  private agg(aggregate?: boolean): string {
-    return aggregate === false ? "&aggregate=false" : "";
+  private agg(aggregate?: boolean, includeJj?: boolean): string {
+    return aggQuery(aggregate, includeJj);
   }
 
-  getOverview(aggregate?: boolean): Promise<OverviewData> {
-    return fetchJson(`${this.baseUrl}/openspec/overview?${this.q()}${this.agg(aggregate)}`);
+  getOverview(aggregate?: boolean, includeJj?: boolean): Promise<OverviewData> {
+    return fetchJson(`${this.baseUrl}/openspec/overview?${this.q()}${this.agg(aggregate, includeJj)}`);
   }
 
   getSpecs(): Promise<SpecInfo[]> {
@@ -60,8 +73,8 @@ export class FetchAdapter implements ApiAdapter {
     return fetchJson(`${this.baseUrl}/openspec/specs/${encodeURIComponent(topic)}/at/${encodeURIComponent(slug)}?${this.q()}`);
   }
 
-  getChanges(aggregate?: boolean): Promise<ChangesData> {
-    return fetchJson(`${this.baseUrl}/openspec/changes?${this.q()}${this.agg(aggregate)}`);
+  getChanges(aggregate?: boolean, includeJj?: boolean): Promise<ChangesData> {
+    return fetchJson(`${this.baseUrl}/openspec/changes?${this.q()}${this.agg(aggregate, includeJj)}`);
   }
 
   getChange(slug: string, wt?: string): Promise<ChangeDetail> {
@@ -86,7 +99,7 @@ export class FetchAdapter implements ApiAdapter {
     if (!res.ok) throw new Error(`HTTP ${res.status}`);
   }
 
-  getGraphData(aggregate?: boolean): Promise<GraphData> {
-    return fetchJson(`${this.baseUrl}/openspec/graph?${this.q()}${this.agg(aggregate)}`);
+  getGraphData(aggregate?: boolean, includeJj?: boolean): Promise<GraphData> {
+    return fetchJson(`${this.baseUrl}/openspec/graph?${this.q()}${this.agg(aggregate, includeJj)}`);
   }
 }

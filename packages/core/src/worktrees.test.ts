@@ -112,7 +112,8 @@ test("listWorktrees: returns every worktree when called from a linked worktree",
   const wts = await listWorktrees(linked);
   assert.equal(wts.length, 2);
   assert.equal(wts[0].isMain, true);
-  assert.equal(wts[0].path, path.resolve(repo));
+  // git 回傳解析過 symlink 的實體路徑（macOS：/var → /private/var），故以 realpath 比對
+  assert.equal(wts[0].path, fs.realpathSync(repo));
 });
 
 test("listWorktrees: returns empty array for a non-git directory", async () => {

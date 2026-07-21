@@ -1,6 +1,7 @@
 import * as fs from "fs";
 import * as path from "path";
 import * as os from "os";
+import * as vscode from "vscode";
 import Fuse from "fuse.js";
 import {
   scanOpenSpec,
@@ -10,7 +11,7 @@ import {
   readSpecAtChange,
   resyncTimestamps,
   buildGraphDataAggregated,
-  listWorktrees,
+  listWorkspaces,
   toWorktreeSource,
   listChangeMarkdownFiles,
 } from "@spekjs/core";
@@ -18,10 +19,25 @@ import {
 export class MessageHandler {
   constructor(private readonly workspacePath: string) {}
 
+  /**
+   * jj workspace 聚合在 VS Code **一律由 `spek.aggregateJjWorkspaces` 設定決定**（experimental，
+   * 預設 false），刻意忽略 webview 送來的 includeJj —— 那個值源自 Web 版的 localStorage 開關
+   * (`spek:aggregate-jj`)，若讓它覆蓋設定，切換設定就會失效（webview 永遠帶著自己的值）。VS Code 只有
+   * 一個真相來源：設定。
+   */
+  private jjEnabled(_includeJj?: boolean): boolean {
+    return vscode.workspace
+      .getConfiguration("spek")
+      .get<boolean>("aggregateJjWorkspaces", false);
+  }
+
   async handle(method: string, params?: Record<string, unknown>): Promise<unknown> {
     switch (method) {
       case "getOverview":
-        return this.getOverview(params?.aggregate as boolean | undefined);
+        return this.getOverview(
+          params?.aggregate as boolean | undefined,
+          params?.includeJj as boolean | undefined,
+        );
       case "getSpecs":
         return this.getSpecs();
       case "getSpec":
@@ -29,7 +45,10 @@ export class MessageHandler {
       case "getSpecAtChange":
         return this.getSpecAtChange(params?.topic as string, params?.slug as string);
       case "getChanges":
-        return this.getChanges(params?.aggregate as boolean | undefined);
+        return this.getChanges(
+          params?.aggregate as boolean | undefined,
+          params?.includeJj as boolean | undefined,
+        );
       case "getChange":
         return this.getChange(params?.slug as string, params?.wt as string | undefined);
       case "search":
@@ -41,14 +60,20 @@ export class MessageHandler {
       case "resync":
         return this.resync();
       case "getGraphData":
-        return this.getGraphData(params?.aggregate as boolean | undefined);
+        return this.getGraphData(
+          params?.aggregate as boolean | undefined,
+          params?.includeJj as boolean | undefined,
+        );
       default:
         throw new Error(`Unknown method: ${method}`);
     }
   }
 
-  private async getOverview(aggregate?: boolean) {
-    const scan = await scanOpenSpecAggregated(this.workspacePath, { aggregate });
+  private async getOverview(aggregate?: boolean, includeJj?: boolean) {
+    const scan = await scanOpenSpecAggregated(this.workspacePath, {
+      aggregate,
+      includeJj: this.jjEnabled(includeJj),
+    });
     let totalTasks = 0;
     let completedTasks = 0;
     for (const change of [...scan.activeChanges, ...scan.archivedChanges]) {
@@ -84,8 +109,11 @@ export class MessageHandler {
     return result;
   }
 
-  private async getChanges(aggregate?: boolean) {
-    const scan = await scanOpenSpecAggregated(this.workspacePath, { aggregate });
+  private async getChanges(aggregate?: boolean, includeJj?: boolean) {
+    const scan = await scanOpenSpecAggregated(this.workspacePath, {
+      aggregate,
+      includeJj: this.jjEnabled(includeJj),
+    });
     return {
       active: scan.activeChanges,
       archived: scan.archivedChanges,
@@ -100,7 +128,7 @@ export class MessageHandler {
     let targetDir = this.workspacePath;
     let source: ReturnType<typeof toWorktreeSource> | undefined;
     if (wt) {
-      const match = (await listWorktrees(this.workspacePath)).find((w) => w.key === wt);
+      const match = (await listWorkspaces(this.workspacePath)).find((w) => w.key === wt);
       if (match) {
         targetDir = match.path;
         source = toWorktreeSource(match);
@@ -236,7 +264,10 @@ export class MessageHandler {
     return { ok: true };
   }
 
-  private getGraphData(aggregate?: boolean) {
-    return buildGraphDataAggregated(this.workspacePath, { aggregate });
+  private getGraphData(aggregate?: boolean, includeJj?: boolean) {
+    return buildGraphDataAggregated(this.workspacePath, {
+      aggregate,
+      includeJj: this.jjEnabled(includeJj),
+    });
   }
 }

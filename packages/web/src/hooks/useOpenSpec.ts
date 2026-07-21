@@ -9,6 +9,7 @@ import {
 } from "../contexts/RefreshContext";
 import { runManualRefresh } from "../contexts/refreshTracker";
 import { getAggregatePref } from "../utils/aggregatePref";
+import { getJjWorkspacePref } from "../utils/jjWorkspacePref";
 import type {
   OverviewData,
   SpecInfo,
@@ -122,13 +123,17 @@ function useAsyncData<T>(
 
 // --- OpenSpec API hooks ---
 
-export function useOverview(aggregate?: boolean): FetchState<OverviewData> {
+export function useOverview(
+  aggregate?: boolean,
+  includeJj?: boolean,
+): FetchState<OverviewData> {
   const { repoPath } = useRepo();
   const adapter = useApiAdapter();
   const agg = aggregate ?? getAggregatePref();
+  const jj = includeJj ?? getJjWorkspacePref();
   return useAsyncData(
-    repoPath ? () => adapter.getOverview(agg) : null,
-    [repoPath, agg],
+    repoPath ? () => adapter.getOverview(agg, jj) : null,
+    [repoPath, agg, jj],
   );
 }
 
@@ -159,13 +164,17 @@ export function useSpecAtChange(topic: string, slug: string): FetchState<SpecVer
   );
 }
 
-export function useChanges(aggregate?: boolean): FetchState<ChangesData> {
+export function useChanges(
+  aggregate?: boolean,
+  includeJj?: boolean,
+): FetchState<ChangesData> {
   const { repoPath } = useRepo();
   const adapter = useApiAdapter();
   const agg = aggregate ?? getAggregatePref();
+  const jj = includeJj ?? getJjWorkspacePref();
   return useAsyncData(
-    repoPath ? () => adapter.getChanges(agg) : null,
-    [repoPath, agg],
+    repoPath ? () => adapter.getChanges(agg, jj) : null,
+    [repoPath, agg, jj],
   );
 }
 
@@ -214,13 +223,17 @@ export function useRefreshData(): { refreshData: () => Promise<void>; loading: b
 
 // --- Graph data hook ---
 
-export function useGraphData(aggregate?: boolean): FetchState<GraphData> {
+export function useGraphData(
+  aggregate?: boolean,
+  includeJj?: boolean,
+): FetchState<GraphData> {
   const { repoPath } = useRepo();
   const adapter = useApiAdapter();
   const agg = aggregate ?? getAggregatePref();
+  const jj = includeJj ?? getJjWorkspacePref();
   return useAsyncData(
-    repoPath ? () => adapter.getGraphData(agg) : null,
-    [repoPath, agg],
+    repoPath ? () => adapter.getGraphData(agg, jj) : null,
+    [repoPath, agg, jj],
   );
 }
 

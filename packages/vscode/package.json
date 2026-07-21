@@ -34,6 +34,17 @@
   ],
   "main": "./dist/extension.js",
   "contributes": {
+    "configuration": {
+      "title": "spek",
+      "properties": {
+        "spek.aggregateJjWorkspaces": {
+          "type": "boolean",
+          "default": false,
+          "tags": ["experimental"],
+          "markdownDescription": "**EXPERIMENTAL:** Enable experimental jj VCS workspace aggregation.\n\nThis will show specifications found in related jj workspaces and mirrors the git workspaces implementation. Off by default; has no effect when `jj` is not installed or the repository is not a jj repo."
+        }
+      }
+    },
     "commands": [
       {
         "command": "spek.open",

@@ -110,8 +110,12 @@ export class ChangesTreeProvider implements vscode.TreeDataProvider<ChangesTreeN
     }
 
     try {
-      // 跨 worktree 聚合，與 webview panel 的 Changes 頁一致
-      const scan = await scanOpenSpecAggregated(this.workspacePath);
+      // 跨 worktree / jj workspace 聚合，與 webview panel 的 Changes 頁一致；
+      // jj workspace 納入與否由 spek.aggregateJjWorkspaces 設定控制（experimental，預設關）
+      const includeJj = vscode.workspace
+        .getConfiguration("spek")
+        .get<boolean>("aggregateJjWorkspaces", false);
+      const scan = await scanOpenSpecAggregated(this.workspacePath, { includeJj });
       const groups: ChangeGroupItem[] = [];
 
       if (scan.activeChanges.length > 0) {
@@ -145,20 +149,30 @@ class ChangeTreeItem extends vscode.TreeItem {
   constructor(change: ChangeInfo) {
     super(change.slug, vscode.TreeItemCollapsibleState.None);
 
-    // description：lifecycle 資訊 +（非主 worktree 時）來源 branch
+    // description：lifecycle 資訊 +（非主工作目錄時）來源 + jj `@` 編輯中標記
     const parts: string[] = [];
     const lifecycle = formatTreeItemDescription(change);
     if (lifecycle) parts.push(lifecycle);
     if (change.source && !change.source.isMain) {
-      parts.push(change.source.branch ?? "detached");
+      const name = change.source.branch ?? (change.source.vcs === "jj" ? "" : "detached");
+      parts.push(change.source.vcs === "jj" ? `jj:${name}` : name);
     }
+    if (change.isCurrent) parts.push("✎ editing");
+    if (change.conflictsWith) parts.push(`⚠ conflicts with ${change.conflictsWith}`);
     if (parts.length > 0) this.description = parts.join(" · ");
 
     const tooltipLines = [change.description || change.slug];
     if (change.createdDate) tooltipLines.push(`Created: ${change.createdDate}`);
     if (change.archivedDate) tooltipLines.push(`Archived: ${change.archivedDate}`);
     if (change.source && !change.source.isMain) {
-      tooltipLines.push(`Worktree: ${change.source.branch ?? change.source.path}`);
+      const kind = change.source.vcs === "jj" ? "jj workspace" : "Worktree";
+      tooltipLines.push(`${kind}: ${change.source.branch ?? change.source.path}`);
+    }
+    if (change.isCurrent) {
+      tooltipLines.push("目前 jj working copy (@) 正在編輯這個 change");
+    }
+    if (change.conflictsWith) {
+      tooltipLines.push(`此版本與 ${change.conflictsWith} 的內容分歧（conflicts）`);
     }
     this.tooltip = tooltipLines.join("\n");
 

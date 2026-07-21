@@ -1,9 +1,7 @@
 ## Purpose
 
 監控 openspec 檔案變更並自動刷新前端內容，讓檢視即時反映磁碟狀態。
-
 ## Requirements
-
 ### Requirement: File change detection for Web version
 
 The Web server SHALL monitor OpenSpec content for file changes using `chokidar` and push notifications to connected clients via Server-Sent Events (SSE). When worktree aggregation is active for a connection, the server SHALL monitor the `openspec/` directory of every aggregated worktree, so that changes made in any worktree (for example by a parallel agent) refresh the aggregated view.
@@ -207,3 +205,17 @@ The decision to poll SHALL follow this precedence: an explicit user override fir
 
 - **WHEN** the watched path's filesystem type cannot be determined (for example `/proc/mounts` is unreadable) and no explicit override is set
 - **THEN** the variant SHALL enable polling if a remote/container environment is indicated (for example `REMOTE_CONTAINERS`, `CODESPACES`, or a WSL indicator is present), otherwise SHALL use native events
+
+### Requirement: Watch jj workspaces
+
+When aggregation is enabled and jj inclusion is on, the live-reload file watcher SHALL watch the
+`openspec/` directory of each jj workspace in addition to git worktrees, so edits made in a jj
+workspace trigger a refresh. Directory enumeration for watching SHALL use `listWorkspaces` (per the
+`worktree-aggregation` capability) so the watched set matches the aggregated set.
+
+#### Scenario: Edit in a jj workspace triggers refresh
+
+- **WHEN** the watcher is active over a repo with an added jj workspace and a file under that
+  workspace's `openspec/` changes
+- **THEN** a refresh is triggered
+

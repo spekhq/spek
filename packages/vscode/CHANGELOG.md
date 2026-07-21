@@ -1,5 +1,15 @@
 # Changelog
 
+## Unreleased
+
+**Highlight: Jujutsu (jj) workspace aggregation (experimental)** — spek can now see OpenSpec changes in jj workspaces, not just git worktrees. In a colocated git+jj repo, jj workspaces are invisible to `git worktree list`, so changes authored there used to be silently missed. This is **experimental and off by default** — enable `spek.aggregateJjWorkspaces` to opt in.
+
+- When enabled, and a repo has jj initialised and the `jj` CLI is available, spek also discovers OpenSpec changes in every jj workspace and merges them into the same aggregated view as git worktrees
+- The colocated main directory (both a git worktree and the jj `default` workspace) is deduplicated by path, so it is never double-counted
+- Because jj workspaces share one commit graph (each materialises the full trunk), a shared change would otherwise appear once per workspace; jj changes are deduplicated by content, so a shared change is shown once. A workspace that has diverged on a change keeps its own entry, flagged "conflicts with &lt;base&gt;" (and "editing" if it's the `@` change)
+- Opt in via the VS Code setting `spek.aggregateJjWorkspaces` (**experimental, off by default**), independent of git worktree aggregation
+- Degrades gracefully: when disabled, or `jj` is not installed, or the repo is not a jj repo, behaviour is identical to before — `jj` is never required
+
 ## 1.8.3
 
 - **Lists with blank lines between their items render correctly again.** Every bullet and number was pushed onto its own line, above the text it belonged to, which made proposals and task lists hard to scan. Markers now sit inline with the first line of their item. Thanks to [@nthansen](https://github.com/nthansen) (Norman Hansen) for reporting and contributing this.

@@ -3,7 +3,7 @@ import * as fs from "fs";
 import * as path from "path";
 import { MessageHandler } from "./handler";
 import { watchOpenspecDir } from "./watcher";
-import { listWorktrees } from "@spekjs/core";
+import { listWorkspaces } from "@spekjs/core";
 
 export class SpekPanel {
   private static instance: SpekPanel | undefined;
@@ -93,6 +93,17 @@ export class SpekPanel {
       this.disposables,
     );
 
+    // 切換 `spek.aggregateJjWorkspaces` 設定時刷新 webview（重新取數，套用新的設定值）
+    vscode.workspace.onDidChangeConfiguration(
+      (e) => {
+        if (e.affectsConfiguration("spek.aggregateJjWorkspaces")) {
+          this.notifyFileChange();
+        }
+      },
+      null,
+      this.disposables,
+    );
+
     // 監聽 openspec 檔案變更，通知 webview 刷新。
     // 聚合模式下也監看同 repo 其他 worktree 的 openspec/，任一 worktree 變更都會刷新。
     this.watchOpenspec(workspacePath);
@@ -123,7 +134,11 @@ export class SpekPanel {
   // 聚合模式：為同 repo 其他 worktree 的 openspec/ 也建立監看
   private addWorktreeWatchers(workspacePath: string): void {
     const main = path.resolve(workspacePath);
-    void listWorktrees(workspacePath).then((worktrees) => {
+    const includeJj = vscode.workspace
+      .getConfiguration("spek")
+      .get<boolean>("aggregateJjWorkspaces", false);
+    // 監看 git worktree 與（設定開啟時）jj workspace 的 openspec/，任一變動都觸發更新
+    void listWorkspaces(workspacePath, { includeJj }).then((worktrees) => {
       if (this.disposed) return;
       for (const wt of worktrees) {
         if (!wt.isBare && wt.path !== main) {

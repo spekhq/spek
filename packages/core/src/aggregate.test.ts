@@ -455,3 +455,170 @@ test("buildGraphDataAggregated: graph election matches the list even when a slug
   const fooNodes = g.nodes.filter((n) => n.type === "change" && n.id.endsWith(":change-foo"));
   assert.equal(fooNodes.length, 0, "graph must not show change-foo owned by the losing worktree");
 });
+// --- jj workspace 聚合（與真實 jj 整合） ---
+
+function jjAvailable(): boolean {
+  try {
+    execFileSync("jj", ["--version"], { stdio: "pipe" });
+    return true;
+  } catch {
+    return false;
+  }
+}
+const HAS_JJ = jjAvailable();
+const jjSkip = HAS_JJ ? false : "jj not installed";
+
+function jj(cwd: string, ...args: string[]): void {
+  execFileSync("jj", args, {
+    cwd,
+    stdio: "pipe",
+    env: { ...process.env, JJ_CONFIG: "/dev/null" },
+  });
+}
+
+// colocated git+jj repo（main 同時是 git main 與 jj default workspace）
+function initColocated(prefix: string): string {
+  const repo = initRepo(prefix);
+  jj(repo, "git", "init", "--colocate");
+  return repo;
+}
+
+test(
+  "scanOpenSpecAggregated: surfaces a change from a jj-only workspace",
+  { skip: jjSkip },
+  async () => {
+    const repo = initColocated("spek-agg-jj-");
+    const ws = repo + "-jw";
+    jj(repo, "workspace", "add", "--name", "feature", ws);
+    addActiveChange(ws, "jj-only");
+    jj(ws, "status"); // 觸發快照，讓 `@` 認得這個 change
+
+    const r = await scanOpenSpecAggregated(repo);
+    assert.equal(r.aggregated, true);
+    assert.ok(r.worktrees.length >= 2);
+    const jjChange = r.activeChanges.find((c) => c.slug === "jj-only");
+    assert.ok(jjChange, "jj-only change is surfaced");
+    assert.equal(jjChange.source?.vcs, "jj");
+    assert.equal(jjChange.isCurrent, true); // `@` 正在編輯
+  },
+);
+
+test(
+  "scanOpenSpecAggregated: jj toggle off excludes jj-only workspace changes",
+  { skip: jjSkip },
+  async () => {
+    const repo = initColocated("spek-agg-jj-off-");
+    const ws = repo + "-jw";
+    jj(repo, "workspace", "add", "--name", "feature", ws);
+    addActiveChange(ws, "jj-only");
+    jj(ws, "status");
+
+    const r = await scanOpenSpecAggregated(repo, { includeJj: false });
+    assert.ok(!r.activeChanges.some((c) => c.slug === "jj-only"));
+  },
+);
+
+test(
+  "scanOpenSpecAggregated: colocated main change is not double-counted across git+jj",
+  { skip: jjSkip },
+  async () => {
+    const repo = initColocated("spek-agg-jj-dedup-");
+    addActiveChange(repo, "on-main");
+    commitAll(repo, "add change");
+
+    const r = await scanOpenSpecAggregated(repo);
+    // 唯一工作目錄（git main 與 jj default 去重成一筆）→ 走單目錄 fallback
+    assert.equal(r.aggregated, false);
+    assert.equal(r.activeChanges.filter((c) => c.slug === "on-main").length, 1);
+  },
+);
+
+// 在 trunk 上提交一個 shared change，再開 n 個 workspace（皆繼承 trunk → 各自都有一份 shared）
+function repoWithSharedChangeAndWorkspaces(prefix: string, names: string[]): string {
+  const repo = initColocated(prefix);
+  addActiveChange(repo, "shared");
+  jj(repo, "describe", "-m", "add shared change");
+  jj(repo, "new"); // 把含 shared 的 working copy 提交到 trunk，@ 前進到空 commit
+  for (const n of names) jj(repo, "workspace", "add", "--name", n, repo + "-" + n);
+  return repo;
+}
+
+test(
+  "scanOpenSpecAggregated: a change shared across jj workspaces appears once",
+  { skip: jjSkip },
+  async () => {
+    const repo = repoWithSharedChangeAndWorkspaces("spek-agg-jj-dup-", ["wa", "wb", "wc"]);
+    const r = await scanOpenSpecAggregated(repo);
+    assert.equal(r.worktrees.length, 4);
+    // 4 個 workspace 各有一份相同的 shared，內容去重後只留一筆
+    assert.equal(r.activeChanges.filter((c) => c.slug === "shared").length, 1);
+  },
+);
+
+test(
+  "scanOpenSpecAggregated: a divergent jj copy is kept and flagged conflictsWith",
+  { skip: jjSkip },
+  async () => {
+    const repo = repoWithSharedChangeAndWorkspaces("spek-agg-jj-div-", ["wa", "wb"]);
+    // wb 修改 shared 的內容 → 與基準分歧
+    writeFile(
+      path.join(repo + "-wb", "openspec", "changes", "shared", "proposal.md"),
+      "## Why\nedited in wb\n",
+    );
+    jj(repo + "-wb", "status"); // 快照
+
+    const r = await scanOpenSpecAggregated(repo);
+    const shared = r.activeChanges.filter((c) => c.slug === "shared");
+    // 基準一份 + wb 分歧版一份；wa 與基準相同被去重
+    assert.equal(shared.length, 2);
+    const base = shared.find((c) => !c.conflictsWith);
+    const diverged = shared.find((c) => c.conflictsWith);
+    assert.ok(base, "base copy present without conflict flag");
+    assert.ok(diverged, "divergent copy present");
+    assert.equal(diverged.conflictsWith, "main");
+    assert.equal(diverged.source?.vcs, "jj");
+    assert.equal(diverged.source?.branch, "wb");
+  },
+);
+
+test(
+  "scanOpenSpecAggregated: git-worktree election and jj content-dedup coexist without interfering",
+  { skip: jjSkip },
+  async () => {
+    // 混合場景：colocated main + 一個 git worktree（分歧 change）+ 一個 jj workspace（jj-only change）。
+    // 兩套去重機制必須各走各的：git worktree 走 git 分歧選舉、jj workspace 走內容指紋——jj workspace
+    // 不得被餵進 git 選舉（其 head 是 jj change id），git worktree 也不得被內容指紋吞掉。
+    const repo = initColocated("spek-agg-mixed-");
+    writeFile(path.join(repo, "openspec", "specs", "alpha", "spec.md"), "## Requirements\n");
+    addActiveChange(repo, "git-change", "alpha");
+    commitAll(repo, "init");
+
+    // git worktree：繼承 git-change 並實際編輯 → git 分歧選舉應讓 wtA（非 main）勝出
+    const wtA = repo + "-a";
+    git(repo, "worktree", "add", "-q", "-b", "wa", wtA);
+    writeFile(
+      path.join(wtA, "openspec", "changes", "git-change", "proposal.md"),
+      "## Why\nedited in wa\n",
+    );
+
+    // jj workspace：帶一個 jj-only change
+    const jw = repo + "-jw";
+    jj(repo, "workspace", "add", "--name", "feature", jw);
+    addActiveChange(jw, "jj-only");
+    jj(jw, "status"); // 快照，讓 `@` 認得 jj-only
+
+    const r = await scanOpenSpecAggregated(repo);
+    assert.equal(r.aggregated, true);
+
+    // git 路徑：git-change 依分歧選舉去重成一筆，勝出者是實際編輯它的 git worktree（非 main）
+    const gitChanges = r.activeChanges.filter((c) => c.slug === "git-change");
+    assert.equal(gitChanges.length, 1, "git-change deduped once via divergence election");
+    assert.equal(gitChanges[0].source?.vcs, "git");
+    assert.equal(gitChanges[0].source?.isMain, false, "editing git worktree wins, not main");
+
+    // jj 路徑：jj-only 照常浮現、標記為 jj 來源，未被 git 選舉吞掉
+    const jjChanges = r.activeChanges.filter((c) => c.slug === "jj-only");
+    assert.equal(jjChanges.length, 1, "jj-only surfaced via content-fingerprint path");
+    assert.equal(jjChanges[0].source?.vcs, "jj");
+  },
+);

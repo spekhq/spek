@@ -21,28 +21,35 @@ export interface SpecDetail {
   history: HistoryEntry[];
 }
 
-/** 一個 git worktree 的完整資訊，由 `git worktree list --porcelain` 解析而來。 */
+/**
+ * 一個工作目錄的完整資訊：git worktree（`git worktree list --porcelain`）
+ * 或 jj workspace（`jj workspace list`）。兩者共用此形狀，以 `vcs` 區分來源。
+ */
 export interface WorktreeInfo {
   /** worktree 絕對路徑 */
   path: string;
-  /** branch 名稱；detached HEAD 為 null */
+  /** branch 名稱（jj workspace 為 workspace name）；detached HEAD 為 null */
   branch: string | null;
-  /** HEAD commit hash；無 commit 時為 null */
+  /** HEAD commit hash（jj 為 `@` 的 change id）；無 commit 時為 null */
   head: string | null;
-  /** 是否為主 worktree（git worktree list 第一項，含 .git 目錄者） */
+  /** 是否為主工作目錄（git main worktree 或 jj `default` workspace） */
   isMain: boolean;
-  /** 是否為 bare repo */
+  /** 是否為 bare repo（jj workspace 恆為 false） */
   isBare: boolean;
-  /** 穩定的 worktree 識別碼（絕對路徑雜湊前 8 碼） */
+  /** 穩定的識別碼（絕對路徑雜湊前 8 碼） */
   key: string;
+  /** 來源版控系統：git worktree 或 jj workspace */
+  vcs: "git" | "jj";
 }
 
-/** 附加在聚合後 change 上的來源 worktree 資訊（WorktreeInfo 的精簡子集）。 */
+/** 附加在聚合後 change 上的精簡來源資訊（WorktreeInfo 的精簡子集）。 */
 export interface WorktreeSource {
   key: string;
   path: string;
   branch: string | null;
   isMain: boolean;
+  /** 來源版控系統：git worktree 或 jj workspace */
+  vcs: "git" | "jj";
 }
 
 export interface ChangeInfo {
@@ -66,6 +73,13 @@ export interface ChangeInfo {
   taskStats: TaskStats | null;
   /** 來源 worktree；僅聚合掃描會填入，單一目錄掃描為 undefined */
   source?: WorktreeSource;
+  /** 是否為來源 jj workspace 此刻 working-copy commit `@` 正在編輯的 change */
+  isCurrent?: boolean;
+  /**
+   * jj 聚合時，同 slug 的 change 在此 workspace 與基準（base/main）內容相異（分歧版本）。
+   * 值為衝突對象的來源標籤（如 branch / "main"），供 UI 顯示「conflicts with …」。
+   */
+  conflictsWith?: string;
 }
 
 /** 一個 change artifact 的 kind，決定解析與渲染方式 */
