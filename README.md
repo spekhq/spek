@@ -35,7 +35,7 @@ All are **read-only** and **local-only**. No server deployment, no authenticatio
 - **Dashboard** — Overview of specs count, changes count, task completion rates, plus lifecycle stats (avg archived lifecycle, stale active changes)
 - **Specs Browser** — Alphabetical listing with detail view and revision history
 - **Changes Browser** — Active and archived changes with tabbed views (Proposal / Design / Tasks / Specs); each row surfaces creation and archive dates plus lifecycle duration
-- **Git Worktree Aggregation** — Discovers every git worktree of a repo and merges their in-flight changes into one view — built for the AI-agent era of parallel worktrees
+- **Worktree Aggregation** — Discovers every git worktree of a repo and merges their in-flight changes into one view, deduplicated so each change appears once — built for the AI-agent era of parallel worktrees. Jujutsu (jj) workspaces are supported too, as an experimental opt-in
 - **Timeline** — Horizontal Gantt-style chart of every change's lifecycle, with optional spec-topic grouping, status filters, and an auto-scaling time axis
 - **BDD Syntax Highlighting** — Visual distinction for WHEN/GIVEN, THEN, AND, MUST/SHALL keywords
 - **Task Progress** — Checkbox parsing with section-grouped progress bars
@@ -45,18 +45,28 @@ All are **read-only** and **local-only**. No server deployment, no authenticatio
 - **Responsive Layout** — Works on various screen sizes
 - **VS Code Sidebar** — Activity Bar icon with TreeView for browsing specs and changes directly from the sidebar
 
-## Git Worktree Aggregation
+## Worktree Aggregation
 
-In the AI-agent era, a single repository often has **several git worktrees in flight at once** — each agent, or each parallel task, working on its own branch in its own worktree. The OpenSpec changes for that work scatter across those worktrees, and pointing a viewer at any one directory shows only a fraction of what's happening.
+In the AI-agent era, a single repository often has **several working copies in flight at once** — each agent, or each parallel task, on its own branch in its own worktree. The OpenSpec changes for that work scatter across those copies, and pointing a viewer at any one directory shows only a fraction of what's happening.
 
 spek discovers every worktree of a repository (via `git worktree list`) and **aggregates their in-flight changes into one view**. Point spek at any worktree — or the main repo — and you see the whole picture:
 
-- **Active changes from every worktree**, each tagged with its source branch
+- **Active changes from every worktree**, each tagged with its source branch; main-worktree changes stay unlabelled so feature-worktree work stands out
+- **One change, one row** — a change inherited by several worktrees is shown once. The surviving copy is elected from git history (which worktree actually advanced it past main), not from file timestamps, which a fresh checkout rewrites
 - **Archived changes** merged and deduplicated across worktrees
-- An **aggregation toggle** (auto-on when multiple worktrees exist); main-worktree changes stay unlabelled so feature-worktree work stands out
+- A **scope control in the app header** — `Current dir` / `Worktrees` / `Worktrees + jj` — shown only when there is more than one working copy to aggregate. The choice persists (Web: browser storage; VS Code: the `spek.aggregateWorktrees` setting)
 - Works in the **Web app** and the **VS Code extension** (panel + sidebar), with live refresh when any worktree's `openspec/` changes
 
 ![Git Worktree Aggregation](screenshots/worktree-aggregation.png)
+
+### Jujutsu (jj) workspaces — experimental
+
+Since 1.9.0, aggregation is not limited to git. In a colocated git + jj repository, jj workspaces are invisible to `git worktree list`, so changes authored in one were silently missed. Pick `Worktrees + jj` in the header control and spek also scans every jj workspace, merging them into the same view.
+
+- **Opt-in, off by default** — the header control's `Worktrees + jj` option (Web) or the `spek.aggregateJjWorkspaces` setting (VS Code). The option is only offered when a jj workspace is actually detected
+- **Deduplicated by content, not by git history** — jj workspaces share one commit graph and each materialises the full trunk, so a shared change would otherwise appear once per workspace. Identical copies collapse into one; a workspace that has diverged on a change keeps its own entry, flagged `conflicts with <base>`, and `editing` when it is the `@` change
+- **`jj` is never required** — with jj not installed, or the repo not a jj repo, or the option off, behaviour is identical to before. Git worktree aggregation is untouched: jj copies never enter the git election, because a jj working-copy commit is not a git ref
+- Available in the **Web app** and the **VS Code extension**. The IntelliJ plugin has its own scanner and does not aggregate yet
 
 ## Quick Start
 
@@ -83,6 +93,15 @@ Once activated, click the **spek icon** in the Activity Bar to browse specs and 
 - `spek: Open spek` — Open the viewer panel
 - `spek: Search OpenSpec` — Open search dialog
 - `spek: Open Dashboard` — Open the dashboard from sidebar
+
+**Settings:**
+
+| Setting | Description | Default |
+|---------|-------------|---------|
+| `spek.aggregateWorktrees` | Aggregate changes across all git worktrees of the repository | `true` |
+| `spek.aggregateJjWorkspaces` | **Experimental** — also aggregate jj (Jujutsu) workspaces | `false` |
+
+Both are what the panel's header scope control writes, so toggling the control edits your workspace `settings.json` — and editing the settings updates the control.
 
 ### IntelliJ Plugin
 
@@ -363,6 +382,9 @@ Thanks to everyone who has contributed to spek:
 
 - [@david-lutz](https://github.com/david-lutz) (David Lutz)
   - Deduplication of active changes shared across git worktrees, in both the Changes list and the dependency graph — the surviving copy is elected from git divergence rather than file timestamps, which a fresh checkout rewrites
+
+- [@DannyGoodall](https://github.com/DannyGoodall) (Danny Goodall)
+  - Experimental Jujutsu (jj) workspace aggregation — changes authored in a jj workspace, invisible to `git worktree list`, are discovered and merged into the aggregated view, deduplicated by content with diverged copies kept and flagged
 
 ## License
 
