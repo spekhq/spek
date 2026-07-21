@@ -2,7 +2,7 @@
   "name": "spek-vscode",
   "displayName": "spek — OpenSpec Viewer",
   "description": "Browse OpenSpec specs and changes directly in VS Code",
-  "version": "1.8.3",
+  "version": "1.9.0",
   "publisher": "kewang",
   "license": "MIT",
   "icon": "icon.png",
@@ -45,7 +45,9 @@
         "spek.aggregateJjWorkspaces": {
           "type": "boolean",
           "default": false,
-          "tags": ["experimental"],
+          "tags": [
+            "experimental"
+          ],
           "markdownDescription": "**EXPERIMENTAL:** Enable experimental jj VCS workspace aggregation.\n\nThis will show specifications found in related jj workspaces and mirrors the git workspaces implementation. Off by default; has no effect when `jj` is not installed or the repository is not a jj repo."
         }
       }
