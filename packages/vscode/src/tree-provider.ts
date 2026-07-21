@@ -110,12 +110,13 @@ export class ChangesTreeProvider implements vscode.TreeDataProvider<ChangesTreeN
     }
 
     try {
-      // 跨 worktree / jj workspace 聚合，與 webview panel 的 Changes 頁一致；
-      // jj workspace 納入與否由 spek.aggregateJjWorkspaces 設定控制（experimental，預設關）
-      const includeJj = vscode.workspace
-        .getConfiguration("spek")
-        .get<boolean>("aggregateJjWorkspaces", false);
-      const scan = await scanOpenSpecAggregated(this.workspacePath, { includeJj });
+      // Cross-worktree / jj-workspace aggregation, consistent with the webview Changes page.
+      // Both flags are driven by settings: aggregateWorktrees (default on) and aggregateJjWorkspaces
+      // (experimental, default off).
+      const config = vscode.workspace.getConfiguration("spek");
+      const aggregate = config.get<boolean>("aggregateWorktrees", true);
+      const includeJj = config.get<boolean>("aggregateJjWorkspaces", false);
+      const scan = await scanOpenSpecAggregated(this.workspacePath, { aggregate, includeJj });
       const groups: ChangeGroupItem[] = [];
 
       if (scan.activeChanges.length > 0) {

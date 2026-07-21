@@ -1,6 +1,6 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { levelFromPrefs, prefsFromLevel } from "./aggregationLevel.js";
+import { levelFromPrefs, prefsFromLevel, scopeControlView } from "./aggregationLevel.js";
 
 test("levelFromPrefs: aggregate off is always 'off' regardless of jj", () => {
   assert.equal(levelFromPrefs(false, false), "off");
@@ -23,4 +23,18 @@ test("round-trip: every level survives prefs → level", () => {
     const p = prefsFromLevel(level);
     assert.equal(levelFromPrefs(p.aggregate, p.includeJj), level);
   }
+});
+
+test("scopeControlView: hidden for a single worktree with no jj", () => {
+  assert.deepEqual(scopeControlView(1, false), { visible: false, showJjOption: false });
+  assert.deepEqual(scopeControlView(0, false), { visible: false, showJjOption: false });
+});
+
+test("scopeControlView: visible with multiple worktrees", () => {
+  assert.deepEqual(scopeControlView(2, false), { visible: true, showJjOption: false });
+});
+
+test("scopeControlView: jj presence makes it visible and offers the jj option", () => {
+  assert.deepEqual(scopeControlView(1, true), { visible: true, showJjOption: true });
+  assert.deepEqual(scopeControlView(3, true), { visible: true, showJjOption: true });
 });

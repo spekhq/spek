@@ -5,6 +5,7 @@ import { useTheme } from "../contexts/ThemeContext";
 import { useFileWatcher } from "../hooks/useFileWatcher";
 import { Sidebar } from "./Sidebar";
 import { SearchDialog } from "./SearchDialog";
+import { AggregationScopeControl } from "./AggregationScopeControl";
 
 export function Layout() {
   const { repoPath } = useRepo();
@@ -111,6 +112,9 @@ export function Layout() {
               ⌘K
             </kbd>
           </button>
+        </div>
+        <div className="mr-2">
+          <AggregationScopeControl isMobile={isMobile} />
         </div>
         <button
           onClick={toggleTheme}

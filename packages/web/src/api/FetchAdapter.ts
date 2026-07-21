@@ -9,8 +9,11 @@ import type {
   BrowseData,
   DetectData,
   GraphData,
+  WorktreeInfo,
 } from "@spekjs/core";
-import type { ApiAdapter } from "./types.js";
+import type { ApiAdapter, AggregationPrefs } from "./types.js";
+import { getAggregatePref, setAggregatePref } from "../utils/aggregatePref.js";
+import { getJjWorkspacePref, setJjWorkspacePref } from "../utils/jjWorkspacePref.js";
 
 async function fetchJson<T>(url: string): Promise<T> {
   const res = await fetch(url);
@@ -101,5 +104,20 @@ export class FetchAdapter implements ApiAdapter {
 
   getGraphData(aggregate?: boolean, includeJj?: boolean): Promise<GraphData> {
     return fetchJson(`${this.baseUrl}/openspec/graph?${this.q()}${this.agg(aggregate, includeJj)}`);
+  }
+
+  getWorktrees(includeJj?: boolean): Promise<WorktreeInfo[]> {
+    const jj = includeJj === true ? "&jj=true" : "";
+    return fetchJson(`${this.baseUrl}/openspec/worktrees?${this.q()}${jj}`);
+  }
+
+  getAggregationPrefs(): Promise<AggregationPrefs> {
+    return Promise.resolve({ aggregate: getAggregatePref(), includeJj: getJjWorkspacePref() });
+  }
+
+  setAggregationPrefs(aggregate: boolean, includeJj: boolean): Promise<void> {
+    setAggregatePref(aggregate);
+    setJjWorkspacePref(includeJj);
+    return Promise.resolve();
   }
 }

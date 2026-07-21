@@ -8,8 +8,7 @@ import {
   useBeginFetch,
 } from "../contexts/RefreshContext";
 import { runManualRefresh } from "../contexts/refreshTracker";
-import { getAggregatePref } from "../utils/aggregatePref";
-import { getJjWorkspacePref } from "../utils/jjWorkspacePref";
+import { useAggregationScope } from "../contexts/AggregationScopeContext";
 import type {
   OverviewData,
   SpecInfo,
@@ -129,8 +128,9 @@ export function useOverview(
 ): FetchState<OverviewData> {
   const { repoPath } = useRepo();
   const adapter = useApiAdapter();
-  const agg = aggregate ?? getAggregatePref();
-  const jj = includeJj ?? getJjWorkspacePref();
+  const scope = useAggregationScope();
+  const agg = aggregate ?? scope.aggregate;
+  const jj = includeJj ?? scope.includeJj;
   return useAsyncData(
     repoPath ? () => adapter.getOverview(agg, jj) : null,
     [repoPath, agg, jj],
@@ -170,8 +170,9 @@ export function useChanges(
 ): FetchState<ChangesData> {
   const { repoPath } = useRepo();
   const adapter = useApiAdapter();
-  const agg = aggregate ?? getAggregatePref();
-  const jj = includeJj ?? getJjWorkspacePref();
+  const scope = useAggregationScope();
+  const agg = aggregate ?? scope.aggregate;
+  const jj = includeJj ?? scope.includeJj;
   return useAsyncData(
     repoPath ? () => adapter.getChanges(agg, jj) : null,
     [repoPath, agg, jj],
@@ -229,8 +230,9 @@ export function useGraphData(
 ): FetchState<GraphData> {
   const { repoPath } = useRepo();
   const adapter = useApiAdapter();
-  const agg = aggregate ?? getAggregatePref();
-  const jj = includeJj ?? getJjWorkspacePref();
+  const scope = useAggregationScope();
+  const agg = aggregate ?? scope.aggregate;
+  const jj = includeJj ?? scope.includeJj;
   return useAsyncData(
     repoPath ? () => adapter.getGraphData(agg, jj) : null,
     [repoPath, agg, jj],

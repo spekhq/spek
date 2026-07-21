@@ -20,15 +20,23 @@ export class MessageHandler {
   constructor(private readonly workspacePath: string) {}
 
   /**
-   * jj workspace 聚合在 VS Code **一律由 `spek.aggregateJjWorkspaces` 設定決定**（experimental，
-   * 預設 false），刻意忽略 webview 送來的 includeJj —— 那個值源自 Web 版的 localStorage 開關
-   * (`spek:aggregate-jj`)，若讓它覆蓋設定，切換設定就會失效（webview 永遠帶著自己的值）。VS Code 只有
-   * 一個真相來源：設定。
+   * In VS Code the aggregation scope is **always driven by settings**
+   * (`spek.aggregateWorktrees` / `spek.aggregateJjWorkspaces`); values sent from the webview are
+   * ignored on purpose. The header control in VS Code is the UI for these two settings — it reads
+   * them (getAggregationPrefs) and writes them back (setAggregationPrefs). Letting the webview value
+   * override the settings would make the settings ineffective (the webview always carries its own
+   * value). Settings are the single source of truth.
    */
   private jjEnabled(_includeJj?: boolean): boolean {
     return vscode.workspace
       .getConfiguration("spek")
       .get<boolean>("aggregateJjWorkspaces", false);
+  }
+
+  private aggregateEnabled(_aggregate?: boolean): boolean {
+    return vscode.workspace
+      .getConfiguration("spek")
+      .get<boolean>("aggregateWorktrees", true);
   }
 
   async handle(method: string, params?: Record<string, unknown>): Promise<unknown> {
@@ -64,6 +72,15 @@ export class MessageHandler {
           params?.aggregate as boolean | undefined,
           params?.includeJj as boolean | undefined,
         );
+      case "getWorktrees":
+        return this.getWorktrees(params?.includeJj as boolean | undefined);
+      case "getAggregationPrefs":
+        return this.getAggregationPrefs();
+      case "setAggregationPrefs":
+        return this.setAggregationPrefs(
+          params?.aggregate as boolean,
+          params?.includeJj as boolean,
+        );
       default:
         throw new Error(`Unknown method: ${method}`);
     }
@@ -71,7 +88,7 @@ export class MessageHandler {
 
   private async getOverview(aggregate?: boolean, includeJj?: boolean) {
     const scan = await scanOpenSpecAggregated(this.workspacePath, {
-      aggregate,
+      aggregate: this.aggregateEnabled(aggregate),
       includeJj: this.jjEnabled(includeJj),
     });
     let totalTasks = 0;
@@ -111,7 +128,7 @@ export class MessageHandler {
 
   private async getChanges(aggregate?: boolean, includeJj?: boolean) {
     const scan = await scanOpenSpecAggregated(this.workspacePath, {
-      aggregate,
+      aggregate: this.aggregateEnabled(aggregate),
       includeJj: this.jjEnabled(includeJj),
     });
     return {
@@ -266,8 +283,30 @@ export class MessageHandler {
 
   private getGraphData(aggregate?: boolean, includeJj?: boolean) {
     return buildGraphDataAggregated(this.workspacePath, {
-      aggregate,
+      aggregate: this.aggregateEnabled(aggregate),
       includeJj: this.jjEnabled(includeJj),
     });
+  }
+
+  // Discovery: always enumerate jj workspaces (independent of the setting) so the header control
+  // can offer the jj option even while jj aggregation is currently disabled.
+  private getWorktrees(includeJj?: boolean) {
+    return listWorkspaces(this.workspacePath, { includeJj: includeJj === true });
+  }
+
+  // The header control in VS Code is the UI for these two settings: it reads them here...
+  private getAggregationPrefs() {
+    return {
+      aggregate: this.aggregateEnabled(),
+      includeJj: this.jjEnabled(),
+    };
+  }
+
+  // ...and writes them back at the Workspace scope, so toggling the control edits settings.json.
+  private async setAggregationPrefs(aggregate: boolean, includeJj: boolean) {
+    const config = vscode.workspace.getConfiguration("spek");
+    await config.update("aggregateWorktrees", aggregate, vscode.ConfigurationTarget.Workspace);
+    await config.update("aggregateJjWorkspaces", includeJj, vscode.ConfigurationTarget.Workspace);
+    return { ok: true };
   }
 }

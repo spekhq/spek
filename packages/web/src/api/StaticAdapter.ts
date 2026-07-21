@@ -9,8 +9,11 @@ import type {
   BrowseData,
   DetectData,
   GraphData,
+  WorktreeInfo,
 } from "@spekjs/core";
-import type { ApiAdapter } from "./types.js";
+import type { ApiAdapter, AggregationPrefs } from "./types.js";
+import { getAggregatePref, setAggregatePref } from "../utils/aggregatePref.js";
+import { getJjWorkspacePref, setJjWorkspacePref } from "../utils/jjWorkspacePref.js";
 
 export interface DemoData {
   overview: OverviewData;
@@ -112,5 +115,21 @@ export class StaticAdapter implements ApiAdapter {
 
   getGraphData(): Promise<GraphData> {
     return Promise.resolve(this.data.graphData);
+  }
+
+  // The demo is a single source (no cross-worktree aggregation); return the embedded worktree list,
+  // which is usually empty.
+  getWorktrees(): Promise<WorktreeInfo[]> {
+    return Promise.resolve(this.data.changes.worktrees ?? []);
+  }
+
+  getAggregationPrefs(): Promise<AggregationPrefs> {
+    return Promise.resolve({ aggregate: getAggregatePref(), includeJj: getJjWorkspacePref() });
+  }
+
+  setAggregationPrefs(aggregate: boolean, includeJj: boolean): Promise<void> {
+    setAggregatePref(aggregate);
+    setJjWorkspacePref(includeJj);
+    return Promise.resolve();
   }
 }

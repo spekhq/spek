@@ -1,13 +1,9 @@
-import { useState } from "react";
 import { Link } from "react-router-dom";
 import type { ChangeInfo } from "@spekjs/core";
 import { useChanges } from "../hooks/useOpenSpec";
 import { TaskProgress } from "../components/TaskProgress";
 import { formatRelativeTime } from "../utils/formatRelativeTime";
 import { formatLifecycleListRow, todayIso } from "../utils/lifecycle";
-import { getAggregatePref, setAggregatePref } from "../utils/aggregatePref";
-import { getJjWorkspacePref, setJjWorkspacePref } from "../utils/jjWorkspacePref";
-import { levelFromPrefs, prefsFromLevel, type AggLevel } from "../utils/aggregationLevel";
 import { WorktreeBadge } from "../components/WorktreeBadge";
 import { SchemaBadge } from "../components/SchemaBadge";
 import { changeKey, changeTo } from "../utils/changeLink";
@@ -86,27 +82,10 @@ function ChangeRow({ c, today, accent, showSource }: {
   );
 }
 
-// VS Code webview 由 `spek.aggregateJjWorkspaces` 設定（extension host 讀取）控制 jj 納入，
-// 故在 VS Code 隱藏這個 Web 專用的 localStorage 開關，避免與設定衝突（兩個真相來源會互相打架）。
-const isVsCodeWebview =
-  typeof window !== "undefined" &&
-  !!(window as unknown as Record<string, unknown>).__vscodeApi;
-
-// 網頁版聚合範圍的 tri-state 選項（off / worktrees / worktrees+jj）。
-const AGG_LEVELS: { value: AggLevel; text: string; title: string }[] = [
-  { value: "off", text: "Current dir", title: "Show only the current directory's changes" },
-  { value: "worktrees", text: "Worktrees", title: "Aggregate across all git worktrees" },
-  {
-    value: "worktrees-jj",
-    text: "Worktrees + jj",
-    title: "Aggregate git worktrees and jj workspaces (experimental)",
-  },
-];
-
 export function ChangeList() {
-  const [aggregate, setAggregate] = useState(getAggregatePref());
-  const [includeJj, setIncludeJj] = useState(getJjWorkspacePref());
-  const { data, loading, error } = useChanges(aggregate, includeJj);
+  // Aggregation scope comes from the global header control via AggregationScopeContext (consumed by
+  // useChanges); this page renders no aggregation control of its own.
+  const { data, loading, error } = useChanges();
 
   if (loading) return <p className="text-text-muted">Loading...</p>;
   if (error) return <p className="text-red-400">Error: {error}</p>;
@@ -115,77 +94,12 @@ export function ChangeList() {
   const archived = data?.archived ?? [];
   const worktrees = data?.worktrees ?? [];
   const showSource = !!data?.aggregated && worktrees.length > 1;
-  // jj workspace 存在（或目前關閉著、需可重新開啟）時才顯示 jj 開關
-  const hasJj = worktrees.some((w) => w.vcs === "jj");
   const defaultSchema = data?.defaultSchema;
   const today = todayIso();
 
-  // 網頁版：以 tri-state 收斂 aggregate + jj 兩個相依旗標，從結構杜絕「aggregate off + jj on」。
-  // 有多個 worktree、偵測到 jj、或 jj 目前關著（可 opt-in）時顯示。
-  const level = levelFromPrefs(aggregate, includeJj);
-  const setLevel = (next: AggLevel) => {
-    const p = prefsFromLevel(next);
-    setAggregate(p.aggregate);
-    setAggregatePref(p.aggregate);
-    setIncludeJj(p.includeJj);
-    setJjWorkspacePref(p.includeJj);
-  };
-  const showAggControl = !isVsCodeWebview && (worktrees.length > 1 || hasJj || !includeJj);
-
-  // VS Code webview：jj 由 `spek.aggregateJjWorkspaces` 設定控制（handler 忽略 includeJj），
-  // 故只保留 aggregate 勾選框。
-  const handleToggle = () => {
-    const next = !aggregate;
-    setAggregate(next);
-    setAggregatePref(next);
-  };
-
   const header = (
     <div>
-      <div className="flex items-center justify-between gap-4">
-        <h1 className="text-2xl font-bold">Changes</h1>
-        <div className="flex items-center gap-4">
-          {showAggControl && (
-            <div
-              role="group"
-              aria-label="Aggregation scope"
-              className="inline-flex items-center gap-0.5 rounded border border-border bg-bg-tertiary p-0.5 text-[11px]"
-            >
-              {AGG_LEVELS.map((opt) => {
-                const active = level === opt.value;
-                return (
-                  <button
-                    key={opt.value}
-                    type="button"
-                    aria-pressed={active}
-                    onClick={() => setLevel(opt.value)}
-                    title={opt.title}
-                    className={
-                      "rounded px-1.5 py-0.5 transition-colors " +
-                      (active
-                        ? "bg-bg-secondary text-accent font-medium"
-                        : "text-text-muted hover:text-text-secondary")
-                    }
-                  >
-                    {opt.text}
-                  </button>
-                );
-              })}
-            </div>
-          )}
-          {isVsCodeWebview && worktrees.length > 1 && (
-            <label className="flex items-center gap-2 text-xs text-text-muted cursor-pointer select-none">
-              <input
-                type="checkbox"
-                checked={aggregate}
-                onChange={handleToggle}
-                className="accent-accent"
-              />
-              Aggregate {worktrees.length} worktrees
-            </label>
-          )}
-        </div>
-      </div>
+      <h1 className="text-2xl font-bold">Changes</h1>
       {defaultSchema && (
         <p className="mt-1 text-text-muted text-sm" title="Repo default OpenSpec schema">
           Default schema: <span className="text-text-secondary">{defaultSchema}</span>

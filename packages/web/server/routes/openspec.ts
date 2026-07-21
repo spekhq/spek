@@ -292,6 +292,16 @@ openspecRouter.get("/graph", async (req, res) => {
   res.json(graphData);
 });
 
+// List working directories (git worktrees + jj workspaces) only — no change scan. Feeds the global
+// header aggregation-scope control (visibility + whether a jj option is available), so it never runs
+// the full /changes scan just to learn the worktree list.
+openspecRouter.get("/worktrees", async (req, res) => {
+  const dir = req.query.dir as string;
+  const includeJj = req.query.jj === "true";
+  const worktrees = await listWorkspaces(dir, { includeJj });
+  res.json(worktrees);
+});
+
 // --- SSE file watching endpoint ---
 
 openspecRouter.get("/watch", async (req, res) => {

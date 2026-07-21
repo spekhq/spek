@@ -273,21 +273,6 @@ When the change list is showing aggregated results from more than one worktree, 
 - **WHEN** the change list shows changes from a single worktree
 - **THEN** no source indicator is rendered
 
-### Requirement: Aggregation toggle control
-The change list SHALL provide a control to turn worktree aggregation on or off, shown only when more than one worktree is detected. The chosen state SHALL persist across sessions via `localStorage`, defaulting to on. Toggling SHALL re-fetch the change list with the corresponding `aggregate` value.
-
-#### Scenario: Toggle visible with multiple worktrees
-- **WHEN** the repository has multiple worktrees
-- **THEN** an aggregation toggle is shown, defaulting to on
-
-#### Scenario: Toggle hidden with single worktree
-- **WHEN** the repository has only one worktree
-- **THEN** no aggregation toggle is shown
-
-#### Scenario: Toggle state persists
-- **WHEN** the user turns aggregation off and reloads the app
-- **THEN** aggregation remains off
-
 ### Requirement: Worktree-qualified change links
 Under aggregation, a change row SHALL link to its detail page with a `wt` query parameter identifying its source worktree, so that same-slug changes from different worktrees resolve to the correct change. The change detail page SHALL read the `wt` query parameter and request the change from the matching worktree; when `wt` is absent it SHALL request the change from the currently selected directory, as before.
 

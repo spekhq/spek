@@ -3,6 +3,7 @@ import { createHashRouter, RouterProvider } from "react-router-dom";
 import { RepoProvider, useRepo } from "./contexts/RepoContext";
 import { ThemeProvider } from "./contexts/ThemeContext";
 import { ApiAdapterProvider } from "./api/ApiAdapterContext";
+import { AggregationScopeProvider } from "./contexts/AggregationScopeContext";
 import { StaticAdapter } from "./api/StaticAdapter";
 import { Layout } from "./components/Layout";
 import { Dashboard } from "./pages/Dashboard";
@@ -40,7 +41,9 @@ function DemoAppInner() {
 
   return (
     <ApiAdapterProvider adapter={adapter}>
-      <RouterProvider router={router} />
+      <AggregationScopeProvider>
+        <RouterProvider router={router} />
+      </AggregationScopeProvider>
     </ApiAdapterProvider>
   );
 }

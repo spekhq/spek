@@ -101,7 +101,8 @@ behavior lives in `openspec/specs/`; the key entry points:
   `listWorkspaces(dir, {includeJj})` (merges git worktrees + jj workspaces, dedups the colocated main by path — git
   entry wins to keep the branch), `jjCurrentChangeSlugs(dir)` (`jj diff --ignore-working-copy -r @`, read-only, drives
   `isCurrent`). All degrade to `[]`/empty when `jj` is absent — `jj` is **never required**. Off by default; opt in via
-  `includeJj` (Web `jj` query param) or the VS Code `spek.aggregateJjWorkspaces` setting. `WorktreeInfo.vcs` and
+  `includeJj` (Web `jj` query param) or the VS Code `spek.aggregateJjWorkspaces` setting (alongside
+  `spek.aggregateWorktrees`; both driven by the header scope control). `WorktreeInfo.vcs` and
   `ChangeInfo.isCurrent` / `.conflictsWith` carry the jj metadata
 - `extractHeadings` / `slugifyHeading` (h2/h3 → stable slugs for the spec TOC and VS Code sidebar; **import from the
   `@spekjs/core/headings` subpath** so the webview bundle doesn't pull in server-only modules)
@@ -128,6 +129,16 @@ by the watched path's fstype (`decidePolling` precedence: explicit override `SPE
 `ApiAdapter` abstracts transport, injected via `ApiAdapterContext`: `FetchAdapter` (Web + IntelliJ, configurable
 `baseUrl` / `dirParam`), `MessageAdapter` (VS Code `postMessage`), `StaticAdapter` (Demo `window.__DEMO_DATA__`).
 
+**Aggregation-scope control** (`aggregation-scope-control` spec): the git-worktree + jj scope is a **single global
+control in the app header** (both Web and the VS Code webview), not on the Changes page. `AggregationScopeContext`
+owns the level (a tri-state collapsing `aggregate` + `jj` via `aggregationLevel.ts`, so the invalid `aggregate off +
+jj on` combo is unrepresentable) and the worktree list (via `getWorktrees`, which discovers jj **independently of the
+setting** so the jj option can be offered while jj is off). The preference is read/written per host through the adapter
+(`getAggregationPrefs` / `setAggregationPrefs`): Web = `localStorage`; VS Code = the settings (`spek.aggregateWorktrees`
++ `spek.aggregateJjWorkspaces`), so toggling the control **edits `settings.json`** (Workspace scope) and an external
+settings edit updates the control (via `onDidChangeConfiguration` → webview refresh). Every entry point (App / Webview /
+Demo / IntelliJ) must wrap `AggregationScopeProvider` — the shared `Layout` header calls `useAggregationScope`.
+
 ### API endpoints (Web; all openspec routes accept `dir`)
 
 `/changes`, `/overview`, `/graph`, `/watch` also accept `aggregate` (default true) and `jj` (**EXPERIMENTAL, default false**; `jj=true` includes jj workspaces). `/changes/:slug` accepts `wt` (source working directory, incl. jj workspaces).
@@ -142,6 +153,7 @@ GET /api/openspec/specs/:topic/at/:slug?dir=...     # spec at a change (diff)
 GET /api/openspec/changes?dir=...&aggregate=        # changes list
 GET /api/openspec/changes/:slug?dir=...&wt=         # single change
 GET /api/openspec/graph?dir=...&aggregate=          # spec-change graph
+GET /api/openspec/worktrees?dir=...&jj=             # worktree/jj list only (no change scan) — feeds the header scope control
 GET /api/openspec/search?dir=...&q=...              # full-text search
 ```
 

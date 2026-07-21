@@ -1,15 +1,17 @@
-// 聚合層級：把「是否聚合」與「是否納入 jj」這兩個相依的旗標收斂成單一 tri-state 控制項。
-// jj 只有在聚合開啟時才有意義（aggregate 關 → scanOpenSpecAggregated 退回單目錄掃描，jj 無效），
-// 故用層級（而非兩個獨立勾選框）從結構上杜絕「aggregate off + jj on」這種矛盾狀態。
+// Aggregation level: collapse the two dependent flags ("aggregate" and "include jj") into a single
+// tri-state control. jj only has meaning when aggregation is on (with aggregate off,
+// scanOpenSpecAggregated falls back to a single-directory scan and jj has no effect), so a level
+// (rather than two independent checkboxes) structurally rules out the contradictory
+// "aggregate off + jj on" state.
 export type AggLevel = "off" | "worktrees" | "worktrees-jj";
 
-/** 由現有的兩個布林偏好推導出層級。aggregate 關即為 off（不論 jj）。 */
+/** Derive the level from the two boolean preferences. aggregate off is always "off" (regardless of jj). */
 export function levelFromPrefs(aggregate: boolean, includeJj: boolean): AggLevel {
   if (!aggregate) return "off";
   return includeJj ? "worktrees-jj" : "worktrees";
 }
 
-/** 由層級展開回兩個布林偏好。off 一律 jj=false，杜絕無效組合。 */
+/** Expand a level back into the two boolean preferences. "off" always forces jj off (no invalid combo). */
 export function prefsFromLevel(level: AggLevel): { aggregate: boolean; includeJj: boolean } {
   switch (level) {
     case "off":
@@ -19,4 +21,16 @@ export function prefsFromLevel(level: AggLevel): { aggregate: boolean; includeJj
     case "worktrees-jj":
       return { aggregate: true, includeJj: true };
   }
+}
+
+/**
+ * Visibility of the aggregation-scope control given the detected worktree landscape.
+ * Shown only when there is something to aggregate (more than one worktree, or jj detected); the
+ * jj option is offered only when a jj workspace is present.
+ */
+export function scopeControlView(
+  worktreeCount: number,
+  hasJj: boolean,
+): { visible: boolean; showJjOption: boolean } {
+  return { visible: worktreeCount > 1 || hasJj, showJjOption: hasJj };
 }

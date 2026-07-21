@@ -93,10 +93,14 @@ export class SpekPanel {
       this.disposables,
     );
 
-    // 切換 `spek.aggregateJjWorkspaces` 設定時刷新 webview（重新取數，套用新的設定值）
+    // Refresh the webview when an aggregation setting changes, so the header control and the data
+    // re-read the new value.
     vscode.workspace.onDidChangeConfiguration(
       (e) => {
-        if (e.affectsConfiguration("spek.aggregateJjWorkspaces")) {
+        if (
+          e.affectsConfiguration("spek.aggregateWorktrees") ||
+          e.affectsConfiguration("spek.aggregateJjWorkspaces")
+        ) {
           this.notifyFileChange();
         }
       },

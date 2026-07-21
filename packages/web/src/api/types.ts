@@ -9,6 +9,7 @@ import type {
   BrowseData,
   DetectData,
   GraphData,
+  WorktreeInfo,
 } from "@spekjs/core";
 
 export interface ApiAdapter {
@@ -23,4 +24,14 @@ export interface ApiAdapter {
   detect(path: string): Promise<DetectData>;
   resync(): Promise<void>;
   getGraphData(aggregate?: boolean, includeJj?: boolean): Promise<GraphData>;
+  getWorktrees(includeJj?: boolean): Promise<WorktreeInfo[]>;
+  // Read/write the aggregation-scope preference, abstracting each host's native storage:
+  // Web = localStorage, VS Code = settings.
+  getAggregationPrefs(): Promise<AggregationPrefs>;
+  setAggregationPrefs(aggregate: boolean, includeJj: boolean): Promise<void>;
+}
+
+export interface AggregationPrefs {
+  aggregate: boolean;
+  includeJj: boolean;
 }

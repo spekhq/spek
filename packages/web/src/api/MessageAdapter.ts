@@ -9,8 +9,9 @@ import type {
   BrowseData,
   DetectData,
   GraphData,
+  WorktreeInfo,
 } from "@spekjs/core";
-import type { ApiAdapter } from "./types.js";
+import type { ApiAdapter, AggregationPrefs } from "./types.js";
 
 interface VsCodeApi {
   postMessage(message: unknown): void;
@@ -114,5 +115,17 @@ export class MessageAdapter implements ApiAdapter {
 
   getGraphData(aggregate?: boolean, includeJj?: boolean): Promise<GraphData> {
     return this.request("getGraphData", { aggregate, includeJj });
+  }
+
+  getWorktrees(includeJj?: boolean): Promise<WorktreeInfo[]> {
+    return this.request("getWorktrees", { includeJj });
+  }
+
+  getAggregationPrefs(): Promise<AggregationPrefs> {
+    return this.request("getAggregationPrefs");
+  }
+
+  setAggregationPrefs(aggregate: boolean, includeJj: boolean): Promise<void> {
+    return this.request("setAggregationPrefs", { aggregate, includeJj });
   }
 }

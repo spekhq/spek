@@ -3,6 +3,7 @@ import { createMemoryRouter, RouterProvider } from "react-router-dom";
 import { RepoProvider, useRepo } from "./contexts/RepoContext";
 import { ThemeProvider, useThemeControl } from "./contexts/ThemeContext";
 import { RefreshProvider, useRefresh } from "./contexts/RefreshContext";
+import { AggregationScopeProvider } from "./contexts/AggregationScopeContext";
 import { ApiAdapterProvider } from "./api/ApiAdapterContext";
 import { FetchAdapter } from "./api/FetchAdapter";
 import { Layout } from "./components/Layout";
@@ -107,7 +108,9 @@ function IntellijAppInner() {
 
   return (
     <ApiAdapterProvider adapter={adapter}>
-      <RouterProvider router={router} />
+      <AggregationScopeProvider>
+        <RouterProvider router={router} />
+      </AggregationScopeProvider>
     </ApiAdapterProvider>
   );
 }

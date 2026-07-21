@@ -37,6 +37,11 @@
     "configuration": {
       "title": "spek",
       "properties": {
+        "spek.aggregateWorktrees": {
+          "type": "boolean",
+          "default": true,
+          "markdownDescription": "Aggregate OpenSpec changes across all git worktrees of the repository. On by default. The header control in the spek panel edits this setting."
+        },
         "spek.aggregateJjWorkspaces": {
           "type": "boolean",
           "default": false,

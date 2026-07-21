@@ -6,6 +6,7 @@ import {
 import { RepoProvider, useRepo } from "./contexts/RepoContext";
 import { ThemeProvider, useThemeControl } from "./contexts/ThemeContext";
 import { RefreshProvider } from "./contexts/RefreshContext";
+import { AggregationScopeProvider } from "./contexts/AggregationScopeContext";
 import { ApiAdapterProvider } from "./api/ApiAdapterContext";
 import { MessageAdapter } from "./api/MessageAdapter";
 import { Layout } from "./components/Layout";
@@ -88,7 +89,9 @@ function WebviewAppInner() {
   return (
     <RefreshProvider>
       <ApiAdapterProvider adapter={adapter}>
-        <RouterProvider router={router} />
+        <AggregationScopeProvider>
+          <RouterProvider router={router} />
+        </AggregationScopeProvider>
       </ApiAdapterProvider>
     </RefreshProvider>
   );
