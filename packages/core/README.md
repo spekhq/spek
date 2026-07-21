@@ -2,7 +2,7 @@
 
 Framework-agnostic engine for reading [OpenSpec](https://github.com/Fission-AI/OpenSpec) repositories.
 
-It scans an OpenSpec directory, reads specs and changes, parses task checkboxes, and aggregates data across git worktrees — with no framework dependencies. This is the engine behind [spek](https://github.com/spekhq/spek), the OpenSpec viewer (Web, VS Code, IntelliJ).
+It scans an OpenSpec directory, reads specs and changes, parses task checkboxes, and aggregates data across git worktrees (and, experimentally, jj workspaces) — with no framework dependencies. This is the engine behind [spek](https://github.com/spekhq/spek), the OpenSpec viewer (Web, VS Code, IntelliJ).
 
 ## Install
 
@@ -45,8 +45,26 @@ schema-authoritative artifact ordering, and degrades gracefully when the CLI is 
 | `parseTasks(content)` | Parse `- [x]` / `- [ ]` checkboxes, grouped by `##` section |
 | `buildGraphData(basePath)` | Build spec–change relationship graph data |
 | `buildGraphDataAggregated(basePath, opts)` | The same, aggregated across worktrees |
-| `listWorktrees(basePath)` | List every worktree of the same repo |
+| `listWorktrees(basePath)` | List every git worktree of the same repo |
+| `listWorkspaces(basePath, opts?)` | The same, plus jj workspaces when `includeJj` is set |
 | `shouldUsePolling(path, opts?)` | Decide whether file watching must fall back to polling |
+
+## jj (Jujutsu) workspaces — experimental
+
+`scanOpenSpecAggregated` and `buildGraphDataAggregated` accept `includeJj` (**default `false`**). When
+enabled, active changes are also collected from every jj workspace of the repo.
+
+```js
+const data = await scanOpenSpecAggregated('/path/to/repo', { aggregate: true, includeJj: true })
+```
+
+jj copies do not go through the git-divergence election used for git worktrees — a jj working-copy
+commit is a change id, not a git ref, and every workspace materialises the full trunk. They are
+deduplicated by **content fingerprint** instead: identical copies collapse to one, a diverged copy
+keeps its own entry flagged `conflictsWith`, and the copy that `@` is editing is flagged `isCurrent`.
+
+Nothing is spawned unless jj is requested, and `jj` is never required: with the CLI absent or the
+directory not a jj repo, the jj helpers resolve to `[]` and results are identical to `includeJj: false`.
 
 ## Subpath exports
 

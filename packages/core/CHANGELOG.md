@@ -3,6 +3,31 @@
 `@spekjs/core` has its own version line, independent of the spek product releases tracked in the
 repository root `CHANGELOG.md`.
 
+## 1.2.0
+
+- **Jujutsu (jj) workspace aggregation (experimental).** `scanOpenSpecAggregated` and
+  `buildGraphDataAggregated` take a new `includeJj` option (**default `false`**); when set, active
+  changes are also collected from every jj workspace of the repo and merged into the same aggregated
+  result as git worktrees. Contributed by [@DannyGoodall](https://github.com/DannyGoodall) (Danny
+  Goodall).
+- jj copies are **never** fed into the git-divergence election used for git worktrees — a jj
+  working-copy commit is a change id, not a git ref, and every jj workspace materialises the full
+  trunk, so history-based election is meaningless there. They get their own path: dedup by **content
+  fingerprint**, keeping a diverged copy as its own entry. The git-worktree path is byte-for-byte
+  unchanged, and with `includeJj` off (the default) behaviour is identical to 1.1.3.
+- New exports: `listWorkspaces(dir, { includeJj })` (git worktrees + jj workspaces, deduped by path
+  so a colocated main directory is counted once, with the git entry winning to keep its branch),
+  `listJjWorkspaces(dir)`, `parseJjWorkspaceList(stdout)`, and `jjCurrentChangeSlugs(dir)`
+  (read-only, `--ignore-working-copy`). All of them resolve to `[]` when the `jj` CLI is absent or
+  the directory is not a jj repo — `jj` is never required, and nothing is spawned unless jj is
+  requested.
+- `ChangeInfo` gains two optional fields: `isCurrent` (this copy is what the source workspace's `@`
+  is editing) and `conflictsWith` (a diverged jj copy, valued with the label of what it diverged
+  from).
+- **Type change (source-level breaking for constructors):** `WorktreeInfo` and `WorktreeSource`
+  gain a **required** `vcs: "git" | "jj"` field. Code that only *reads* these types is unaffected;
+  code that *constructs* one (a test fixture, a hand-built worktree list) must now supply `vcs`.
+
 ## 1.1.3
 
 - `cliSchemaOrderProvider` now caches the authoritative artifact order under
