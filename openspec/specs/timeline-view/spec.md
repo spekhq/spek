@@ -1,9 +1,7 @@
 ## Purpose
 
 Present change lifecycles as a horizontal Gantt-style timeline, so progress over time is visible at a glance.
-
 ## Requirements
-
 ### Requirement: Timeline page route
 
 The system SHALL expose a `/timeline` route in the web app that renders a horizontal Gantt-style timeline of all OpenSpec changes for the active repo.
@@ -78,6 +76,11 @@ Bars SHALL be interactive, providing hover details and click-through navigation.
 
 The timeline SHALL provide a toggle that, when enabled, groups bars into lanes by the spec topic each change affects.
 
+Topic grouping SHALL produce the same lanes whether the graph data came from a single working directory
+or from worktree/workspace aggregation. Aggregated graphs namespace change node ids by the winning
+worktree (`change:<worktreeKey>:<slug>`); the timeline SHALL resolve such an id back to its plain slug
+before matching it against the changes it renders.
+
 #### Scenario: Toggle off shows flat lane list
 
 - **WHEN** the group toggle is off (default)
@@ -93,6 +96,15 @@ The timeline SHALL provide a toggle that, when enabled, groups bars into lanes b
 
 - **WHEN** a change appears in multiple topic groups
 - **THEN** each occurrence's tooltip lists all affected topics
+
+#### Scenario: Grouping under worktree aggregation
+
+- **WHEN** the group toggle is on and the graph was built with aggregation across more than one worktree,
+  so its change node ids carry a worktree key
+- **THEN** each change is grouped under the spec topics its node is connected to, exactly as it would be
+  without aggregation
+- **AND** a change is placed in the no-topic lane only when none of its spec edges resolve to a spec node
+  present in the graph
 
 ### Requirement: Status filter chips
 
@@ -137,3 +149,4 @@ The timeline SHALL respect the active theme and remain usable on narrow viewport
 
 - **WHEN** the viewport width is below the chart's minimum content width
 - **THEN** the chart area becomes horizontally scrollable while the lane label column remains visible
+
