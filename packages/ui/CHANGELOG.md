@@ -1,5 +1,27 @@
 # Changelog
 
+## 1.2.0
+
+### Fixed
+
+- **The package is importable from Node again — or rather, for the first time.** It declares
+  `"type": "module"` but every published version so far emitted extensionless relative specifiers
+  (`from "./SpecGraph"`), which Node's ESM resolver rejects with `ERR_MODULE_NOT_FOUND`. Nothing had
+  failed because every known consumer resolves through a bundler, which tolerates the omission; it
+  surfaced when a host tried to import the package from a Node process
+  ([#27](https://github.com/spekhq/spek/issues/27)). Bundled consumers are unaffected either way.
+
+### Changed
+
+- **`@spekjs/core` peer floor is now `>=1.3.0`** (was `>=1.0.0`). `changeNodeSlug` moved into core,
+  beside the code that produces the id format it parses, and this package imports it from
+  `@spekjs/core/graph-node-id` at runtime — the first runtime import of core it has ever had. An
+  install that resolves an older core fails when the module is loaded, so the floor has to move
+  ([#28](https://github.com/spekhq/spek/issues/28)).
+- **`changeNodeSlug` is still exported from this package**, unchanged, re-exporting core's
+  implementation — code importing it from `@spekjs/ui` keeps working. If you only need the parsing,
+  prefer `@spekjs/core/graph-node-id`: it carries neither React nor d3.
+
 ## 1.1.0
 
 ### Fixed

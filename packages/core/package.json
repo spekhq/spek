@@ -47,7 +47,7 @@
     }
   },
   "scripts": {
-    "build": "tsc",
+    "build": "rm -rf dist && tsc",
     "prepare": "tsc",
     "dev": "tsc --watch",
     "test": "node --import tsx --test src/*.test.ts"
