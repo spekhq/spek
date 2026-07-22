@@ -1,8 +1,4 @@
-## Purpose
-
-Keep the IntelliJ plugin usable when JCEF is unavailable, by opening the spek Web UI in the user's default external browser.
-
-## Requirements
+## ADDED Requirements
 
 ### Requirement: JCEF availability detection
 The plugin SHALL determine JCEF availability at a single detection point that treats **any** `Throwable` raised while
@@ -33,6 +29,8 @@ consumes it, so that one class is the only place affected when the platform relo
 - **WHEN** the JCEF probe returns true
 - **THEN** detection SHALL report JCEF as available
 - **AND** the plugin SHALL use the embedded webview rather than the fallback
+
+## MODIFIED Requirements
 
 ### Requirement: External browser launch
 The plugin SHALL open the spek Web UI in the user's default external browser using the IntelliJ Built-in Server URL

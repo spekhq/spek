@@ -32,6 +32,13 @@
     ]]></change-notes>
 
     <depends>com.intellij.modules.platform</depends>
+    <!-- Since 2026.2 (262) JCEF ships as the bundled plugin `com.intellij.modules.jcef`, whose content modules
+         (intellij.platform.ui.jcef = com.intellij.ui.jcef.*, intellij.libraries.jcef = org.cef.*) each get their
+         own classloader. An old-format descriptor that does not declare this cannot see JBCefApp and throws
+         NoClassDefFoundError when the Tool Window opens (issue #24). Declared optional: IDEs older than 262 have no
+         such plugin id, and an unresolved optional depends is not a strict dependency, so loading on 2023.3+ is
+         unaffected. -->
+    <depends optional="true" config-file="spek-jcef.xml">com.intellij.modules.jcef</depends>
 
     <extensions defaultExtensionNs="com.intellij">
         <toolWindow id="spek"

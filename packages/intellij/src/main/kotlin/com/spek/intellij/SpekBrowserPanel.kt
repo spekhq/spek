@@ -5,8 +5,6 @@ import com.intellij.openapi.application.ApplicationManager
 import com.intellij.openapi.diagnostic.Logger
 import com.intellij.openapi.project.Project
 import com.intellij.openapi.util.Disposer
-import com.intellij.ui.jcef.JBCefApp
-import com.intellij.ui.jcef.JBCefBrowser
 import com.spek.intellij.core.SchemaOrder
 import com.spek.intellij.core.WatchPolling
 import java.io.File
@@ -27,7 +25,7 @@ import kotlin.concurrent.thread
 
 class SpekBrowserPanel(private val project: Project) : Disposable {
     private val log = Logger.getInstance(SpekBrowserPanel::class.java)
-    private var browser: JBCefBrowser? = null
+    private var webview: SpekWebviewHost? = null
     private var debounceTimer: Timer? = null
     private var watchThread: Thread? = null
     private var watchService: WatchService? = null
@@ -39,7 +37,7 @@ class SpekBrowserPanel(private val project: Project) : Disposable {
     val component: JComponent
 
     init {
-        component = if (JBCefApp.isSupported()) {
+        component = if (JcefAvailability.isAvailable()) {
             createBrowserComponent()
         } else {
             createFallbackComponent()
@@ -50,11 +48,9 @@ class SpekBrowserPanel(private val project: Project) : Disposable {
 
     private fun createBrowserComponent(): JComponent {
         // 先建立空白 browser，等 Built-in Server 就緒後再載入 URL
-        val jcefBrowser = JBCefBrowser()
-        browser = jcefBrowser
-        Disposer.register(this, jcefBrowser)
-
-        setupThemeListener(jcefBrowser)
+        val host = JcefWebviewHost { isIdeInDarkMode() }
+        webview = host
+        Disposer.register(this, host)
 
         // 在背景等待 server 啟動並確認 API handler 就緒，再於 EDT 載入 URL
         ApplicationManager.getApplication().executeOnPooledThread {
@@ -71,7 +67,7 @@ class SpekBrowserPanel(private val project: Project) : Disposable {
 
             ApplicationManager.getApplication().invokeLater {
                 if (disposed) return@invokeLater
-                jcefBrowser.loadURL(buildBrowserUrl())
+                host.loadUrl(buildBrowserUrl())
                 // 延遲標記為 ready，讓頁面有時間載入
                 Timer().schedule(object : TimerTask() {
                     override fun run() {
@@ -82,7 +78,7 @@ class SpekBrowserPanel(private val project: Project) : Disposable {
             }
         }
 
-        return jcefBrowser.component
+        return host.component
     }
 
     private fun createFallbackComponent(): JComponent {
@@ -90,8 +86,11 @@ class SpekBrowserPanel(private val project: Project) : Disposable {
         panel.layout = BoxLayout(panel, BoxLayout.Y_AXIS)
         panel.border = BorderFactory.createEmptyBorder(20, 20, 20, 20)
 
+        // Don't phrase this as "this IDE has no JCEF": since 2026.2 the same panel can equally be caused by the
+        // plugin failing to declare its com.intellij.modules.jcef dependency (issue #24), so blaming the IDE
+        // would be dishonest.
         val messageLabel = JLabel(
-            "<html><center>JCEF is not available in this IDE.<br>" +
+            "<html><center>The embedded browser is unavailable.<br>" +
                 "spek will open in your external browser instead.</center></html>",
         )
         messageLabel.horizontalAlignment = SwingConstants.CENTER
@@ -143,26 +142,6 @@ class SpekBrowserPanel(private val project: Project) : Disposable {
 
     private fun isIdeInDarkMode(): Boolean {
         return !com.intellij.ui.JBColor.isBright()
-    }
-
-    private fun setupThemeListener(jcefBrowser: JBCefBrowser) {
-        val connection = ApplicationManager.getApplication().messageBus.connect(this)
-        connection.subscribe(
-            com.intellij.ide.ui.LafManagerListener.TOPIC,
-            com.intellij.ide.ui.LafManagerListener {
-                val isDark = isIdeInDarkMode()
-                val themeClass = if (isDark) "dark" else "light"
-                jcefBrowser.cefBrowser.executeJavaScript(
-                    """
-                    document.documentElement.classList.remove('dark', 'light');
-                    document.documentElement.classList.add('$themeClass');
-                    window.dispatchEvent(new CustomEvent('spek:themeChange', { detail: { theme: '$themeClass' } }));
-                    """.trimIndent(),
-                    "",
-                    0,
-                )
-            },
-        )
     }
 
     private fun setupNativeFileWatcher() {
@@ -285,11 +264,7 @@ class SpekBrowserPanel(private val project: Project) : Disposable {
         // 檔案有變動 → 先清掉 schema 順序快取，「再」通知 webview 重新抓取；順序不可顛倒：若先派發
         // spek:fileChanged，webview 的 re-fetch 可能搶在 clearCache 之前打到 server 而拿到舊順序。
         SchemaOrder.clearCache()
-        browser?.cefBrowser?.executeJavaScript(
-            "window.dispatchEvent(new CustomEvent('spek:fileChanged'));",
-            "",
-            0,
-        )
+        webview?.executeJavaScript("window.dispatchEvent(new CustomEvent('spek:fileChanged'));")
         onFileChanged?.invoke()
     }
 
@@ -333,7 +308,8 @@ class SpekBrowserPanel(private val project: Project) : Disposable {
     }
 
     fun navigateTo(path: String) {
-        if (browser != null) {
+        val host = webview
+        if (host != null) {
             if (!webviewReady) {
                 synchronized(pendingNavigations) {
                     pendingNavigations.add(path)
@@ -341,10 +317,8 @@ class SpekBrowserPanel(private val project: Project) : Disposable {
                 return
             }
             val escapedPath = path.replace("'", "\\'")
-            browser?.cefBrowser?.executeJavaScript(
+            host.executeJavaScript(
                 "window.dispatchEvent(new CustomEvent('spek:navigate', { detail: { path: '$escapedPath' } }));",
-                "",
-                0,
             )
         } else {
             // JCEF 不可用，開啟外部瀏覽器

@@ -176,6 +176,24 @@ GET /api/openspec/search?dir=...&q=...              # full-text search
   project that removed `openspec/` would misjudge on reopen. While the tree is hidden, `TreeRefreshGate` (pure logic,
   unit-testable) records refreshes as pending and rebuilds once before re-showing
 - Theme sync: JCEF `executeJavaScript()` injects a CSS class; file watching: VFS BulkFileListener + 500ms debounce
+- **Platform classes can become invisible across IDE versions — JCEF already did.** In 2026.2 (branch `262`) JCEF
+  moved into a bundled plugin with id `com.intellij.modules.jcef`, whose content modules each get their own
+  classloader: `intellij.platform.ui.jcef` (`com.intellij.ui.jcef.*`) and `intellij.libraries.jcef` (`org.cef.*` —
+  it's a *second* module, and `cefBrowser.executeJavaScript` lives there). A v1-descriptor plugin that declares only
+  `<depends>com.intellij.modules.platform</depends>` loses both, and `SpekBrowserPanel.<init>` died with
+  `NoClassDefFoundError` before the `JBCefApp.isSupported()` guard could return anything (issue #24). Notes for the
+  next time:
+  - The backward-compatible way back in is a **v1 optional dependency on the owning plugin id** —
+    `<depends optional="true" config-file="...">com.intellij.modules.jcef</depends>`. The platform deliberately grants
+    old-format plugins all of a depended-on plugin's content modules, and an unresolved *optional* depends is not a
+    strict dependency, so builds without that plugin id are unaffected.
+  - **Never** put a mandatory v2 `<dependencies><module .../></dependencies>` in the main descriptor for something the
+    supported range doesn't all have: an unresolved module dependency disables the whole plugin. `since-build` is 233
+    (2023.3), so anything newer than that must be declared optionally.
+  - A guard must catch `Throwable`, not `Exception` — `NoClassDefFoundError` is an `Error`.
+  - `verifyPlugin` covers both ends of the range (`pluginVerification.ides` in `build.gradle.kts`). The IntelliJ
+    Platform Gradle Plugin is pinned at **2.9.0**: 2.11.0+ needs Gradle 8.13+, 2.14.0+ needs Gradle 9, and the wrapper
+    is 8.11.1 — 2.9.0 is also the version that added the `intellijIdea(...)` helper the 2026.x target needs.
 
 **Frontend routes**: `/` (SelectRepo, web only) → `/dashboard` → `/specs` → `/specs/:topic` → `/changes` → `/changes/:slug` → `/graph`
 

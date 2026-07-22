@@ -44,6 +44,15 @@ jobs:
           fi
           echo "Version matched: ${PLUGIN_VERSION}"
 
+      # Run Plugin Verifier against both ends of the supported range (targets live in build.gradle.kts under
+      # pluginVerification). Known blind spot: Verifier checks binary compatibility and does not model
+      # plugin-classloader module visibility. When the platform moves a package into its own content module — as
+      # 2026.2 did with JCEF, see issue #24 — it still reports Compatible; we measured this against the build that
+      # actually crashed. This gate catches genuine API removals and signature changes, not that class of breakage.
+      - name: Verify plugin compatibility
+        working-directory: packages/intellij
+        run: ./gradlew verifyPlugin
+
       - name: Publish to JetBrains Marketplace
         working-directory: packages/intellij
         run: ./gradlew publishPlugin

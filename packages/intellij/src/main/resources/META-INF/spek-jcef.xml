@@ -1,0 +1,13 @@
+<!-- Sub-descriptor loaded only when `com.intellij.modules.jcef` is present (2026.2+).
+
+     Its contents mirror conan-clion-plugin's withJcef.xml verbatim — the only known precedent that actually fixed
+     this same crash on 2026.2 (commit ab66c80a, 2026-07-20). Reading platform source suggests this <dependencies>
+     block is inert inside a `depends` sub-descriptor (moduleDependencies is set to EMPTY there) and that the
+     <depends optional> line in the main descriptor is what does the work. That reading is unverified, though, and
+     the cost of omitting the block is a fix that fails silently on 2026.2 — precisely the end we cannot observe.
+     So we copy the combination known to work rather than simplify it. -->
+<idea-plugin>
+    <dependencies>
+        <module name="intellij.platform.ui.jcef"/>
+    </dependencies>
+</idea-plugin>

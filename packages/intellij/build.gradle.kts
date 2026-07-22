@@ -1,8 +1,10 @@
+import org.jetbrains.intellij.platform.gradle.IntelliJPlatformType
+
 plugins {
     id("java")
     id("org.jetbrains.kotlin.jvm") version "1.9.25"
     id("org.jetbrains.kotlin.plugin.serialization") version "1.9.25"
-    id("org.jetbrains.intellij.platform") version "2.2.1"
+    id("org.jetbrains.intellij.platform") version "2.9.0"
 }
 
 group = providers.gradleProperty("pluginGroup").get()
@@ -50,6 +52,19 @@ intellijPlatform {
     }
     publishing {
         token = providers.environmentVariable("PUBLISH_TOKEN")
+    }
+    // Verify both ends of the supported range: the oldest supported build and the newest platform release.
+    // Caveat worth knowing before trusting this gate: Plugin Verifier checks binary compatibility and does not
+    // model plugin-classloader module visibility. It reported the 2026.2-crashing build as "Compatible", so it
+    // does NOT catch a platform package moving into a content module (issue #24) — it catches genuine API
+    // removals and signature changes.
+    // The newest target must use intellijIdea(...): IDEA Community is no longer published separately as of 2025.3
+    // and the Gradle plugin rejects 2025.3+ versions under the intellijIdeaCommunity coordinate.
+    pluginVerification {
+        ides {
+            ide(IntelliJPlatformType.IntellijIdeaCommunity, providers.gradleProperty("platformVersion").get())
+            ide(IntelliJPlatformType.IntellijIdea, providers.gradleProperty("verifyLatestVersion").get())
+        }
     }
 }
 
