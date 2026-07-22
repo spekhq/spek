@@ -234,8 +234,16 @@ GET /api/openspec/search?dir=...&q=...              # full-text search
   - **The spek product** (Web / VS Code / IntelliJ share the root `package.json` version) is recorded in three
     CHANGELOGs — root + `packages/vscode` + `packages/intellij` — sharing one version history but **each filtering out
     entries irrelevant to that channel** (root is the superset; filter down from it)
-  - **`@spekjs/core`** has its own version line and `packages/core/CHANGELOG.md`, **not written into the three above**
-    (its readers are API consumers). It must be listed in core's `package.json` `files` (npm doesn't auto-pack a CHANGELOG)
+  - **`@spekjs/core`** and **`@spekjs/ui`** each have their own version line and CHANGELOG
+    (`packages/core/CHANGELOG.md` / `packages/ui/CHANGELOG.md`), **not written into the three above** (their readers
+    are API consumers). Each must be listed in that package's `package.json` `files` (npm doesn't auto-pack a CHANGELOG)
+  - **Written at release time, not inside a change.** CHANGELOG entries and version bumps (`package.json` `version`,
+    `gradle.properties` `pluginVersion`) belong to the release flow — `/release` for the product line, a separate
+    `chore(npm): publish …` commit for the package lines. Do **not** list them in a change's `tasks.md` or do them
+    while implementing one: the version step depends on everything shipping in that release, not on one change. If a
+    change carries information the release notes will need (a new public export, a behavior change affecting registry
+    consumers, additive-so-minor-not-patch), put it in the change's `proposal.md` Impact or `design.md` for whoever
+    cuts the release
 
 ## Workflow
 
