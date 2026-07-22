@@ -1,7 +1,8 @@
 // Timeline lane / grouping 推導：把 ChangeInfo[] 分成 lanes（含 group by topic 變體），
 // 缺 createdDate 的 change 獨立提出由 caller 渲染。
 
-import type { ChangeInfo, GraphData } from "@spekjs/core";
+import type { ChangeInfo, GraphData, GraphNode } from "@spekjs/core";
+import { changeNodeSlug } from "../graphNodeId";
 
 export interface LaneItem {
   change: ChangeInfo;
@@ -22,8 +23,10 @@ export interface BuildLanesResult {
 }
 
 // 從 GraphData 抽出 change → topics 對應。
-// scanner.buildGraphData 產出 id 為 `change:${slug}` / `spec:${topic}`，label 為人類描述（非 slug）。
-// 解析靠 id prefix；node lookup 確認類型，避免 prefix 撞到別的字串。
+// Change node ids are `change:<slug>`, or `change:<worktreeKey>:<slug>` when the graph was aggregated
+// across worktrees; `changeNodeSlug` resolves both to the plain slug, which is what `ChangeInfo.slug`
+// carries. Spec node ids are `spec:<topic>`. Labels are human descriptions, not slugs — never parse those.
+// The node lookup also confirms the type, so a prefix can't collide with some other string.
 function stripPrefix(id: string, prefix: string): string | null {
   return id.startsWith(prefix) ? id.slice(prefix.length) : null;
 }
@@ -36,17 +39,17 @@ export function changeTopicsMap(graph: GraphData | null): Map<string, string[]> 
     const a = nodeById.get(edge.source);
     const b = nodeById.get(edge.target);
     if (!a || !b) continue;
-    let changeId: string | null = null;
+    let changeNode: GraphNode | null = null;
     let specId: string | null = null;
     if (a.type === "change" && b.type === "spec") {
-      changeId = a.id;
+      changeNode = a;
       specId = b.id;
     } else if (a.type === "spec" && b.type === "change") {
-      changeId = b.id;
+      changeNode = b;
       specId = a.id;
     }
-    if (!changeId || !specId) continue;
-    const slug = stripPrefix(changeId, "change:");
+    if (!changeNode || !specId) continue;
+    const slug = changeNodeSlug(changeNode);
     const topic = stripPrefix(specId, "spec:");
     if (!slug || !topic) continue;
     const arr = map.get(slug) ?? [];

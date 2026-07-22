@@ -42,7 +42,7 @@
     "build:css": "cp src/styles.css dist/styles.css",
     "prepublishOnly": "npm run build",
     "dev": "tsc --watch",
-    "test": "node --import tsx --test src/timeline/__tests__/*.test.ts"
+    "test": "node --import tsx --test \"src/**/__tests__/*.test.ts\""
   },
   "dependencies": {
     "d3-drag": "^3.0.0",

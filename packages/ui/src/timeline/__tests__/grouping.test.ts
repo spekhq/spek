@@ -1,6 +1,6 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import type { ChangeInfo, GraphData } from "@spekjs/core";
+import type { ChangeInfo, GraphData, WorktreeSource } from "@spekjs/core";
 import { buildLanes, changeTopicsMap } from "../grouping";
 
 function mkChange(overrides: Partial<ChangeInfo> & { slug: string }): ChangeInfo {
@@ -39,6 +39,35 @@ function mkGraph(edges: { change: string; topics: string[] }[]): GraphData {
         seenSpec.add(t);
       }
       allEdges.push({ source: `change:${e.change}`, target: `spec:${t}` });
+    }
+  }
+  return { nodes, edges: allEdges };
+}
+
+// buildGraphDataAggregated 的產物：change 節點 id 帶 worktree key，並附上 source。
+// spec 節點只來自 main worktree，不帶命名空間。
+function mkAggregatedGraph(
+  edges: { change: string; worktreeKey: string; topics: string[] }[],
+): GraphData {
+  const nodes: GraphData["nodes"] = [];
+  const seenSpec = new Set<string>();
+  const allEdges: GraphData["edges"] = [];
+  for (const e of edges) {
+    const source: WorktreeSource = {
+      key: e.worktreeKey,
+      path: `/repo/${e.worktreeKey}`,
+      branch: e.change,
+      isMain: false,
+      vcs: "git",
+    };
+    const changeId = `change:${e.worktreeKey}:${e.change}`;
+    nodes.push({ id: changeId, type: "change", label: `desc-${e.change}`, source });
+    for (const t of e.topics) {
+      if (!seenSpec.has(t)) {
+        nodes.push({ id: `spec:${t}`, type: "spec", label: t });
+        seenSpec.add(t);
+      }
+      allEdges.push({ source: changeId, target: `spec:${t}` });
     }
   }
   return { nodes, edges: allEdges };
@@ -105,6 +134,38 @@ test("changeTopicsMap: extracts slug→topics map from graph edges", () => {
   const map = changeTopicsMap(graph);
   assert.deepEqual(map.get("foo"), ["alpha", "beta"]);
   assert.deepEqual(map.get("bar"), ["alpha"]);
+});
+
+test("changeTopicsMap: aggregated node ids are keyed by plain slug", () => {
+  const graph = mkAggregatedGraph([
+    { change: "main-change", worktreeKey: "0ceceaeb", topics: ["auth"] },
+    { change: "inside-change", worktreeKey: "6d80d73a", topics: ["auth", "billing"] },
+  ]);
+  const map = changeTopicsMap(graph);
+  assert.deepEqual([...map.keys()].sort(), ["inside-change", "main-change"]);
+  assert.deepEqual(map.get("main-change"), ["auth"]);
+  assert.deepEqual(map.get("inside-change"), ["auth", "billing"]);
+});
+
+// Regression for issue #25: with aggregation on, every change used to fall into the "" lane because
+// the map was keyed `<worktreeKey>:<slug>` while the lookup used the plain slug. The chart rendered
+// either way, so nothing failed loudly.
+test("buildLanes: group by topic works under worktree aggregation", () => {
+  const graph = mkAggregatedGraph([
+    { change: "main-change", worktreeKey: "0ceceaeb", topics: ["auth"] },
+    { change: "inside-change", worktreeKey: "6d80d73a", topics: ["auth"] },
+  ]);
+  const changes = [
+    mkChange({ slug: "main-change", createdDate: "2026-01-10" }),
+    mkChange({ slug: "inside-change", createdDate: "2026-01-12" }),
+  ];
+  const r = buildLanes(changes, graph, true);
+  assert.equal(r.lanes.length, 1);
+  assert.equal(r.lanes[0].topic, "auth");
+  assert.deepEqual(
+    r.lanes[0].items.map((i) => i.change.slug),
+    ["main-change", "inside-change"],
+  );
 });
 
 test("buildLanes: group by topic, multi-topic change appears in each topic lane", () => {

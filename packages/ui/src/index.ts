@@ -31,6 +31,12 @@ export {
   type LaneItem,
 } from "./timeline/grouping";
 
+/**
+ * Graph node id parsing. Exported so a host consuming `GraphData` resolves ids the same way the
+ * components do, instead of re-implementing the aggregation namespacing.
+ */
+export { changeNodeSlug } from "./graphNodeId";
+
 /** 時間軸的刻度規則。宿主通常用不到，但它是這張圖的核心邏輯，值得暴露。 */
 export {
   dateRange,

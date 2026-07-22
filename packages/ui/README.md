@@ -130,6 +130,17 @@ right thing to put there at all.
 `buildLanes()` also returns `unknownCreated` — changes with no `createdDate`, which cannot be placed
 on a date axis. Render them however suits your host; the timeline ignores them.
 
+## Helpers
+
+`buildLanes()` and `changeTopicsMap()` derive the timeline's lanes; `dateRange()`, `padDomain()`,
+`scaleTime()`, `generateTicks()` and `formatTickLabel()` are the axis rules. All pure, all exported.
+
+**`changeNodeSlug(node)`** turns a graph change node back into its slug. Worth knowing about if you
+touch `GraphData` yourself: an aggregated scan namespaces change ids by worktree
+(`change:<worktreeKey>:<slug>`), a plain scan does not (`change:<slug>`), and the id alone cannot tell
+you which you have — the node's `source` can. Use this rather than parsing ids, so your host and the
+components agree on what a node means.
+
 ## License
 
 MIT

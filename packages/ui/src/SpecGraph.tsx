@@ -15,6 +15,7 @@ import { select } from "d3-selection";
 import "d3-transition";
 import { zoom, zoomIdentity } from "d3-zoom";
 import { useEffect, useRef } from "react";
+import { changeNodeSlug } from "./graphNodeId";
 import { CSS_VARS, resolveColor } from "./theme";
 
 interface SimNode extends SimulationNodeDatum, GraphNode {
@@ -209,12 +210,8 @@ export function SpecGraph({
       if (dragged) return;
       if (d.type === "spec") {
         onSelectSpecRef.current?.(d.label);
-      } else if (d.source) {
-        // 聚合節點的 id 是 change:<key>:<slug>
-        const slug = d.id.slice(`change:${d.source.key}:`.length);
-        onSelectChangeRef.current?.(slug, d.source.key);
       } else {
-        onSelectChangeRef.current?.(d.id.replace(/^change:/, ""));
+        onSelectChangeRef.current?.(changeNodeSlug(d), d.source?.key);
       }
     });
 
