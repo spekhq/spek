@@ -29,6 +29,8 @@ export {
 } from "./git-cache.js";
 export { extractHeadings, slugifyHeading } from "./headings.js";
 export type { Heading } from "./headings.js";
+// 同時由 ./graph-node-id subpath 匯出（node-free），供 browser bundle / 宿主 main process 使用。
+export { changeNodeSlug } from "./graph-node-id.js";
 export { listChangeMarkdownFiles } from "./artifacts.js";
 export { shouldUsePolling, pollingInterval, withAuthoritativeChokidarEnv } from "./watch-polling.js";
 

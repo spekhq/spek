@@ -1,5 +1,5 @@
-import { CSS_VARS } from "../theme";
-import { formatTickLabel, type TickSet } from "./scale";
+import { CSS_VARS } from "../theme.js";
+import { formatTickLabel, type TickSet } from "./scale.js";
 
 interface TimelineAxisProps {
   ticks: TickSet;

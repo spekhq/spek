@@ -1,8 +1,12 @@
 {
   "compilerOptions": {
     "target": "ES2022",
-    "module": "ESNext",
-    "moduleResolution": "bundler",
+    // nodenext, not bundler: it makes tsc reject an extensionless relative specifier, which is what
+    // keeps this package's emitted ESM loadable by Node. The guard has to be at build time — build:ui
+    // runs from prepublishOnly, so a broken package cannot be published past it, whereas nothing in CI
+    // runs the tests. See issue #27.
+    "module": "nodenext",
+    "moduleResolution": "nodenext",
     "jsx": "react-jsx",
     "lib": ["ES2022", "DOM", "DOM.Iterable"],
     "strict": true,

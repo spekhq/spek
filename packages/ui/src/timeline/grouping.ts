@@ -2,7 +2,7 @@
 // 缺 createdDate 的 change 獨立提出由 caller 渲染。
 
 import type { ChangeInfo, GraphData, GraphNode } from "@spekjs/core";
-import { changeNodeSlug } from "../graphNodeId";
+import { changeNodeSlug } from "@spekjs/core/graph-node-id";
 
 export interface LaneItem {
   change: ChangeInfo;

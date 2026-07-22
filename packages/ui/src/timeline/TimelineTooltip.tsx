@@ -1,5 +1,5 @@
 import type { ChangeInfo } from "@spekjs/core";
-import { daysBetween, formatShortDate, todayIso } from "../date";
+import { daysBetween, formatShortDate, todayIso } from "../date.js";
 
 interface TimelineTooltipProps {
   change: ChangeInfo;

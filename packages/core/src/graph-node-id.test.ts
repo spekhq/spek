@@ -1,7 +1,7 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import type { GraphNode, WorktreeSource } from "@spekjs/core";
-import { changeNodeSlug } from "../graphNodeId";
+import type { GraphNode, WorktreeSource } from "./types.js";
+import { changeNodeSlug } from "./graph-node-id.js";
 
 function mkSource(key: string): WorktreeSource {
   return { key, path: `/repo/${key}`, branch: "feature", isMain: false, vcs: "git" };

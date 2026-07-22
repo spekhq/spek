@@ -1,6 +1,6 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { scaleTime, generateTicks, dateRange, padDomain, formatTickLabel } from "../scale";
+import { scaleTime, generateTicks, dateRange, padDomain, formatTickLabel } from "../scale.js";
 
 test("scaleTime: linear mapping", () => {
   const fn = scaleTime("2026-01-01", "2026-01-11", 0, 100);

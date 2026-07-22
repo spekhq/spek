@@ -1,5 +1,5 @@
 import type { ChangeInfo } from "@spekjs/core";
-import { CSS_VARS } from "../theme";
+import { CSS_VARS } from "../theme.js";
 
 interface TimelineBarProps {
   change: ChangeInfo;

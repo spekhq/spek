@@ -1,11 +1,16 @@
-// Graph node id → change slug. The single place in this package that knows the id format.
+// Graph node id → change slug. The single place that reverses the id format scanner.ts writes.
 //
 // `buildGraphData` emits `change:<slug>`; `buildGraphDataAggregated` namespaces the id by the winning
 // worktree — `change:<worktreeKey>:<slug>` — and attaches `source` to exactly those nodes. The id alone
 // is therefore ambiguous (nothing distinguishes a worktree key from the head of a slug), so the node,
 // not a bare string, is the input: `source` is what says whether a key is present.
+//
+// Pure logic with no runtime import — the type import erases — so it ships as the
+// `@spekjs/core/graph-node-id` subpath and can be value-imported from a browser bundle or a host's main
+// process, the same arrangement as artifact-order.ts. It lives beside scanner.ts on purpose: producer
+// and parser in different packages is what allowed issue #25.
 
-import type { GraphNode } from "@spekjs/core";
+import type { GraphNode } from "./types.js";
 
 const CHANGE_PREFIX = "change:";
 

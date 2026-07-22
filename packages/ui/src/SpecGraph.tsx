@@ -15,8 +15,8 @@ import { select } from "d3-selection";
 import "d3-transition";
 import { zoom, zoomIdentity } from "d3-zoom";
 import { useEffect, useRef } from "react";
-import { changeNodeSlug } from "./graphNodeId";
-import { CSS_VARS, resolveColor } from "./theme";
+import { changeNodeSlug } from "@spekjs/core/graph-node-id";
+import { CSS_VARS, resolveColor } from "./theme.js";
 
 interface SimNode extends SimulationNodeDatum, GraphNode {
   x: number;

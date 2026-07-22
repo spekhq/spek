@@ -12,15 +12,15 @@
  * 3.（可選）在自己的 `:root` 覆寫 8 個顏色變數換膚
  */
 
-export { SpecGraph, type SpecGraphProps } from "./SpecGraph";
+export { SpecGraph, type SpecGraphProps } from "./SpecGraph.js";
 
 export {
   ChangeTimeline,
   type ChangeTimelineProps,
   type TimelineMetrics,
-} from "./timeline/ChangeTimeline";
+} from "./timeline/ChangeTimeline.js";
 
-export { type BarHoverPayload } from "./timeline/TimelineBar";
+export { type BarHoverPayload } from "./timeline/TimelineBar.js";
 
 /** lane 的推導是純函式 —— 宿主先套用自己的 filter，再交給 `ChangeTimeline`。 */
 export {
@@ -29,13 +29,14 @@ export {
   type BuildLanesResult,
   type Lane,
   type LaneItem,
-} from "./timeline/grouping";
+} from "./timeline/grouping.js";
 
 /**
- * Graph node id parsing. Exported so a host consuming `GraphData` resolves ids the same way the
- * components do, instead of re-implementing the aggregation namespacing.
+ * Graph node id parsing. Owned by `@spekjs/core`, which produces the format; re-exported here so hosts
+ * that adopted it from this package keep working. A host that only needs the parsing should import
+ * `@spekjs/core/graph-node-id` directly — it pulls in neither React nor d3.
  */
-export { changeNodeSlug } from "./graphNodeId";
+export { changeNodeSlug } from "@spekjs/core/graph-node-id";
 
 /** 時間軸的刻度規則。宿主通常用不到，但它是這張圖的核心邏輯，值得暴露。 */
 export {
@@ -45,7 +46,7 @@ export {
   padDomain,
   scaleTime,
   type TickSet,
-} from "./timeline/scale";
+} from "./timeline/scale.js";
 
 /** 顏色契約。宿主可據此程式化地設定變數，或直接在 CSS 覆寫。 */
-export { CSS_VARS } from "./theme";
+export { CSS_VARS } from "./theme.js";

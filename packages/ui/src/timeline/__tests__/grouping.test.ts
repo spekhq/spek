@@ -1,7 +1,7 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import type { ChangeInfo, GraphData, WorktreeSource } from "@spekjs/core";
-import { buildLanes, changeTopicsMap } from "../grouping";
+import { buildLanes, changeTopicsMap } from "../grouping.js";
 
 function mkChange(overrides: Partial<ChangeInfo> & { slug: string }): ChangeInfo {
   return {

@@ -1,13 +1,13 @@
 import type { ChangeInfo } from "@spekjs/core";
 import type React from "react";
 import { useEffect, useMemo, useRef, useState } from "react";
-import { CSS_VARS } from "../theme";
-import { todayIso } from "../date";
-import type { Lane } from "./grouping";
-import { dateRange, generateTicks, padDomain, scaleTime } from "./scale";
-import { TimelineAxis } from "./TimelineAxis";
-import { TimelineBar, type BarHoverPayload } from "./TimelineBar";
-import { TimelineTooltip } from "./TimelineTooltip";
+import { CSS_VARS } from "../theme.js";
+import { todayIso } from "../date.js";
+import type { Lane } from "./grouping.js";
+import { dateRange, generateTicks, padDomain, scaleTime } from "./scale.js";
+import { TimelineAxis } from "./TimelineAxis.js";
+import { TimelineBar, type BarHoverPayload } from "./TimelineBar.js";
+import { TimelineTooltip } from "./TimelineTooltip.js";
 
 /**
  * 時間軸的尺寸常數。

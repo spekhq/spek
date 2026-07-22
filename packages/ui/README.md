@@ -12,7 +12,7 @@ framework.
 npm install @spekjs/ui
 ```
 
-Peer dependencies: `react` >= 19, `react-dom` >= 19, `@spekjs/core` >= 1.
+Peer dependencies: `react` >= 19, `react-dom` >= 19, `@spekjs/core` >= 1.3.
 
 ## A host does three things
 
@@ -140,6 +140,10 @@ touch `GraphData` yourself: an aggregated scan namespaces change ids by worktree
 (`change:<worktreeKey>:<slug>`), a plain scan does not (`change:<slug>`), and the id alone cannot tell
 you which you have — the node's `source` can. Use this rather than parsing ids, so your host and the
 components agree on what a node means.
+
+It is owned by `@spekjs/core`, which produces the format, and re-exported here for convenience. If your
+host needs it outside the browser — normalising ids in an Electron main process, say — import
+`@spekjs/core/graph-node-id` instead: that entry point carries neither React nor d3 nor `node:fs`.
 
 ## License
 
