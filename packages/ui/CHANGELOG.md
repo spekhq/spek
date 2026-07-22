@@ -1,5 +1,23 @@
 # Changelog
 
+## 1.1.0
+
+### Fixed
+
+- **Topic grouping under worktree aggregation.** `changeTopicsMap()` keyed its result by the raw node
+  id, so on an aggregated graph — where change nodes are `change:<worktreeKey>:<slug>` — the keys
+  carried the worktree key while `buildLanes()` looked them up by plain slug. Nothing ever matched and
+  every change fell into the no-topic lane. The timeline rendered normally either way, so it read as
+  "this repo has no spec relationships" rather than as a bug. Reported from a downstream host
+  ([#25](https://github.com/spekhq/spek/issues/25)); graphs from a single worktree were unaffected.
+
+### Added
+
+- **`changeNodeSlug(node)`** — resolves a graph change node to its slug, with the aggregation worktree
+  key removed if present. `SpecGraph` and `changeTopicsMap` now share it, so they cannot drift apart
+  again. If you normalise aggregated node ids yourself before calling `buildLanes()`, you no longer
+  need to: keep the workaround or drop it, both work — stripping an already-stripped id is a no-op.
+
 ## 1.0.0
 
 First release.
