@@ -1,5 +1,10 @@
 # Changelog
 
+## 1.9.1
+
+- **The IntelliJ plugin opens again on IDEs built on platform 2026.2.** Opening the Tool Window threw an IDE Internal Error and left no viewer at all, so the plugin was unusable — 2026.2 moved JCEF into a bundled plugin whose classes the plugin could no longer see (issue #24, reported on WebStorm 2026.2 with plugin 1.9.0). The embedded webview is restored, and JCEF being unavailable for any reason now degrades to the external-browser fallback instead of crashing — which is what makes the next platform change of this kind an inconvenience rather than an outage
+- **The timeline's "group by topic" works when worktree aggregation is on.** Every change landed in the "(no topic)" lane, which read as though the repo had no spec relationships at all. Nothing looked broken — the chart rendered exactly as it does when the grouping is genuinely empty. Repos with a single worktree were unaffected (issue #25, reported by a downstream consumer of the `@spekjs/ui` package). Web and VS Code only; the IntelliJ plugin has no worktree aggregation, so it never hit this
+
 ## 1.9.0
 
 **Highlight: Jujutsu (jj) workspace aggregation (experimental)** — spek can now see OpenSpec changes in jj workspaces, not just git worktrees. In a colocated git+jj repo, jj workspaces are invisible to `git worktree list`, so changes authored there used to be silently missed. This is **experimental and off by default** — enable it to opt in. Thanks to [@DannyGoodall](https://github.com/DannyGoodall) (Danny Goodall) for contributing this.

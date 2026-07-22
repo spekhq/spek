@@ -1,5 +1,11 @@
 # Changelog
 
+## 1.9.1
+
+- **The plugin opens again on IDEs built on platform 2026.2.** Opening the Tool Window threw an IDE Internal Error and left no viewer at all, so the plugin was unusable — 2026.2 moved JCEF into a bundled plugin whose classes the plugin could no longer see (issue #24, reported on WebStorm 2026.2 with plugin 1.9.0). The embedded webview is restored on 2026.2, and the supported IDE range is unchanged
+- **JCEF being unavailable is no longer fatal.** Whatever the reason — a future platform change, a JCEF-less build, an initialization failure — the plugin now logs it and falls back to opening the viewer in the external browser, instead of failing to start
+- Plugin verification against both ends of the supported IDE range now runs in CI. It catches API removals and signature changes; it does **not** model the classloader visibility problem behind issue #24, which is why the fallback above matters
+
 ## 1.9.0
 
 - No user-facing changes for the plugin. This release's two features — the new (experimental) Jujutsu (jj) workspace aggregation, and moving the aggregation scope into a header control — are Web / VS Code only. The plugin's Kotlin core has no worktree-aggregation foundation yet, so it has no scope to control and jj parity there is tracked as a separate, larger effort. The header control is hidden when there is nothing to aggregate, so nothing changes on screen here.

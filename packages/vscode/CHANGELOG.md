@@ -1,5 +1,9 @@
 # Changelog
 
+## 1.9.1
+
+- **The timeline's "group by topic" works when worktree aggregation is on** (`spek.aggregateWorktrees`, on by default). Every change landed in the "(no topic)" lane, which read as though the repo had no spec relationships at all. Nothing looked broken — the chart rendered exactly as it does when the grouping is genuinely empty. Repos with a single worktree were unaffected (issue #25)
+
 ## 1.9.0
 
 **Highlight: Jujutsu (jj) workspace aggregation (experimental)** — spek can now see OpenSpec changes in jj workspaces, not just git worktrees. In a colocated git+jj repo, jj workspaces are invisible to `git worktree list`, so changes authored there used to be silently missed. This is **experimental and off by default** — enable `spek.aggregateJjWorkspaces` to opt in. Thanks to [@DannyGoodall](https://github.com/DannyGoodall) (Danny Goodall) for contributing this.
