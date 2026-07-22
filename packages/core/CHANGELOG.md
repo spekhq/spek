@@ -3,6 +3,25 @@
 `@spekjs/core` has its own version line, independent of the spek product releases tracked in the
 repository root `CHANGELOG.md`.
 
+## 1.3.0
+
+- **New export: `changeNodeSlug(node)`** — resolves a graph change node back to its change slug,
+  removing the worktree key that `buildGraphDataAggregated` namespaces aggregated ids with
+  (`change:<worktreeKey>:<slug>`). It derives the slug from the node's `source` rather than by
+  splitting on `:`, because the id alone cannot distinguish a worktree key from the leading segment of
+  a slug, and it leaves an already-normalised id untouched.
+- **New subpath: `@spekjs/core/graph-node-id`** — the same function, in a module with no runtime
+  imports, so a browser bundle or a host's main process can use it without pulling in `node:fs` or
+  `cross-spawn`. Joins `./headings` and `./artifact-order`; `changeNodeSlug` is also exported from the
+  package root.
+
+  This exists because the parsing previously lived in `@spekjs/ui`, one package away from the code
+  that writes the format — the split that allowed
+  [#25](https://github.com/spekhq/spek/issues/25), where core began namespacing ids and ui's parser
+  did not follow. A downstream host that needed the parsing outside a bundler could not reach ui's
+  copy either, since that package's only entry point carries React and d3
+  ([#28](https://github.com/spekhq/spek/issues/28)). Producer and parser now sit in one place.
+
 ## 1.2.0
 
 - **Jujutsu (jj) workspace aggregation (experimental).** `scanOpenSpecAggregated` and
