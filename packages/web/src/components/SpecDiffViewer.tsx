@@ -71,8 +71,12 @@ function DiffBlock({ change }: { change: Change }) {
             {line}
           </div>
         ))}
-        <div className="px-4 py-1 bg-bg-secondary text-text-muted text-xs text-center border-y border-border">
-          ··· {lines.length - 6} lines hidden ···
+        <div className="py-1 bg-bg-secondary text-text-muted text-xs border-y border-border">
+          {/* sticky left-0: the bar itself spans the full scroll width, but its label stays
+              pinned in view instead of centering into the middle of a wide diff */}
+          <span className="sticky left-0 inline-block px-4">
+            ··· {lines.length - 6} lines hidden ···
+          </span>
         </div>
         {contextAfter.map((line, i) => (
           <div key={`a-${i}`} className="px-4 py-0.5">
