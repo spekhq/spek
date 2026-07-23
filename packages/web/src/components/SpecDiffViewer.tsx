@@ -30,7 +30,9 @@ export function SpecDiffViewer({ oldContent, newContent, oldLabel, newLabel }: S
         </div>
       )}
       <div className="overflow-x-auto">
-        <pre className="text-sm leading-relaxed">
+        {/* w-max min-w-full: rows share the widest row's width so tints span the full
+            scrolled area instead of stopping at the first viewport width */}
+        <pre className="text-sm leading-relaxed w-max min-w-full">
           {changes.map((change, i) => (
             <DiffBlock key={i} change={change} />
           ))}
