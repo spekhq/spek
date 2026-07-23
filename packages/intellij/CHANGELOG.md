@@ -1,5 +1,10 @@
 # Changelog
 
+## 1.9.2
+
+- **Spec diffs stay readable on lines too wide to fit.** The red and green tints marking removed and added lines stopped at the first screenful, so scrolling right — exactly what you do to read a long line — left the changed text sitting on plain background, with nothing to say whether it was an addition or a removal. The tints now span the full scrollable width. Thanks to [@Katsz](https://github.com/Katsz) (Alex) for reporting and contributing this
+- **The `··· N lines hidden ···` marker stays in view while you scroll a diff sideways.** Its label was centred against the diff's full width rather than the visible area, so on a wide diff it sat off-screen and the collapsed region looked like an unexplained gap. The label is now pinned to the left edge, the way a diff hunk header behaves
+
 ## 1.9.1
 
 - **The plugin opens again on IDEs built on platform 2026.2.** Opening the Tool Window threw an IDE Internal Error and left no viewer at all, so the plugin was unusable — 2026.2 moved JCEF into a bundled plugin whose classes the plugin could no longer see (issue #24, reported on WebStorm 2026.2 with plugin 1.9.0). The embedded webview is restored on 2026.2, and the supported IDE range is unchanged

@@ -1,5 +1,10 @@
 # Changelog
 
+## 1.9.2
+
+- **Spec diffs stay readable on lines too wide to fit.** The red and green tints marking removed and added lines stopped at the first screenful, so scrolling right — exactly what you do to read a long line — left the changed text sitting on plain background, with nothing to say whether it was an addition or a removal. The tints now span the full scrollable width. Thanks to [@Katsz](https://github.com/Katsz) (Alex) for reporting and contributing this
+- **The `··· N lines hidden ···` marker stays in view while you scroll a diff sideways.** Its label was centred against the diff's full width rather than the visible area, so on a wide diff it sat off-screen and the collapsed region looked like an unexplained gap. The label is now pinned to the left edge, the way a diff hunk header behaves
+
 ## 1.9.1
 
 - **The timeline's "group by topic" works when worktree aggregation is on** (`spek.aggregateWorktrees`, on by default). Every change landed in the "(no topic)" lane, which read as though the repo had no spec relationships at all. Nothing looked broken — the chart rendered exactly as it does when the grouping is genuinely empty. Repos with a single worktree were unaffected (issue #25)
