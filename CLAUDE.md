@@ -162,6 +162,12 @@ GET /api/openspec/search?dir=...&q=...              # full-text search
 - commands: `spek.open` / `spek.search` / `spek.navigateTo` (the last accepts a route with a `#hash`)
 - activation: `workspaceContains:openspec/config.yaml`; the Webview loads the IIFE-bundled React app; the extension host calls `@spekjs/core` directly
 - Sidebar Specs TreeView: each spec expands into its h2/h3 headings; clicking one jumps to the matching webview anchor
+- **Both webview bundles are build artifacts and neither is in version control** — `packages/vscode/webview/` and
+  IntelliJ's `src/main/resources/webview/` are gitignored, and each publish workflow builds its own before packaging
+  (`vscode-publish.yml` → `npm run build:webview`; `intellij-publish.yml` → `npm run build:intellij`). So **a webview
+  change needs no rebuild commit to reach either channel** — release builds always come from `src/`. The VS Code copy
+  was tracked until v1.9.2; because nothing kept it in sync it sat stale for whole releases, and reading it as the
+  shipped state led to the wrong conclusion that a fix had missed the channel. Build locally before `vsce package`
 
 ### IntelliJ Plugin
 

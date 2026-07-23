@@ -4,5 +4,8 @@ dist/
 .DS_Store
 packages/core/dist/
 packages/vscode/dist/
+# Webview assets are built by CI before packaging (see .github/workflows/vscode-publish.yml),
+# mirroring packages/intellij/.gitignore. A committed copy is always stale against src/.
+packages/vscode/webview/
 *.vsix
 .idea/
