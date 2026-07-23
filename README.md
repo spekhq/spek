@@ -386,6 +386,9 @@ Thanks to everyone who has contributed to spek:
 - [@DannyGoodall](https://github.com/DannyGoodall) (Danny Goodall)
   - Experimental Jujutsu (jj) workspace aggregation — changes authored in a jj workspace, invisible to `git worktree list`, are discovered and merged into the aggregated view, deduplicated by content with diverged copies kept and flagged
 
+- [@Katsz](https://github.com/Katsz) (Alex)
+  - Added and removed lines in a spec diff keep their red / green tint across the whole scrollable width, instead of losing it past the first screenful on lines too wide to fit
+
 ## License
 
 MIT
