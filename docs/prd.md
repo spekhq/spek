@@ -121,6 +121,13 @@ The frontend abstracts its transport behind an `ApiAdapter` interface, injected 
 Each non-Web host sets a global flag (`window.__vscodeApi`, `window.__spekIntellij`,
 `window.__DEMO_DATA__`) so the live-update layer picks the right refresh channel.
 
+The VS Code webview also keeps in-app link clicks to itself. VS Code's own host script forwards every
+link click in a webview to the workbench to open; desktop VS Code drops a route like `/changes`
+(its `vscode-webview://` address is not something the workbench opens), but a browser-hosted VS Code
+(code-server, Codespaces, vscode.dev) opened each one as a broken tab. So route links, relative links
+and modified clicks never leave the webview, while external links and markdown `#fragment` links are
+still handled by VS Code.
+
 ### 5.3 Web API endpoints
 
 All `openspec` routes accept a `dir` query param. `/changes`, `/overview`, `/graph`, `/watch` also

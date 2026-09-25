@@ -422,6 +422,19 @@ GET /api/openspec/search?dir=...&q=...              # full-text search
 - commands: `spek.open` / `spek.search` / `spek.navigateTo` (the last accepts a route with a `#hash`)
 - activation: `workspaceContains:openspec/config.yaml`; the Webview loads the IIFE-bundled React app; the extension host calls `@spekjs/core` directly
 - Sidebar Specs TreeView: each spec expands into its h2/h3 headings; clicking one jumps to the matching webview anchor
+- **In-app link clicks never reach the VS Code host** (issue #59). VS Code's webview host script listens for `click`
+  on the webview's `window` (bubble phase) and posts *every* `<a href>` to the workbench to open, without reading
+  `defaultPrevented` — so a React Router `<Link>` that already navigated is forwarded all the same. Desktop hid this:
+  the webview is `vscode-webview://`, a scheme the workbench refuses to open. A browser-hosted VS Code (code-server,
+  Codespaces, vscode.dev) serves it from `https://` and opened a 404 tab per sidebar click. `main.webview.tsx` installs
+  a bubble-phase `document` listener — after React's root listener, before VS Code's — and the rule
+  (`utils/webviewLinkGuard.ts`) blocks (`preventDefault` + `stopPropagation`) every link resolving to the webview's
+  own protocol + host, except a bare `#fragment` the app did not handle, which is left to VS Code's own scroll.
+  Protocol + host, **not `URL.origin`**: under `vscode-webview:` the origin is `"null"`, so an origin check calls
+  every desktop link external. Only the VS Code entry installs it — a Ctrl-click opening a tab is correct in the Web
+  app. **Only a browser-hosted VS Code reproduces this class**, so verify link behaviour there (a Codespace with the
+  packaged `.vsix`), not only in desktop VS Code where the bug is invisible. If VS Code ever moves its listener to
+  `document` or the capture phase, the guard silently stops working
 - **Both webview bundles are build artifacts and neither is in version control** — `packages/vscode/webview/` and
   IntelliJ's `src/main/resources/webview/` are gitignored, and each publish workflow builds its own before packaging
   (`vscode-publish.yml` → `npm run build:webview`; `intellij-publish.yml` → `npm run build:intellij`). So **a webview
