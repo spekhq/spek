@@ -1,5 +1,9 @@
 # Changelog
 
+## 1.18.1
+
+- No user-facing changes for the plugin in this release. Its fixes are to the VS Code extension running in a browser (the tool window is not a VS Code webview) and to the GitHub Action and its generated HTML snapshot, which the plugin does not use.
+
 ## 1.18.0
 
 **Highlight: a keyword's casing is read the way OpenSpec reads it.** spek marked one casing rule across every keyword it highlights, and the keywords do not carry the same obligation. A scenario body is free text that no version of OpenSpec parses, so uppercase `WHEN` / `THEN` is a template convention — a spec written with `**Given**` / `**When**` / `**Then**` is perfectly valid and rendered with no highlighting at all. `SHALL` / `MUST` is the opposite: OpenSpec matches it case-sensitively. The rule is now decided per keyword group.

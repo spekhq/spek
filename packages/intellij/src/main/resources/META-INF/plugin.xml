@@ -25,14 +25,9 @@
     ]]></description>
 
     <change-notes><![CDATA[
-        <p><b>1.18.0</b></p>
-        <p><b>A keyword's casing is read the way OpenSpec reads it.</b> spek marked one casing rule across every keyword it highlights, and the keywords do not carry the same obligation. A scenario body is free text that no version of OpenSpec parses, so uppercase <code>WHEN</code> / <code>THEN</code> is a template convention &mdash; a spec written with <code>**Given**</code> / <code>**When**</code> / <code>**Then**</code> is perfectly valid and was rendered with no highlighting at all. <code>SHALL</code> / <code>MUST</code> is the opposite: OpenSpec matches it case-sensitively. The rule is now decided per keyword group.</p>
+        <p><b>1.18.1</b></p>
         <ul>
-            <li><b>Title-case Gherkin steps are highlighted.</b> <code>Given</code>, <code>When</code>, <code>Then</code> and <code>And</code> are marked when the whole emphasised run is the keyword. Uppercase is unchanged.</li>
-            <li><b>Ordinary prose is not marked.</b> A requirement beginning &quot;When the server receives a request, it SHALL respond&quot; marks only <code>SHALL</code>, as before.</li>
-            <li><b><code>MUST</code> / <code>SHALL</code> and the four delta operations stay uppercase-only.</b> Red means <i>normative</i> here and lowercase &quot;must&quot; is an ordinary verb.</li>
-            <li><b>No keyword is highlighted inside a heading.</b> An emphasised one used to be, while the unemphasised form every spec actually uses was not.</li>
-            <li><b>A requirement or scenario heading drops its keyword whatever the casing.</b> <code>### requirement: Foo</code> displays as <code>Foo</code>, as <code>### Requirement: Foo</code> already did.</li>
+            <li>No user-facing changes for the plugin in this release. Its fixes are to the VS Code extension running in a browser and to the GitHub Action and its generated HTML snapshot, which the plugin does not use.</li>
         </ul>
     ]]></change-notes>
 

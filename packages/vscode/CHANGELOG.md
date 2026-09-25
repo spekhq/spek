@@ -1,5 +1,11 @@
 # Changelog
 
+## 1.18.1
+
+- **VS Code in a browser no longer opens a broken tab on every in-app click** ([#59](https://github.com/spekhq/spek/issues/59)). In code-server, GitHub Codespaces and vscode.dev, clicking the sidebar's Overview / Specs / Changes, a change card or a spec link also opened a new browser tab at a 404 address, on top of the navigation that did happen inside the panel. VS Code forwards every link click in a webview to the workbench to open, even one the page already handled; desktop VS Code silently refuses those addresses, which is why the bug never showed there. In-app links now stay in the panel, external links still open as before, and the spec page's table of contents scrolls smoothly instead of jumping. Thanks to [@Philogag](https://github.com/Philogag) for reporting
+
+The release's other two fixes are to the GitHub Action and its generated HTML snapshot, which the extension does not use.
+
 ## 1.18.0
 
 **Highlight: a keyword's casing is read the way OpenSpec reads it.** spek marked one casing rule across every keyword it highlights, and the keywords do not carry the same obligation. A scenario body is free text that no version of OpenSpec parses, so uppercase `WHEN` / `THEN` is a template convention — a spec written with `**Given**` / `**When**` / `**Then**` is perfectly valid and rendered with no highlighting at all. `SHALL` / `MUST` is the opposite: OpenSpec matches it case-sensitively. The rule is now decided per keyword group.
