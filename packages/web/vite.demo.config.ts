@@ -5,6 +5,13 @@ import path from "path";
 
 export default defineConfig({
   plugins: [react(), tailwindcss()],
+  // Single-file IIFE: no code splitting, so a dynamic import of Mermaid would be inlined rather than
+  // deferred (+5.23 MB on a 719 KB bundle). Diagrams show their source here instead. The alias makes
+  // the absence a fact about the bundle rather than a hope about tree-shaking.
+  define: { __SPEK_DRAWS_DIAGRAMS__: "false" },
+  resolve: {
+    alias: { mermaid: path.resolve(__dirname, "src/utils/mermaidUnavailable.ts") },
+  },
   build: {
     outDir: path.resolve(__dirname, "dist-demo"),
     emptyOutDir: true,

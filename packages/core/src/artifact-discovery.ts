@@ -51,6 +51,13 @@ function buildArtifact(id: string, file: string, kind: RootKind, content: string
       // not clash with a markdown tab of the same stem. The frontend derives the fence language from the
       // extension.
       return { id, title: file, kind, file, content };
+    case "diagram":
+      // A diagram artifact keeps its extension in the title (`flow.mmd`) for the same two reasons, and
+      // carries its source unparsed. Nothing here draws it: the source is the file's text, and whether it
+      // is drawable is decided by the renderer at view time, on the surface that can report the failure
+      // to a reader. A scan that parsed it would have to decide what to do with an invalid diagram long
+      // before there is anyone to tell.
+      return { id, title: file, kind, file, content };
   }
 }
 

@@ -119,3 +119,46 @@ test("both document producers agree over this repository's changes", async () =>
     );
   }
 });
+
+test("a root diagram file contributes exactly one document, holding its source text", () => {
+  const repo = tempRepo();
+  const change = path.join(repo, "openspec", "changes", "c");
+  fs.mkdirSync(change, { recursive: true });
+  fs.writeFileSync(path.join(change, "proposal.md"), "why");
+  fs.writeFileSync(path.join(change, "flow.mmd"), "graph TD\n  Ingest-->Normalise\n");
+  fs.writeFileSync(path.join(change, "seq.mermaid"), "sequenceDiagram\n");
+  fs.mkdirSync(path.join(change, "nested"), { recursive: true });
+  fs.writeFileSync(path.join(change, "nested", "deep.mmd"), "graph TD\n");
+  fs.writeFileSync(path.join(change, ".draft.mmd"), "graph TD\n");
+
+  const docs = collectSearchDocuments(repo);
+  assert.deepEqual(
+    docs.map((d) => d.file),
+    // markdown bucket first, then the extension-keeping kinds by filename — the rootArtifacts order
+    ["proposal.md", "flow.mmd", "seq.mermaid"],
+  );
+  assert.equal(
+    docs.find((d) => d.file === "flow.mmd")!.text,
+    "graph TD\n  Ingest-->Normalise\n",
+  );
+  fs.rmSync(repo, { recursive: true, force: true });
+});
+
+// The two producers partition by kind independently, so a new kind can land in one bucket on the
+// filesystem side and another in the record side without either being wrong on its own.
+test("both producers put a diagram artifact in the same position", async () => {
+  const repo = tempRepo();
+  const change = path.join(repo, "openspec", "changes", "c");
+  fs.mkdirSync(change, { recursive: true });
+  fs.writeFileSync(path.join(change, "proposal.md"), "why");
+  fs.writeFileSync(path.join(change, "asyncapi.yaml"), "asyncapi: 3.0.0\n");
+  fs.writeFileSync(path.join(change, "flow.mmd"), "graph TD\n");
+
+  const fromFiles = collectSearchDocuments(repo);
+  const detail = await readChange(repo, "c", async () => null);
+  assert.ok(detail);
+  const fromRecords = changeSearchDocuments(detail);
+  assert.deepEqual(fromRecords.map((d) => d.file), fromFiles.map((d) => d.file));
+  assert.deepEqual(fromRecords.map((d) => d.text), fromFiles.map((d) => d.text));
+  fs.rmSync(repo, { recursive: true, force: true });
+});

@@ -83,7 +83,7 @@ export interface ChangeInfo {
 }
 
 /** 一個 change artifact 的 kind，決定解析與渲染方式 */
-export type ArtifactKind = "markdown" | "tasks" | "specs" | "data";
+export type ArtifactKind = "markdown" | "tasks" | "specs" | "data" | "diagram";
 
 /** 動態探索到的單一 change artifact；預設依檔案 mtime 由新到舊排序（見 discoverArtifacts），
  *  openspec CLI 只餵給選用的 schema 順序（ChangeDetail.schemaOrder），非此處的預設排序 */

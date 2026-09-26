@@ -182,13 +182,20 @@ export function specSearchDocument(topic: string, content: string): SearchDocume
  *
  * The `specs` delta artifact is skipped: its content is the delta of a main spec that is itself indexed,
  * so indexing it lists the same text under two names.
+ *
+ * The two buckets mirror `rootArtifacts`' partition exactly — markdown and tasks first, then the kinds
+ * that keep their extension (data and diagram) — because that partition is what decides document order
+ * on the filesystem side, and the two producers must agree document for document. A diagram contributes
+ * the text it holds, not the picture drawn from it: its labels are ordinary text in the file, and a rule
+ * that matched the drawing could not be the same rule on a host that never draws.
  */
 export function changeSearchDocuments(detail: ChangeDetail): SearchDocument[] {
   const markdown: ChangeArtifact[] = [];
   const data: ChangeArtifact[] = [];
   for (const artifact of detail.artifacts) {
     if (artifact.kind === "specs") continue;
-    (artifact.kind === "data" ? data : markdown).push(artifact);
+    const keepsExtension = artifact.kind === "data" || artifact.kind === "diagram";
+    (keepsExtension ? data : markdown).push(artifact);
   }
   const byFile = (a: ChangeArtifact, b: ChangeArtifact) => byCodeUnit(a.file ?? "", b.file ?? "");
   markdown.sort(byFile);

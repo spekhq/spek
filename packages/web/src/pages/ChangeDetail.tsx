@@ -7,6 +7,7 @@ import { TabView } from "../components/TabView";
 import { TaskProgress } from "../components/TaskProgress";
 import { TaskText } from "../components/TaskText";
 import { MarkdownRenderer } from "../components/MarkdownRenderer";
+import { MermaidDiagram } from "../components/MermaidDiagram";
 import { SpecsTabContent } from "../components/SpecsTabContent";
 import { SpecToc } from "../components/SpecToc";
 import { SchemaBadge } from "../components/SchemaBadge";
@@ -47,6 +48,17 @@ function renderArtifact(artifact: ChangeArtifact, specTopics: string[], fold: Sp
     // data artifact（.yaml/.yml/.json）走同一條 highlight 管線的 fenced block；無 TOC、不摺疊。
     return artifact.content != null ? (
       <MarkdownRenderer content={fencedBlock(artifact.content, dataLanguage(artifact.title))} />
+    ) : (
+      <p className="text-text-muted text-sm">No content</p>
+    );
+  }
+  if (artifact.kind === "diagram") {
+    // A diagram artifact is drawn by the same component a ```mermaid fence goes through, so a diagram in
+    // a design document and a diagram in a file of its own behave identically — including the source
+    // control, which matters more here: the tab is the whole artifact, so a reader who cannot read the
+    // drawing has nothing else on the tab to fall back to.
+    return artifact.content != null ? (
+      <MermaidDiagram source={artifact.content} />
     ) : (
       <p className="text-text-muted text-sm">No content</p>
     );

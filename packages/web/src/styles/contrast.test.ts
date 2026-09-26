@@ -19,6 +19,7 @@ import { fileURLToPath } from "node:url";
  */
 
 import { MARK_COLOR, MARK_OPACITY } from "../utils/schemaLayout";
+import { DIAGRAM_COLORS } from "../utils/diagramTheme";
 
 /** `var(--color-text-muted)` -> `text-muted`, so a table entry follows the source it measures. */
 const tokenOf = (value: string): string => value.replace(/^var\(--color-|\)$/g, "");
@@ -365,6 +366,60 @@ test("every contract member is mapped and measured", () => {
   );
 });
 
+/**
+ * The palette handed to Mermaid. Unlike every other table here, the occurrences it stands for are not in
+ * this repository at all — they are attributes Mermaid writes at draw time. What is measured is therefore
+ * the declaration: each colour the application hands over, against the floor the table says its use
+ * answers to, over the worst of the theme's three surfaces (a node's own fill is `bg-tertiary`, which is
+ * one of them).
+ */
+for (const [theme, tokens] of Object.entries(THEMES)) {
+  test(`${theme}: every colour handed to the diagram renderer clears its floor`, () => {
+    for (const [mermaidVar, { token, role, label }] of Object.entries(DIAGRAM_COLORS)) {
+      const fg = tokens.get(token);
+      assert.ok(fg, `${mermaidVar} names --color-${token}, which ${theme} does not define`);
+      if (role.kind === "surface") continue; // a fill; what is drawn on it is measured on its own line
+      if (role.kind === "textOn") {
+        // Drawn on another declared variable's fill, not on the page. Measuring it against the page
+        // is how the sequence autonumber sat at ~2.1:1 while every check here passed.
+        const fill = tokens.get(role.on);
+        assert.ok(fill, `${mermaidVar} is measured on --color-${role.on}, undefined in ${theme}`);
+        const ratio = contrast(fg, fill);
+        assert.ok(
+          ratio >= TEXT_FLOOR,
+          `${theme} ${mermaidVar} (${label}): --color-${token} (${fg}) on its fill --color-${role.on} ` +
+            `(${fill}) is ${ratio.toFixed(2)}:1, below ${TEXT_FLOOR}:1`
+        );
+        continue;
+      }
+      const floor = role.kind === "text" ? TEXT_FLOOR : GRAPHIC_FLOOR;
+      for (const surface of SURFACES) {
+        const bg = tokens.get(surface)!;
+        const ratio = contrast(fg, bg);
+        assert.ok(
+          ratio >= floor,
+          `${theme} ${mermaidVar} (${label}): --color-${token} (${fg}) on --color-${surface} (${bg}) ` +
+            `is ${ratio.toFixed(2)}:1, below ${floor}:1`
+        );
+      }
+    }
+  });
+}
+
+test("a surface handed to the diagram renderer is a surface this theme defines", () => {
+  // A surface owes no ratio, but it still has to exist: an undefined token is dropped at resolve time,
+  // and the key it was for silently takes Mermaid's own value — the default this table exists to close.
+  for (const [mermaidVar, { token, role }] of Object.entries(DIAGRAM_COLORS)) {
+    if (role.kind !== "surface") continue;
+    for (const [theme, tokens] of Object.entries(THEMES)) {
+      assert.ok(
+        tokens.get(token),
+        `${mermaidVar} names --color-${token}, which ${theme} does not define`
+      );
+    }
+  }
+});
+
 test("every colour token is either measured or explicitly excluded", () => {
   // The hand-written table's likeliest failure is not a wrong number but a new token nobody added to it:
   // that does not fail, it just quietly stops being covered.
@@ -373,6 +428,8 @@ test("every colour token is either measured or explicitly excluded", () => {
     ...SURFACES,
     ...NON_TEXT.map((n) => n.token),
     ...TEXT_ON_FILL.flatMap((t) => [t.token, t.on]),
+    // Measured above as the palette handed to the diagram renderer.
+    ...Object.values(DIAGRAM_COLORS).map((c) => c.token),
     ...NOT_MEASURED_HERE,
     "border",
   ]);
@@ -430,7 +487,18 @@ test("no colour is applied to text by a hard-coded palette class", () => {
  *
  * **Enumerated**: a hard-coded palette class on text (`text-<family>-<shade>`), a token tint used as a
  * background (`bg-<token>/<alpha>`), a token tint used as a border (`border-<token>/<alpha>`),
- * `opacity-*` on anything, and a `--color-*` token reaching SVG.
+ * `opacity-*` on anything, a `--color-*` token reaching SVG, and **a palette handed to a renderer that
+ * generates its own markup** (`DIAGRAM_COLORS`, measured below).
+ *
+ * That last one is the same lesson as the SVG entry, reached from the other end. Mermaid writes our
+ * colours into an SVG that does not exist until a reader opens the page, so neither the CSS parse nor
+ * any source scan here can see a single one of them — the check would find nothing to report, which is
+ * indistinguishable from finding nothing wrong. The answer is to measure at the **declaration**: the
+ * table in `utils/diagramTheme.ts` is the complete set of colours handed over, and it is measured here
+ * entry by entry. A key the application deliberately leaves to Mermaid is listed in that module's
+ * `DECLARED_DEFAULTS` with its reason, and `diagramTheme.test.ts` fails on one that is in neither — the
+ * two halves are split that way because this file measures ratios and that one holds the table's own
+ * invariants.
  *
  * That last one used to sit in the list below, on the strength of a single decorative occurrence. It
  * moved when the schema workflow diagram began stating its dependencies, its declared-vs-derived

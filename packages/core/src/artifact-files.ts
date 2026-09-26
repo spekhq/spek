@@ -12,12 +12,20 @@ import path from "node:path";
  *  data extension is added here. */
 export const DATA_EXTENSIONS = [".yaml", ".yml", ".json"];
 
+/** The root-level extensions of a diagram artifact. Exported for the same reason as DATA_EXTENSIONS: a
+ *  file watcher builds the set of extensions worth reacting to from these two lists, not from a third
+ *  copy that drifts when one is extended. A diagram is its own kind rather than another data extension —
+ *  `data` means "show this file's text", `diagram` means "show what this file describes", and folding the
+ *  two together makes the raw source the only rendering a diagram file can ever get. */
+export const DIAGRAM_EXTENSIONS = [".mmd", ".mermaid"];
+
 /** The kind of a root-level artifact file. specs is not here: it is a tree, not a root file. */
-export type RootKind = "tasks" | "markdown" | "data";
+export type RootKind = "tasks" | "markdown" | "data" | "diagram";
 
 const isTasksName = (n: string) => n === "tasks.md";
 const isMarkdownName = (n: string) => n.endsWith(".md");
 const isDataName = (n: string) => DATA_EXTENSIONS.some((ext) => n.endsWith(ext));
+const isDiagramName = (n: string) => DIAGRAM_EXTENSIONS.some((ext) => n.endsWith(ext));
 
 /**
  * The one classifier for root files. It returns the artifact kind of a root filename, or null if the
@@ -28,6 +36,7 @@ function rootKind(nameLower: string): RootKind | null {
   if (isTasksName(nameLower)) return "tasks";
   if (isMarkdownName(nameLower)) return "markdown";
   if (isDataName(nameLower)) return "data";
+  if (isDiagramName(nameLower)) return "diagram";
   return null;
 }
 
@@ -46,8 +55,9 @@ function listRootFiles(changePath: string, match: (nameLower: string) => boolean
 }
 
 /**
- * The root artifact files with their kinds, in id-dedup precedence: markdown and tasks first, then data.
- * This order lets spec.md keep the id "spec" and pushes spec.json to spec-2. discoverArtifacts builds
+ * The root artifact files with their kinds, in id-dedup precedence: markdown and tasks first, then the
+ * extension-keeping kinds (data and diagram). This order lets spec.md keep the id "spec" and pushes
+ * spec.json to spec-2. discoverArtifacts builds
  * from this list. The display order is a separate mtime sort in discoverArtifacts. It does one directory
  * read and partitions the entries by kind.
  */
@@ -62,7 +72,9 @@ export function rootArtifacts(changePath: string): { file: string; kind: RootKin
     if (!e.isFile() || e.name.startsWith(".")) continue;
     const kind = rootKind(e.name.toLowerCase());
     if (!kind) continue;
-    (kind === "data" ? data : md).push({ file: e.name, kind });
+    // data and diagram share the second bucket: both keep their extension in the title, and both yield
+    // the bare stem to a markdown file of the same name (flow.md keeps `flow`, flow.mmd becomes flow-2).
+    (kind === "data" || kind === "diagram" ? data : md).push({ file: e.name, kind });
   }
   // Default string order per bucket (matches the prior `.sort()` on names), so spec.md still precedes
   // spec.yaml within data and the id-dedup precedence in discoverArtifacts is unchanged.
@@ -114,7 +126,9 @@ export function specsMtime(changePath: string): number {
 }
 
 /**
- * The root files that count as a searchable artifact (markdown, tasks, and data), sorted by name. The
+ * The root files that count as a searchable artifact (markdown, tasks, data, and diagram), sorted by
+ * name. A diagram file is indexed as the text it holds, not as the picture drawn from it: the labels an
+ * author writes into a diagram are frequently the only place a term appears. The
  * specs delta tree is not here: it shows in the Specs tab, but its content does not go into search.
  *
  * It is name-sorted across all kinds, which is *not* the corpus order — search builds its documents from

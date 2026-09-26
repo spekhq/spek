@@ -466,3 +466,33 @@ test("cliSchemaOrderProvider: a reader joining another change's consultation is 
   assert.deepEqual(afterwards?.map((r) => r.id), ["proposal"]);
   assert.deepEqual(calls, ["odd-one", "add-foo"]);
 });
+
+// Reported in review: with `flow.md` + `flow.mmd` and a schema generating `flow.mmd`, the declared
+// outputPath fell through the exact-filename map (which only held `data`) to the stem, and resolved to
+// the markdown sibling that had claimed the bare stem. The diagram dropped out of the schema order
+// entirely. This is the collision case the diagram kind exists to handle.
+test("resolveSchemaOrder: a diagram outputPath resolves to the diagram, not its markdown sibling", () => {
+  const refs = [
+    { id: "proposal", outputPath: "proposal.md" },
+    { id: "flow", outputPath: "flow.mmd" },
+  ];
+  const knownIds = ["proposal", "flow", "flow-2"];
+  // Discovery gives the markdown the bare stem and the diagram the -2 suffix.
+  const fileToId = new Map([["flow.mmd", "flow-2"]]);
+  assert.deepEqual(resolveSchemaOrder(refs, knownIds, fileToId), ["proposal", "flow-2"]);
+});
+
+test("resolveSchemaOrder: a markdown sibling still resolves by stem", () => {
+  const refs = [{ id: "flow", outputPath: "flow.md" }];
+  const fileToId = new Map([["flow.mmd", "flow-2"]]);
+  assert.deepEqual(resolveSchemaOrder(refs, ["flow", "flow-2"], fileToId), ["flow"]);
+});
+
+test("resolveSchemaOrder: both siblings can be ordered together", () => {
+  const refs = [
+    { id: "flow", outputPath: "flow.md" },
+    { id: "diagram", outputPath: "flow.mmd" },
+  ];
+  const fileToId = new Map([["flow.mmd", "flow-2"]]);
+  assert.deepEqual(resolveSchemaOrder(refs, ["flow", "flow-2"], fileToId), ["flow", "flow-2"]);
+});

@@ -188,7 +188,12 @@ behavior lives in `openspec/specs/`; the key entry points:
   — plus the one `rootKind` classifier that decides which root file is which kind; `artifact-discovery.ts` reads
   content and builds the objects. count, search, and discovery all derive from `rootKind`, so a shown tab is always
   counted and searchable. Kotlin mirrors the pair: `ArtifactFiles.kt` + `ArtifactDiscovery.kt`. A `data` artifact
-  renders as a syntax-highlighted code block (fence language from the extension), with no TOC and no folding
+  renders as a syntax-highlighted code block (fence language from the extension), with no TOC and no folding. A
+  `diagram` artifact (`.mmd` / `.mermaid`) is a **separate kind, not another data extension**: `data` means "show
+  this file's text", `diagram` means "show what this file describes", and folding them together would make the raw
+  source the only rendering a diagram file could ever get. `DIAGRAM_EXTENSIONS` sits beside `DATA_EXTENSIONS` so every
+  watcher derives its set from one source. Both kinds keep their extension in the title and share `rootArtifacts`'
+  second bucket, so `flow.md` keeps the id `flow` and `flow.mmd` becomes `flow-2`
 - `readSpec` / `readSpecAtChange`, `buildGraphData` / `buildGraphDataAggregated` (aggregated node ids
   `change:<wtKey>:<slug>` avoid collisions), `listWorktrees`, `parseTasks`
 - **jj workspace support (EXPERIMENTAL)**: `listJjWorkspaces(dir)` (`jj workspace list`),
@@ -479,8 +484,9 @@ GET /api/openspec/search?dir=...&q=...              # full-text search
 ## Key Design Decisions
 
 - **Security**: **no arbitrary file access.** For repo-local reads that is achieved by containment —
-  Express only reads markdown and data-artifact files (`.md` / `.yaml` / `.yml` / `.json`) under
-  `openspec/` (search reads every root artifact file a change holds, data artifacts included). Schema
+  Express only reads markdown, data- and diagram-artifact files (`.md` / `.yaml` / `.yml` / `.json` /
+  `.mmd` / `.mermaid`) under `openspec/` (search reads every root artifact file a change holds, data
+  and diagram artifacts included). Schema
   reading is the one path that
   reaches outside it: a package schema lives wherever npm installed the CLI, so the path comes from
   `openspec schema which <name> --json` and the `schema.yaml` there is read directly. Containment
@@ -524,6 +530,51 @@ GET /api/openspec/search?dir=...&q=...              # full-text search
   the emphasis around it. Each keyword's entry carries its **group**, in the table rather than in a
   list beside it, so adding a keyword forces the casing choice — a second list is how two of the four
   delta operations once went unhandled
+- **Mermaid diagrams — every surface that can split code draws them; the demo cannot.** A
+  ` ```mermaid ` fence (rewritten by `rehypeSpekMermaid`, which runs **before** the highlighter so it
+  never sees the block) and a root `.mmd` / `.mermaid` artifact both go through `MermaidDiagram.tsx`.
+  Mermaid is ~5.2 MB, so it must never land in an entry bundle: the Web, VS Code and IntelliJ builds
+  emit **ES modules**, and it arrives as chunks fetched only when a document holds a diagram. The
+  webview build was IIFE until diagrams landed — IIFE cannot code-split, so the same import inlines
+  (measured 718,653 B → 5,952,548 B). `docs/demo.html` still cannot split, being one committed file,
+  so it alone sets `__SPEK_DRAWS_DIAGRAMS__: "false"` and aliases `mermaid` to a stand-in; its diagrams
+  show source, which `diagram-rendering` states as a behaviour rather than a failure.
+  **The webview needs two things to load chunks** (`panel.ts`): the entry is a module script, and the
+  CSP carries `${cspSource}` *next to* the nonce in `script-src` — a dynamic `import()` carries no
+  nonce, so without the host source every chunk is blocked. `panel.ts` also rewrites Vite's **generated**
+  HTML rather than hard-coding a filename, because an ESM build emits a hashed stylesheet and however
+  many chunks the split produced. `diagramBuilds.test.ts` guards all of this, including that the built
+  entry holds no `dagre` / `cytoscape` / `katex`, because **an entry eight times too big fails no
+  type-check, no lint and no other test**.
+  Four more things that are not obvious: the SVG is inserted as markup under `securityLevel: "strict"`
+  with `suppressErrorRendering: true` (Mermaid otherwise draws its own error bomb into `<body>` and
+  leaves it there) and `bindFunctions` is **never** called; the wheel handler is attached natively with
+  `{ passive: false }`, because React registers wheel passively and `preventDefault()` in an `onWheel`
+  is ignored, so Ctrl+wheel zooms the page too; the `div` override in `MarkdownRenderer` is at **module
+  scope**, since an inline component literal is a new type each render and remounts every fenced
+  diagram, discarding its drawing, zoom and toggle; and drawing is deferred to `IntersectionObserver`
+  purely for **laziness** — `mermaid.render` without a container lays out in a temp div under `<body>`,
+  so a closed `<details>` does *not* zero its measurements, whatever an earlier version of this note
+  claimed.
+- **A palette handed to a renderer that draws its own markup is measured at the declaration.** Mermaid
+  writes our colours into an SVG that does not exist until a reader opens the page, so neither the
+  `global.css` parse nor any source scan in `contrast.test.ts` can see one of them — the check would find
+  nothing to report, which is indistinguishable from finding nothing wrong. This is the SVG-attribute gap
+  arriving by a second route, and it arrives whenever a capability is added by adopting a renderer rather
+  than by writing markup. `utils/diagramTheme.ts` is therefore the complete set of colours handed over,
+  each naming its `--color-*` token and the floor its use answers to, with `DECLARED_DEFAULTS` listing
+  what is deliberately left to mermaid and why. `contrast.test.ts` imports and measures it; a literal in
+  that table fails its own test. `theme: "base"` specifically — every other built-in mermaid theme ignores
+  most `themeVariables`, so a partial override silently leaves the library's palette in place.
+  **"No silent defaults" is enforced against mermaid itself, not a hand-list**: the test resolves the
+  theme twice with different palettes and flags any colour that does not move, because a value our
+  input never reached is a library literal. That is how `doneTaskBkgColor: "lightgrey"`,
+  `critBkgColor: "red"` and `altSectionBkgColor: "white"` were found still in place — a dark gantt drew
+  light text at ~1.1:1 while this file reported a complete palette. The one accepted exemption is the
+  **event-model block palette**, where hue *is* the information (command vs event vs read model) and
+  this theme has no categorical ramp to map it onto; those stay mermaid's own pastels, which means an
+  event-model diagram reads well in the light theme and poorly in the dark one. Giving the project a
+  categorical ramp is the fix, and it is a change of its own.
 - **Syntax highlighting** (fenced code blocks + `data` artifacts): `rehype-highlight` (`detect: false`) maps
   highlight.js `hljs-*` classes to per-theme `--color-hl-*` tokens (base, keyword, string, number, comment,
   punctuation). highlight.js's own theme is deliberately **not** imported — its hard-coded colours bypass the

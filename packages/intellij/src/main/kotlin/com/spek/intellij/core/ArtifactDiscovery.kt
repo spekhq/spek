@@ -54,6 +54,11 @@ object ArtifactDiscovery {
             // fence language from the extension.
             ArtifactFiles.RootKind.DATA ->
                 ChangeArtifact(id = id, title = file.name, kind = "data", file = file.name, content = content)
+            // A diagram artifact keeps its extension in the title (`flow.mmd`) for the same reasons and
+            // carries its source unparsed. Nothing here draws it: whether a diagram is drawable is decided
+            // by the renderer at view time, on the surface that can report the failure to a reader.
+            ArtifactFiles.RootKind.DIAGRAM ->
+                ChangeArtifact(id = id, title = file.name, kind = "diagram", file = file.name, content = content)
         }
 
     /**
@@ -61,7 +66,8 @@ object ArtifactDiscovery {
      * non-empty specs tree, then sorts by mtime, newest first.
      *
      * The id-dedup precedence is: specs first, then root files in rootArtifacts order (markdown/tasks before
-     * data). So a root specs.md becomes specs-2, spec.md keeps "spec", and spec.json becomes spec-2. This
+     * the extension-keeping kinds). So a root specs.md becomes specs-2, spec.md keeps "spec", spec.json
+     * becomes spec-2, and flow.mmd yields "flow" to a flow.md. This
      * order decides the ids only. The display order is the mtime sort at the end.
      *
      * A root file takes its own mtime. specs takes the newest mtime of its delta files. Two artifacts tie

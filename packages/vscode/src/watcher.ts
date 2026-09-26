@@ -2,10 +2,16 @@ import * as vscode from "vscode";
 import * as fs from "fs";
 import * as path from "path";
 import { watch } from "chokidar";
-import { shouldUsePolling, pollingInterval, withAuthoritativeChokidarEnv, DATA_EXTENSIONS } from "@spekjs/core";
+import {
+  shouldUsePolling,
+  pollingInterval,
+  withAuthoritativeChokidarEnv,
+  DATA_EXTENSIONS,
+  DIAGRAM_EXTENSIONS,
+} from "@spekjs/core";
 
 /** The file extensions a change edit can touch: markdown plus every data artifact extension. */
-const WATCHED_EXTENSIONS = [".md", ...DATA_EXTENSIONS];
+const WATCHED_EXTENSIONS = [".md", ...DATA_EXTENSIONS, ...DIAGRAM_EXTENSIONS];
 
 /**
  * 對 `<dir>/openspec` 建立 chokidar 檔案監看，任一相關事件都呼叫 `onChange`。
@@ -36,7 +42,8 @@ export function watchOpenspecDir(
   const watcher = withAuthoritativeChokidarEnv(usePolling, interval, () =>
     watch(openspecPath, {
       ignored: (filePath: string) => {
-        // Watch markdown and every data artifact extension (.md + DATA_EXTENSIONS). Match lowercased, as
+        // Watch markdown and every artifact extension (.md + DATA_EXTENSIONS + DIAGRAM_EXTENSIONS), so a
+        // .mmd edit refreshes like a .md one. Match lowercased, as
         // discovery classifies, so a `Config.YAML` still fires. Directories are never ignored so chokidar
         // recurses into them.
         if (fs.existsSync(filePath) && fs.statSync(filePath).isFile()) {

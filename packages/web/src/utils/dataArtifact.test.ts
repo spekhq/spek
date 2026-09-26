@@ -92,3 +92,38 @@ test("a data artifact is not markdown-like, so its tab shows no table of content
   assert.equal(isMarkdownLike("markdown"), true);
   assert.equal(isMarkdownLike("specs"), true);
 });
+
+test("a diagram artifact gets a stem label and a MERMAID badge", () => {
+  const names = dataTabNames([
+    { id: "proposal", title: "Proposal", kind: "markdown" },
+    { id: "flow", title: "flow.mmd", kind: "diagram" },
+    { id: "seq", title: "seq.mermaid", kind: "diagram" },
+  ]);
+  assert.deepEqual(names.get("flow"), { name: "flow", format: "MERMAID" });
+  // Both spellings name one format. The uppercased-extension fallback would say MMD and MERMAID.
+  assert.deepEqual(names.get("seq"), { name: "seq", format: "MERMAID" });
+  assert.equal(names.has("proposal"), false);
+});
+
+test("a markdown tab and a diagram tab of the same stem both keep their extension", () => {
+  const names = dataTabNames([
+    { id: "flow", title: "flow", kind: "markdown" },
+    { id: "flow-2", title: "flow.mmd", kind: "diagram" },
+  ]);
+  // The collision rule is one rule across every extension-keeping kind, so the diagram is disambiguated
+  // exactly as a data artifact would be.
+  assert.deepEqual(names.get("flow-2"), { name: "flow.mmd", format: "MERMAID" });
+});
+
+test("a data tab and a diagram tab of the same stem are both disambiguated", () => {
+  const names = dataTabNames([
+    { id: "flow", title: "flow.yaml", kind: "data" },
+    { id: "flow-2", title: "flow.mmd", kind: "diagram" },
+  ]);
+  assert.equal(names.get("flow")!.name, "flow.yaml");
+  assert.equal(names.get("flow-2")!.name, "flow.mmd");
+});
+
+test("a diagram artifact is not Markdown-like, so it shows no table of contents", () => {
+  assert.equal(isMarkdownLike("diagram"), false);
+});

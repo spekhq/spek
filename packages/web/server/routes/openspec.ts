@@ -14,6 +14,7 @@ import {
   listWorkspaces,
   toWorktreeSource,
   DATA_EXTENSIONS,
+  DIAGRAM_EXTENSIONS,
   listSchemas,
   readSchema,
   groupSchemaUsage,
@@ -27,8 +28,11 @@ import {
 
 // --- File watcher 共享管理 ---
 
-/** The file extensions a change edit can touch: markdown plus every data artifact extension. */
-const WATCHED_EXTENSIONS = [".md", ...DATA_EXTENSIONS];
+/** The file extensions a change edit can touch: markdown plus every extension that classifies as a root
+ *  artifact. Derived from core's own lists rather than restated, so a kind added there cannot land here
+ *  unwatched — an artifact that is a tab and is searchable but never refreshes reads as a broken watcher,
+ *  not as a missing list entry. */
+const WATCHED_EXTENSIONS = [".md", ...DATA_EXTENSIONS, ...DIAGRAM_EXTENSIONS];
 
 interface WatcherEntry {
   watcher: FSWatcher;
@@ -54,9 +58,9 @@ function getOrCreateWatcher(key: string, watchDirs: string[], repoRoot: string):
   const watcher = withAuthoritativeChokidarEnv(usePolling, interval, () =>
     chokidar.watch(watchPaths, {
       ignored: (filePath: string) => {
-        // Watch markdown and every data artifact extension (.md + DATA_EXTENSIONS), so editing or
-        // adding a .yml / .json artifact fires a refresh. Match lowercased, as discovery classifies, so
-        // a `Config.YAML` still fires. Directories are never ignored (recurse in).
+        // Watch markdown and every artifact extension (.md + DATA_EXTENSIONS + DIAGRAM_EXTENSIONS), so
+        // editing or adding a .yml / .json / .mmd artifact fires a refresh. Match lowercased, as
+        // discovery classifies, so a `Config.YAML` still fires. Directories are never ignored (recurse in).
         if (fs.existsSync(filePath) && fs.statSync(filePath).isFile()) {
           const lower = filePath.toLowerCase();
           return !WATCHED_EXTENSIONS.some((ext) => lower.endsWith(ext));

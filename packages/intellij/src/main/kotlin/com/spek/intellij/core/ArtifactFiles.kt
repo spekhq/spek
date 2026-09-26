@@ -14,12 +14,18 @@ object ArtifactFiles {
     // from this one source. A new data extension then cannot land here and be silently ignored there.
     internal val DATA_EXTENSIONS = listOf(".yaml", ".yml", ".json")
 
+    // internal for the same reason as DATA_EXTENSIONS: WatchPolling builds its watched-extension set from
+    // these lists rather than a third copy. A diagram is its own kind, not another data extension — `data`
+    // means "show this file's text", `diagram` means "show what this file describes".
+    internal val DIAGRAM_EXTENSIONS = listOf(".mmd", ".mermaid")
+
     /** The kind of a root-level artifact file. specs is not here: it is a tree, not a root file. */
-    enum class RootKind { TASKS, MARKDOWN, DATA }
+    enum class RootKind { TASKS, MARKDOWN, DATA, DIAGRAM }
 
     private fun isTasksName(n: String) = n == "tasks.md"
     private fun isMarkdownName(n: String) = n.endsWith(".md")
     private fun isDataName(n: String) = DATA_EXTENSIONS.any { n.endsWith(it) }
+    private fun isDiagramName(n: String) = DIAGRAM_EXTENSIONS.any { n.endsWith(it) }
 
     /**
      * The one classifier for root files. It returns the artifact kind of a root filename, or null if the
@@ -30,12 +36,14 @@ object ArtifactFiles {
         isTasksName(nameLower) -> RootKind.TASKS
         isMarkdownName(nameLower) -> RootKind.MARKDOWN
         isDataName(nameLower) -> RootKind.DATA
+        isDiagramName(nameLower) -> RootKind.DIAGRAM
         else -> null
     }
 
     /**
      * The root artifact files with their kinds, in id-dedup precedence: markdown and tasks first, then
-     * data. This order lets spec.md keep the id "spec" and pushes spec.json to spec-2. discover builds
+     * the extension-keeping kinds (data and diagram). This order lets spec.md keep the id "spec" and
+     * pushes spec.json to spec-2. discover builds
      * from this list. The display order is a separate mtime sort in discover. It does one directory read
      * and partitions the entries by kind.
      */
@@ -47,7 +55,9 @@ object ArtifactFiles {
         changeDir.listFiles()?.forEach { f ->
             if (!f.isFile || f.name.startsWith(".")) return@forEach
             when (val kind = rootKind(f.name.lowercase())) {
-                RootKind.DATA -> data.add(f to kind)
+                // data and diagram share the second bucket: both keep their extension in the title, and
+                // both yield the bare stem to a markdown file of the same name.
+                RootKind.DATA, RootKind.DIAGRAM -> data.add(f to kind)
                 RootKind.TASKS, RootKind.MARKDOWN -> md.add(f to kind)
                 null -> {}
             }
@@ -91,7 +101,8 @@ object ArtifactFiles {
         listSpecFiles(changeDir).maxOfOrNull { (_, file) -> file.lastModified() } ?: 0L
 
     /**
-     * The root files that count as a searchable artifact (markdown, tasks, and data), sorted by name. The
+     * The root files that count as a searchable artifact (markdown, tasks, data, and diagram), sorted by
+     * name. A diagram is indexed as the text it holds, not the picture drawn from it. The
      * SearchService index shares this list, so any tab that comes from a root file is indexed. The specs
      * delta tree is not here: its content does not go into search.
      */

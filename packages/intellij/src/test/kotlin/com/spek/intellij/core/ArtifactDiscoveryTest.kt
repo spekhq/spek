@@ -406,4 +406,103 @@ class ArtifactDiscoveryTest {
         assertEquals(1, tasks.tasks?.completed)
         assertFalse(tasks.tasks.toString().contains("callout"))
     }
+
+    // --- diagram artifacts (.mmd / .mermaid) — mirrors artifact-discovery.test.ts ---
+
+    @Test
+    fun rootMmdAndMermaidSurfaceAsDiagramArtifactsTitledWithExtension() {
+        val repo = mkRepo()
+        val changeDir = writeChange(
+            repo, "diagram-change",
+            mapOf(
+                "proposal.md" to "## Why\n",
+                "flow.mmd" to "graph TD\n  A-->B\n",
+                "sequence.mermaid" to "sequenceDiagram\n  A->>B: hi\n",
+            ),
+        )
+        val arts = ArtifactDiscovery.discover(changeDir)
+        val flow = arts.first { it.title == "flow.mmd" }
+        assertEquals("diagram", flow.kind)
+        assertEquals("flow", flow.id) // id is the stem; title keeps the extension
+        assertEquals("graph TD\n  A-->B\n", flow.content) // raw text, unparsed
+        assertEquals("diagram", arts.first { it.title == "sequence.mermaid" }.kind)
+        assertEquals("markdown", arts.first { it.id == "proposal" }.kind)
+        assertEquals(3, arts.size)
+    }
+
+    @Test
+    fun mmdInASubdirectoryIsNotDiscovered() {
+        val repo = mkRepo()
+        val changeDir = writeChange(
+            repo, "c",
+            mapOf("proposal.md" to "## Why\n", "nested/flow.mmd" to "graph TD\n"),
+        )
+        val arts = ArtifactDiscovery.discover(changeDir)
+        assertEquals(listOf("proposal"), arts.map { it.id }) // root-only
+    }
+
+    @Test
+    fun dotfileMmdIsNeverADiagramArtifact() {
+        val repo = mkRepo()
+        val changeDir = writeChange(
+            repo, "c",
+            mapOf("proposal.md" to "## Why\n", ".draft.mmd" to "graph TD\n"),
+        )
+        val arts = ArtifactDiscovery.discover(changeDir)
+        assertEquals(listOf("proposal"), arts.map { it.id })
+        assertFalse(arts.any { it.kind == "diagram" })
+    }
+
+    @Test
+    fun flowMdAndFlowMmdGetDifferentIdsMarkdownWinsTheStem() {
+        val repo = mkRepo()
+        val changeDir = writeChange(
+            repo, "c",
+            mapOf("flow.md" to "## markdown\n", "flow.mmd" to "graph TD\n"),
+        )
+        val arts = ArtifactDiscovery.discover(changeDir)
+        val md = arts.first { it.kind == "markdown" }
+        val diagram = arts.first { it.kind == "diagram" }
+        assertEquals("flow", md.id)
+        assertEquals("flow-2", diagram.id)
+        assertEquals("flow.mmd", diagram.title)
+        assertEquals(2, arts.size)
+    }
+
+    @Test
+    fun diagramArtifactsAreCountedCountEqualsTabCount() {
+        val repo = mkRepo()
+        val changeDir = writeChange(
+            repo, "c",
+            mapOf(
+                "proposal.md" to "## Why\n",
+                "flow.mmd" to "graph TD\n",
+                "specs/foo/spec.md" to "## ADDED\n",
+            ),
+        )
+        val arts = ArtifactDiscovery.discover(changeDir)
+        assertEquals(3, arts.size) // proposal + flow (diagram) + specs
+        assertEquals(3, ArtifactFiles.count(changeDir))
+    }
+
+    @Test
+    fun artifactFilesIncludesDiagramFiles() {
+        val repo = mkRepo()
+        val changeDir = writeChange(
+            repo, "c",
+            mapOf(
+                "proposal.md" to "## Why\n",
+                "tasks.md" to "- [ ] a\n",
+                "asyncapi.yaml" to "asyncapi: 3.0.0\n",
+                "flow.mmd" to "graph TD\n",
+                "seq.mermaid" to "sequenceDiagram\n",
+                ".draft.mmd" to "graph TD\n",
+                "nested/deep.mmd" to "graph TD\n",
+            ),
+        )
+        assertEquals(
+            listOf("asyncapi.yaml", "flow.mmd", "proposal.md", "seq.mermaid", "tasks.md"),
+            ArtifactFiles.artifactFiles(changeDir).map { it.name },
+        )
+    }
 }

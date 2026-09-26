@@ -224,34 +224,38 @@ export class SpekPanel {
     const webview = this.panel.webview;
     const cspSource = webview.cspSource;
 
-    // 將 /assets/... 路徑轉為 webview URI
-    const assetsUri = webview.asWebviewUri(
-      vscode.Uri.joinPath(webviewDir, "assets"),
-    );
-
-    // CSP：允許 nonce script + 外部 style + unsafe-inline style（Tailwind 需要）
+    // CSP. `script-src` carries the nonce **and** cspSource: the nonce covers the entry script we
+    // stamp below, but a dynamic `import()` from inside a module carries no nonce, so without the
+    // host source every lazily-loaded chunk is blocked. That is how Mermaid arrives — one chunk per
+    // diagram type, fetched only when a document holds a diagram. `style-src` keeps 'unsafe-inline'
+    // for Tailwind, and it also covers the `<style>` Mermaid writes into each SVG it draws.
     const csp = [
       `default-src 'none'`,
       `style-src ${cspSource} 'unsafe-inline'`,
-      `script-src 'nonce-${nonce}'`,
+      `script-src 'nonce-${nonce}' ${cspSource}`,
       `font-src ${cspSource}`,
       `img-src ${cspSource} data:`,
     ].join("; ");
 
-    // 組裝最終 HTML（CSS 由 Vite IIFE build inline 到 JS 中，以 <style> 注入）
-    const finalHtml = `<!DOCTYPE html>
-<html lang="zh-TW">
-  <head>
-    <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <meta http-equiv="Content-Security-Policy" content="${csp}">
-    <title>spek</title>
-  </head>
-  <body>
-    <div id="root"></div>
-    <script nonce="${nonce}" src="${assetsUri}/index.webview.js"></script>
-  </body>
-</html>`;
+    // The built HTML is Vite's own, not a hand-written copy of it. An ESM build emits a hashed CSS
+    // file and however many chunks the code splitting produced, so a hard-coded `index.webview.js`
+    // would load the entry and silently miss the stylesheet. Rewriting Vite's output keeps the host
+    // correct as the chunk list changes.
+    const html = fs.readFileSync(indexPath, "utf-8");
+    const finalHtml = html
+      // `/assets/x.js` -> a webview URI under localResourceRoots.
+      .replace(
+        /(src|href)="\/assets\/([^"]+)"/g,
+        (_match, attr: string, file: string) =>
+          `${attr}="${webview.asWebviewUri(vscode.Uri.joinPath(webviewDir, "assets", file))}"`,
+      )
+      // `crossorigin` asks for a CORS fetch, which the vscode-webview scheme does not serve.
+      .replace(/\scrossorigin(?==|\s|>)/g, "")
+      .replace(/<script /g, `<script nonce="${nonce}" `)
+      .replace(
+        /<head>/,
+        `<head>\n    <meta http-equiv="Content-Security-Policy" content="${csp}">`,
+      );
 
     return finalHtml;
   }
