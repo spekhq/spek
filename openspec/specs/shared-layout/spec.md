@@ -85,14 +85,18 @@ The system SHALL provide a reusable TabView component that renders tab headers a
 - **THEN** tab content switches instantly without fade animation
 
 ### Requirement: Custom typography
-The system SHALL use "Plus Jakarta Sans" as the primary font family for all UI text, loaded via Google Fonts CDN. The font stack SHALL include `sans-serif` as fallback for offline environments. Code and monospace text SHALL continue to use "JetBrains Mono".
+The system SHALL use "Plus Jakarta Sans" as the primary font family for all UI text, bundled with the app and served from the app's own origin (inlined in the single-file demo), so no surface depends on a third-party font request. Until the font file arrives, text SHALL render in a fallback face scaled to the font's metrics, so line breaks do not move when the font swaps in. The font stack SHALL end with `sans-serif`. Code and monospace text SHALL continue to use "JetBrains Mono".
 
 #### Scenario: Font loading
-- **WHEN** the application loads in a browser with internet access
+- **WHEN** the application loads on any surface (Web, VS Code webview, IntelliJ, demo), with or without internet access
 - **THEN** "Plus Jakarta Sans" is loaded and applied to all non-code text elements
 
+#### Scenario: Font swap does not reflow text
+- **WHEN** a page renders before the font file has loaded
+- **THEN** text renders in the metric-matched fallback face, and the swap to "Plus Jakarta Sans" does not rewrap lines
+
 #### Scenario: Font fallback
-- **WHEN** the application loads without internet access (or Google Fonts is blocked)
+- **WHEN** neither the bundled font nor the metric-matched fallback face is available
 - **THEN** the browser falls back to the system default sans-serif font
 
 #### Scenario: Reduced motion preference

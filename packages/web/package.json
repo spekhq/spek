@@ -13,6 +13,7 @@
     "lint": "eslint src server --max-warnings 0"
   },
   "dependencies": {
+    "@fontsource-variable/plus-jakarta-sans": "^5.3.0",
     "@spekjs/core": "*",
     "@spekjs/ui": "*",
     "@types/diff": "^7.0.2",

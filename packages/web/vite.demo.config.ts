@@ -8,6 +8,8 @@ export default defineConfig({
   build: {
     outDir: path.resolve(__dirname, "dist-demo"),
     emptyOutDir: true,
+    // build-demo.ts inlines only the JS and CSS, so every asset (the UI font) must be a data: URI.
+    assetsInlineLimit: () => true,
     // 產出 IIFE 格式，方便 inline 進單一 HTML
     rollupOptions: {
       input: path.resolve(__dirname, "index.demo.html"),
