@@ -402,6 +402,14 @@ Thanks to everyone who has contributed to spek:
 
 - [@flatrick](https://github.com/flatrick) (Patrik)
   - Nested spec folders — a `spec.md` at any depth under `openspec/specs/` is discovered by OpenSpec's own rule and browsable on every surface as a folder tree, with every spec read confined to the specs a scan lists
+  - A `verify-vscode` skill for checking spek inside a real VS Code window — reading, clicking and screenshotting what the panel and sidebar actually render, on desktop and in a browser-hosted VS Code
+
+- [@gokul-kulkarni](https://github.com/gokul-kulkarni) (Gokul Kulkarni)
+  - **Mermaid diagrams** — a ` ```mermaid ` block in any Markdown artifact, and a `.mmd` / `.mermaid` file at a change's root, are drawn as diagrams themed from spek's palette, with zoom, pan and a source view, and a diagram that fails to parse shows its error beside its source
+
+- [@sammcj](https://github.com/sammcj) (Sam McLeod)
+  - Graph labels no longer land on other nodes — the layout makes room for each label, fills a wide window and comes out the same on every load
+  - Pages declare English as their language, so browsers stop offering to translate them and pick the right fallback fonts
 
 ## License
 

@@ -397,6 +397,14 @@ spek 會監看 `openspec/` 並在檔案變更時即時重載。在不傳遞原�
 
 - [@flatrick](https://github.com/flatrick)（Patrik）
   - 巢狀 spec 資料夾 —— `openspec/specs/` 底下任意深度的 `spec.md` 都依 OpenSpec 自己的規則被探索，在各介面以資料夾樹瀏覽；每次讀取 spec 都只限於掃描列出的那些
+  - `verify-vscode` skill，在真正的 VS Code 視窗裡檢查 spek —— 讀取、點擊並截圖面板與側邊欄實際呈現的內容，桌面版與瀏覽器版 VS Code 皆可
+
+- [@gokul-kulkarni](https://github.com/gokul-kulkarni)（Gokul Kulkarni）
+  - **Mermaid 圖表** —— 任何 Markdown artifact 裡的 ` ```mermaid ` 區塊，以及 change 根目錄的 `.mmd` / `.mermaid` 檔，都會畫成圖，配色取自 spek 的主題，可縮放、拖曳與檢視原始碼；無法解析的圖會在原始碼旁顯示錯誤
+
+- [@sammcj](https://github.com/sammcj)（Sam McLeod）
+  - 關聯圖的標籤不再壓在其他節點上 —— 版面為每個標籤留出空間，寬視窗會橫向鋪開，每次載入的排列都一樣
+  - 頁面宣告的語言改為英文，瀏覽器不再提示翻譯，備用字型也選得正確
 
 ## 授權
 
