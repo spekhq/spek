@@ -1,5 +1,21 @@
 # Changelog
 
+## 1.20.0
+
+**Highlight: mermaid diagrams are drawn.** A design document usually explains a project's shape with a picture, and Mermaid is how that picture is written in Markdown. spek showed a ` ```mermaid ` block as highlighted source, so the one part of a design meant to be looked at was the one shown as text. Thanks to [@gokul-kulkarni](https://github.com/gokul-kulkarni) (Gokul Kulkarni) ([#55](https://github.com/spekhq/spek/pull/55))
+
+- **A ` ```mermaid ` block is drawn as a diagram** in every Markdown artifact — proposal, design, tasks, and main and delta specs, in the web app, VS Code and IntelliJ
+- **A `.mmd` / `.mermaid` file at a change's root is an artifact**: its own tab, counted in the change-list badge, reachable by search, and refreshed live on edit
+- **A diagram can be zoomed and panned, and can show its source**
+- **A diagram that fails to parse shows the error and its source**; the rest of the document renders as before
+- **Diagram colours come from spek's theme**, follow the light / dark switch and meet the same contrast rules as the rest of the app. Each slice of a pie chart gets its own colour
+- **The drawing code loads only when a page holds a diagram**; a repository with none never loads it
+- **The GitHub Action's HTML snapshot and the live demo show a diagram's source** rather than drawing it: the drawing code would roughly double the size of that single-file page
+- **The graph no longer draws labels on top of other nodes** ([#66](https://github.com/spekhq/spek/pull/66)). The layout left room for each node but not for the label under it, so labels landed on neighbouring nodes and on each other — on one 25-node graph, 20 labels sat on a node. The layout now makes room for every label, fills a wide window instead of forming a disc, and comes out the same on every load. Thanks to [@sammcj](https://github.com/sammcj) (Sam McLeod)
+- **Pages declare English as their language** ([#63](https://github.com/spekhq/spek/pull/63)). They declared Traditional Chinese, so Firefox offered to translate every page, and the browser picked Chinese fallback fonts, which made the text jump further when the UI font arrived. This covers the web app, VS Code, IntelliJ and the GitHub Action's HTML snapshot. Thanks to [@sammcj](https://github.com/sammcj) (Sam McLeod)
+- **VS Code: the two jj tooltips in the Changes tree are in English** ([#70](https://github.com/spekhq/spek/pull/70)): the one for the change being edited at `@`, and the one for a copy whose content diverges from another
+- *Internal:* `@spekjs/core` 1.15.0 adds the `diagram` artifact kind and `@spekjs/ui` 1.4.1 carries the graph layout fix. A `verify-vscode` skill checks spek inside a real VS Code window, thanks to [@flatrick](https://github.com/flatrick) (Patrik) ([#62](https://github.com/spekhq/spek/pull/62)), and the PR template links CONTRIBUTING.md correctly, thanks to [@sammcj](https://github.com/sammcj) (Sam McLeod) ([#64](https://github.com/spekhq/spek/pull/64))
+
 ## 1.19.1
 
 **Security: spek's servers answer only spek's own pages.** ([#69](https://github.com/spekhq/spek/pull/69))

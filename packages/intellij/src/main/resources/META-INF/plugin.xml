@@ -25,9 +25,17 @@
     ]]></description>
 
     <change-notes><![CDATA[
-        <p><b>1.19.1</b></p>
+        <p><b>1.20.0</b></p>
+        <p><b>Highlight: mermaid diagrams are drawn.</b> A design document usually explains a project's shape with a picture, and Mermaid is how that picture is written in Markdown. spek showed a <code>mermaid</code> code block as highlighted source, so the one part of a design meant to be looked at was the one shown as text. Thanks to <a href="https://github.com/gokul-kulkarni">@gokul-kulkarni</a> (Gokul Kulkarni) (<a href="https://github.com/spekhq/spek/pull/55">#55</a>)</p>
         <ul>
-            <li><b>Security: the plugin's endpoints refuse other local pages.</b> The IDE already refused other sites, but a page served on another port of your machine could read the plugin's API, because the IDE's built-in server allows any local origin. Only the plugin's own pages (the tool window and the external-browser view) are served now (<a href="https://github.com/spekhq/spek/pull/69">#69</a>)</li>
+            <li><b>A <code>mermaid</code> code block is drawn as a diagram</b> in every Markdown artifact — proposal, design, tasks, and main and delta specs</li>
+            <li><b>A <code>.mmd</code> / <code>.mermaid</code> file at a change's root is an artifact</b>: its own tab, counted in the change-list badge, reachable by search, and refreshed live on edit</li>
+            <li><b>A diagram can be zoomed and panned, and can show its source</b></li>
+            <li><b>A diagram that fails to parse shows the error and its source</b>; the rest of the document renders as before</li>
+            <li><b>Diagram colours come from spek's theme</b>, follow the light / dark switch and meet the same contrast rules as the rest of the app. Each slice of a pie chart gets its own colour</li>
+            <li><b>The drawing code loads only when a page holds a diagram</b>; a repository with none never loads it</li>
+            <li><b>The graph no longer draws labels on top of other nodes</b> (<a href="https://github.com/spekhq/spek/pull/66">#66</a>). The layout left room for each node but not for the label under it, so labels landed on neighbouring nodes and on each other — on one 25-node graph, 20 labels sat on a node. The layout now makes room for every label, fills a wide window instead of forming a disc, and comes out the same on every load. Thanks to <a href="https://github.com/sammcj">@sammcj</a> (Sam McLeod)</li>
+            <li><b>Pages declare English as their language</b> (<a href="https://github.com/spekhq/spek/pull/63">#63</a>). They declared Traditional Chinese, so Firefox offered to translate every page, and the browser picked Chinese fallback fonts, which made the text jump further when the UI font arrived. Thanks to <a href="https://github.com/sammcj">@sammcj</a> (Sam McLeod)</li>
         </ul>
     ]]></change-notes>
 
