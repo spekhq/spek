@@ -1,7 +1,7 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import type { GraphNode, WorktreeSource } from "./types.js";
-import { changeNodeSlug } from "./graph-node-id.js";
+import { changeNodeSlug, specNodeTopic } from "./graph-node-id.js";
 
 function mkSource(key: string): WorktreeSource {
   return { key, path: `/repo/${key}`, branch: "feature", isMain: false, vcs: "git" };
@@ -41,4 +41,11 @@ test("changeNodeSlug: slug containing a colon survives", () => {
 
 test("changeNodeSlug: id without the change prefix is returned unchanged", () => {
   assert.equal(changeNodeSlug(mkChangeNode("spec:auth")), "spec:auth");
+});
+
+test("specNodeTopic: the full topic comes from the id, not the label", () => {
+  const a: GraphNode = { id: "spec:contracts/streaming-search", type: "spec", label: "streaming-search" };
+  const b: GraphNode = { id: "spec:guides/streaming-search", type: "spec", label: "streaming-search" };
+  assert.equal(specNodeTopic(a), "contracts/streaming-search");
+  assert.equal(specNodeTopic(b), "guides/streaming-search");
 });

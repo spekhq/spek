@@ -1,0 +1,3 @@
+## Why
+
+Document `guides/pagination`.

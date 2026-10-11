@@ -7,6 +7,8 @@ import { listWorkspaces, toWorktreeSource } from "./worktrees.js";
 import { jjCurrentChangeSlugs } from "./jj-workspaces.js";
 import { discoverArtifacts } from "./artifact-discovery.js";
 import { countArtifacts, changeDirMtime } from "./artifact-files.js";
+import { discoverSpecFiles, resolveSpecFile } from "./spec-files.js";
+import { isSafeChangeSlug } from "./spec-topic.js";
 import {
   cliDivergence,
   committedDivergedSlugs,
@@ -166,11 +168,11 @@ export async function scanOpenSpec(repoDir: string): Promise<ScanResult> {
   // repo 預設 schema 只讀一次，供本次掃描的每個 change 共用（避免 N+M+1 次重讀 config.yaml）
   const defaultSchema = readRepoSchema(repoDir);
 
-  const specs: SpecInfo[] = safeReadDir(specsDir)
-    .filter((name) => fs.statSync(path.join(specsDir, name)).isDirectory())
-    .map((topic) => ({ topic, path: path.join(specsDir, topic, "spec.md"), historyCount: 0 }))
-    .filter((s) => fs.existsSync(s.path))
-    .sort((a, b) => a.topic.localeCompare(b.topic));
+  const specs: SpecInfo[] = discoverSpecFiles(specsDir).map(({ topic, file }) => ({
+    topic,
+    path: file,
+    historyCount: 0,
+  }));
 
   // 取得 git timestamps
   const timestamps = await getTimestamps(repoDir);
@@ -198,15 +200,19 @@ export async function scanOpenSpec(repoDir: string): Promise<ScanResult> {
     })
     .sort(sortByTimestamp);
 
-  // 計算每個 spec 被多少 changes 引用
+  // How many changes reference each spec. Each change's delta tree is walked once, not once per spec.
   const allChangeDirs = [
     ...safeReadDir(changesDir).filter((n) => n !== "archive").map((n) => path.join(changesDir, n)),
     ...safeReadDir(archiveDir).map((n) => path.join(archiveDir, n)),
   ];
+  const historyCounts = new Map<string, number>();
+  for (const dir of allChangeDirs) {
+    for (const { topic } of discoverSpecFiles(path.join(dir, "specs"))) {
+      historyCounts.set(topic, (historyCounts.get(topic) ?? 0) + 1);
+    }
+  }
   for (const spec of specs) {
-    spec.historyCount = allChangeDirs.filter((dir) =>
-      fs.existsSync(path.join(dir, "specs", spec.topic, "spec.md"))
-    ).length;
+    spec.historyCount = historyCounts.get(spec.topic) ?? 0;
   }
 
   return { specs, activeChanges, archivedChanges, defaultSchema };
@@ -216,7 +222,8 @@ export async function readSpec(
   repoDir: string,
   topic: string,
 ): Promise<{ topic: string; content: string; relatedChanges: string[]; history: HistoryEntry[] } | null> {
-  const specPath = path.join(openspecDir(repoDir), "specs", topic, "spec.md");
+  const specPath = resolveSpecFile(path.join(openspecDir(repoDir), "specs"), topic);
+  if (specPath === null) return null;
   const content = readFileOrNull(specPath);
   if (content === null) return null;
 
@@ -318,18 +325,15 @@ export function readSpecAtChange(
   topic: string,
   slug: string,
 ): { content: string } | null {
-  const base = openspecDir(repoDir);
-  const changesDir = path.join(base, "changes");
+  if (!isSafeChangeSlug(slug)) return null;
+  const changesDir = path.join(openspecDir(repoDir), "changes");
 
-  // 先檢查 active changes
-  let specPath = path.join(changesDir, slug, "specs", topic, "spec.md");
-  let content = readFileOrNull(specPath);
-  if (content !== null) return { content };
-
-  // 再檢查 archive
-  specPath = path.join(changesDir, "archive", slug, "specs", topic, "spec.md");
-  content = readFileOrNull(specPath);
-  if (content !== null) return { content };
+  // Active changes first, then the archive.
+  for (const changePath of [path.join(changesDir, slug), path.join(changesDir, "archive", slug)]) {
+    const specPath = resolveSpecFile(path.join(changePath, "specs"), topic);
+    const content = specPath === null ? null : readFileOrNull(specPath);
+    if (content !== null) return { content };
+  }
 
   return null;
 }
@@ -341,9 +345,7 @@ export function buildGraphData(repoDir: string): GraphData {
   const archiveDir = path.join(changesDir, "archive");
 
   // 收集所有 spec topics
-  const specTopics = safeReadDir(specsDir)
-    .filter((name) => fs.statSync(path.join(specsDir, name)).isDirectory())
-    .filter((topic) => fs.existsSync(path.join(specsDir, topic, "spec.md")));
+  const specTopics = discoverSpecFiles(specsDir).map((s) => s.topic);
 
   // 收集所有 change dirs（active + archived）
   const changeDirs: { slug: string; dirPath: string; status: "active" | "archived" }[] = [];
@@ -367,19 +369,14 @@ export function buildGraphData(repoDir: string): GraphData {
   const specHistoryCounts = new Map<string, number>();
 
   for (const { slug, dirPath, status: _status } of changeDirs) {
-    const changeSpecsDir = path.join(dirPath, "specs");
-    if (!fs.existsSync(changeSpecsDir)) continue;
-
     let specCount = 0;
-    for (const topic of safeReadDir(changeSpecsDir)) {
-      if (fs.existsSync(path.join(changeSpecsDir, topic, "spec.md"))) {
-        edges.push({
-          source: `change:${slug}`,
-          target: `spec:${topic}`,
-        });
-        specCount++;
-        specHistoryCounts.set(topic, (specHistoryCounts.get(topic) || 0) + 1);
-      }
+    for (const { topic } of discoverSpecFiles(path.join(dirPath, "specs"))) {
+      edges.push({
+        source: `change:${slug}`,
+        target: `spec:${topic}`,
+      });
+      specCount++;
+      specHistoryCounts.set(topic, (specHistoryCounts.get(topic) || 0) + 1);
     }
     if (specCount > 0) {
       changeSpecCounts.set(slug, specCount);
@@ -422,18 +419,18 @@ export function findRelatedChanges(repoDir: string, topic: string): string[] {
   const changesDir = path.join(base, "changes");
   const archiveDir = path.join(changesDir, "archive");
   const related: string[] = [];
+  // Exact full topic: a parent, its child, and a same-named spec in another folder each keep their own history.
+  const hasDelta = (changePath: string) => resolveSpecFile(path.join(changePath, "specs"), topic) !== null;
 
   // 搜尋 active changes
   for (const slug of safeReadDir(changesDir)) {
     if (slug === "archive") continue;
-    const deltaSpec = path.join(changesDir, slug, "specs", topic, "spec.md");
-    if (fs.existsSync(deltaSpec)) related.push(slug);
+    if (hasDelta(path.join(changesDir, slug))) related.push(slug);
   }
 
   // 搜尋 archived changes
   for (const slug of safeReadDir(archiveDir)) {
-    const deltaSpec = path.join(archiveDir, slug, "specs", topic, "spec.md");
-    if (fs.existsSync(deltaSpec)) related.push(slug);
+    if (hasDelta(path.join(archiveDir, slug))) related.push(slug);
   }
 
   return related;

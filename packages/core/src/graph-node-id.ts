@@ -1,4 +1,4 @@
-// Graph node id → change slug. The single place that reverses the id format scanner.ts writes.
+// Graph node id → change slug or spec topic. The single place that reverses the id format scanner.ts writes.
 //
 // `buildGraphData` emits `change:<slug>`; `buildGraphDataAggregated` namespaces the id by the winning
 // worktree — `change:<worktreeKey>:<slug>` — and attaches `source` to exactly those nodes. The id alone
@@ -13,6 +13,7 @@
 import type { GraphNode } from "./types.js";
 
 const CHANGE_PREFIX = "change:";
+const SPEC_PREFIX = "spec:";
 
 /**
  * Resolve a change node's slug, with the aggregation worktree key removed if there is one.
@@ -31,4 +32,14 @@ export function changeNodeSlug(node: GraphNode): string {
     return rest.slice(key.length + 1);
   }
   return rest;
+}
+
+/**
+ * Resolve a spec node's full topic from its id (`spec:<topic>`), never from its label: a label may be
+ * shortened for display, and two same-named specs in different folders share one.
+ *
+ * Returns the id unchanged for anything that isn't a spec node id.
+ */
+export function specNodeTopic(node: GraphNode): string {
+  return node.id.startsWith(SPEC_PREFIX) ? node.id.slice(SPEC_PREFIX.length) : node.id;
 }

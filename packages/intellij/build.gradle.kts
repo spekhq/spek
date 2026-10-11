@@ -135,5 +135,11 @@ tasks {
         val searchCorpus = layout.projectDirectory.dir("../../test-fixtures/search").asFile
         systemProperty("spek.searchCorpus", searchCorpus.absolutePath)
         inputs.dir(searchCorpus).withPropertyName("searchCorpus")
+
+        // The shared nested-specs repository, scanned by the Kotlin and Node suites alike so both
+        // scanners are held to the same topics. Same resolution and input registration as above.
+        val nestedSpecs = layout.projectDirectory.dir("../../test-fixtures/nested-specs").asFile
+        systemProperty("spek.nestedSpecsFixture", nestedSpecs.absolutePath)
+        inputs.dir(nestedSpecs).withPropertyName("nestedSpecsFixture")
     }
 }

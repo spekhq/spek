@@ -40,7 +40,7 @@ const router = createMemoryRouter(
         { path: "/", element: <Dashboard /> },
         { path: "/dashboard", element: <Dashboard /> },
         { path: "/specs", element: <SpecList /> },
-        { path: "/specs/:topic", element: <SpecDetail /> },
+        { path: "/specs/*", element: <SpecDetail /> },
         { path: "/changes", element: <ChangeList /> },
         { path: "/changes/:slug", element: <ChangeDetail /> },
         { path: "/graph", element: <GraphView /> },

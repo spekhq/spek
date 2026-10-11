@@ -1,6 +1,8 @@
 package com.spek.intellij.tree
 
 import com.spek.intellij.core.OpenSpecScanner
+import com.spek.intellij.core.SpecInfo
+import java.util.TreeMap
 import javax.swing.tree.DefaultMutableTreeNode
 import javax.swing.tree.DefaultTreeModel
 
@@ -15,9 +17,7 @@ object SpekTreeModel {
 
         // Specs root
         val specsRoot = DefaultMutableTreeNode(SpekTreeNode.SpecsRoot(scan.specs))
-        for (spec in scan.specs) {
-            specsRoot.add(DefaultMutableTreeNode(SpekTreeNode.SpecItem(spec)))
-        }
+        addSpecFolders(specsRoot, scan.specs)
         root.add(specsRoot)
 
         // Changes root
@@ -45,5 +45,37 @@ object SpekTreeModel {
         root.add(changesRoot)
 
         return DefaultTreeModel(root)
+    }
+
+    private class Folder(val name: String, val path: String) {
+        var spec: SpecInfo? = null
+        // A TreeMap orders by String.compareTo — UTF-16 code units, per segment, as the web and VS Code
+        // trees do. Ordering by full topic instead would put `a-b` between `a` and its child `a/c`.
+        val children = TreeMap<String, Folder>()
+    }
+
+    /** Group the flat spec list into one folder per topic segment, under [parent]. */
+    internal fun addSpecFolders(parent: DefaultMutableTreeNode, specs: List<SpecInfo>) {
+        val roots = TreeMap<String, Folder>()
+        for (spec in specs) {
+            var siblings = roots
+            var prefix = ""
+            var folder: Folder? = null
+            for (segment in spec.topic.split('/')) {
+                prefix = if (prefix.isEmpty()) segment else "$prefix/$segment"
+                val path = prefix
+                folder = siblings.getOrPut(segment) { Folder(segment, path) }
+                siblings = folder.children
+            }
+            folder?.spec = spec
+        }
+        fun attach(to: DefaultMutableTreeNode, folders: Collection<Folder>) {
+            for (f in folders) {
+                val node = DefaultMutableTreeNode(SpekTreeNode.SpecFolder(f.name, f.path, f.spec))
+                attach(node, f.children.values)
+                to.add(node)
+            }
+        }
+        attach(parent, roots.values)
     }
 }

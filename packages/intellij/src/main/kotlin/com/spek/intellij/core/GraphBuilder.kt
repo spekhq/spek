@@ -11,10 +11,7 @@ object GraphBuilder {
         val archiveDir = File(changesDir, "archive")
 
         // 收集 spec topics
-        val specTopics = specsDir.listFiles()
-            ?.filter { it.isDirectory && !it.name.startsWith(".") && File(it, "spec.md").exists() }
-            ?.map { it.name }
-            ?: emptyList()
+        val specTopics = SpecFiles.discover(specsDir).map { it.topic }
 
         // 收集 change dirs
         data class ChangeDirInfo(val slug: String, val dir: File, val status: String)
@@ -34,20 +31,12 @@ object GraphBuilder {
         val specHistoryCounts = mutableMapOf<String, Int>()
 
         for ((slug, dir, _) in changeDirs) {
-            val changeSpecsDir = File(dir, "specs")
-            if (!changeSpecsDir.isDirectory) continue
-
             var specCount = 0
-            changeSpecsDir.listFiles()
-                ?.filter { it.isDirectory && !it.name.startsWith(".") }
-                ?.forEach { topicDir ->
-                    if (File(topicDir, "spec.md").exists()) {
-                        edges.add(GraphEdge("change:$slug", "spec:${topicDir.name}"))
-                        specCount++
-                        specHistoryCounts[topicDir.name] =
-                            (specHistoryCounts[topicDir.name] ?: 0) + 1
-                    }
-                }
+            for ((topic, _) in SpecFiles.discover(File(dir, "specs"))) {
+                edges.add(GraphEdge("change:$slug", "spec:$topic"))
+                specCount++
+                specHistoryCounts[topic] = (specHistoryCounts[topic] ?: 0) + 1
+            }
             if (specCount > 0) {
                 changeSpecCounts[slug] = specCount
             }

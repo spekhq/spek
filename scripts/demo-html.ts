@@ -139,7 +139,7 @@ export function assembleDemoHtml(parts: DemoHtmlParts): string {
   const styleBlock = parts.stylesheet ? `\n    <style>${parts.stylesheet}</style>` : "";
 
   const html = `<!DOCTYPE html>
-<html lang="zh-TW">
+<html lang="en">
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />

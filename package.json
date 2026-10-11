@@ -1,6 +1,6 @@
 {
   "name": "spek",
-  "version": "1.18.0",
+  "version": "1.19.1",
   "private": true,
   "workspaces": [
     "packages/core",
@@ -22,7 +22,7 @@
     "build:intellij": "npm run build:core && npm run build:ui && npm run build:intellij -w @spekjs/web",
     "version": "node -e \"const p=require('./packages/vscode/package.json');p.version=require('./package.json').version;require('fs').writeFileSync('./packages/vscode/package.json',JSON.stringify(p,null,2)+'\\n')\" && node -e \"const v=require('./package.json').version;const f='./packages/intellij/gradle.properties';const c=require('fs').readFileSync(f,'utf8').replace(/pluginVersion = .*/,'pluginVersion = '+v);require('fs').writeFileSync(f,c)\" && git add packages/vscode/package.json packages/intellij/gradle.properties",
     "build:ui": "npm run build -w @spekjs/ui",
-    "test": "npm test -w @spekjs/core && npm test -w @spekjs/ui && npm test -w @spekjs/web && node --import tsx --test \"scripts/*.test.ts\""
+    "test": "npm test -w @spekjs/core && npm test -w @spekjs/ui && npm test -w @spekjs/web && npm test -w spek-vscode && node --import tsx --test \"scripts/*.test.ts\""
   },
   "devDependencies": {
     "eslint": "^9.39.5",

@@ -14,7 +14,7 @@ The extension SHALL register a ViewContainer in the Activity Bar with a spek-bra
 - **THEN** the spek icon is not displayed in the Activity Bar
 
 ### Requirement: Specs TreeView
-The sidebar SHALL display a TreeView listing all specs from the OpenSpec repository. Each spec item SHALL display the spec topic name and SHALL be expandable to reveal that spec's `h2` and `h3` headings as child nodes. Spec items SHALL be sorted alphabetically. Each heading child node SHALL display the heading text without the leading `## ` / `### ` markers and without the leading OpenSpec format keyword, matching what the rendered content shows for the same heading, and SHALL be visually distinguishable between `h2` and `h3` levels (for example by indentation, icon, or `description`).
+The sidebar SHALL display a TreeView containing all specs from the OpenSpec repository, grouped by their topic path segments and sorted alphabetically within each folder. Sibling ordering SHALL compare one path segment at a time by UTF-16 code unit. A folder with its own spec SHALL be both openable and expandable to its child topics. Each spec item SHALL remain expandable to reveal that spec's `h2` and `h3` headings as child nodes. When a spec item also has child topics, the child topics SHALL be listed first, then the spec's own headings in document order. Spec labels SHALL use the final path segment while the full topic remains available, as the item's tooltip, to distinguish duplicate names. Each heading child node SHALL display the heading text without the leading `## ` / `### ` markers and without the leading OpenSpec format keyword, matching the rendered content, and SHALL be visually distinguishable between `h2` and `h3` levels.
 
 Each heading child node's tooltip SHALL carry the heading's authored text unchanged. The tooltip is where the sidebar already repeats the heading, so the authored form stays reachable in this host at no cost — but the tree is one surface among four, and this SHALL NOT be read as a requirement to invent a second, hidden rendering elsewhere.
 
@@ -22,11 +22,16 @@ Navigation SHALL be unaffected: each heading child node SHALL continue to comman
 
 #### Scenario: Display specs list
 - **WHEN** the user opens the spek sidebar
-- **THEN** a "SPECS" section displays all spec topics sorted alphabetically, each rendered as an expandable (collapsed by default) tree item
+- **THEN** a "SPECS" section displays all spec topics in an alphabetically sorted folder tree, with spec items collapsed by default
 
 #### Scenario: Expand spec to view headings
 - **WHEN** the user expands a spec item
 - **THEN** the spec's `h2` and `h3` headings are loaded and displayed as child tree items in document order
+
+#### Scenario: Parent spec with child topic
+- **WHEN** `contracts/pagination` has its own spec and child topic `contracts/pagination/streaming-search`
+- **THEN** the parent spec can be opened and expanded to show the child topic
+- **AND** the expanded parent lists `streaming-search` before the parent spec's own headings
 
 #### Scenario: A requirement heading's label drops the format keyword
 - **WHEN** the user expands a spec containing `### Requirement: Foo`
@@ -39,7 +44,7 @@ Navigation SHALL be unaffected: each heading child node SHALL continue to comman
 
 #### Scenario: Spec with no headings
 - **WHEN** the user expands a spec item whose content has no `h2` or `h3` headings
-- **THEN** the tree item shows no children (or an empty children list) and remains expandable without error
+- **THEN** the tree item shows no heading children and remains expandable without error
 
 #### Scenario: h2 vs h3 visually distinguished
 - **WHEN** a spec contains both `h2` and `h3` headings
@@ -192,3 +197,10 @@ control.
 
 - **WHEN** the Changes page renders in the VS Code webview
 - **THEN** it shows no aggregate checkbox; the aggregation scope is set from the header control only
+
+### Requirement: Nested spec navigation from VS Code
+Spec and heading actions SHALL send the full topic path to the webview and preserve any heading hash, including when the panel is opened by that action.
+
+#### Scenario: Open a nested spec heading
+- **WHEN** the user selects a heading under `contracts/pagination/streaming-search`
+- **THEN** the webview opens that spec and scrolls to the selected heading

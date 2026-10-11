@@ -68,33 +68,16 @@ object ArtifactFiles {
     }
 
     /**
-     * The specs/ delta tree as a (topic, file) list, sorted by topic. It reads directory entries and tests
-     * for each spec.md. It does not read content. hasSpecsTree, specsMtime, and the spec content read in
-     * ArtifactDiscovery.discover all derive from it, so the tree walk is written one time.
+     * The specs/ delta tree as a (topic, file) list, at any depth, sorted by topic in code-unit order. It
+     * reads directory entries only. hasSpecsTree, specsMtime, and the spec content read in
+     * ArtifactDiscovery.discover all derive from the one walker in SpecFiles.
      */
-    fun listSpecFiles(changeDir: File): List<Pair<String, File>> {
-        val specsDir = File(changeDir, "specs")
-        if (!specsDir.isDirectory) return emptyList()
-        return specsDir.listFiles()
-            ?.filter { it.isDirectory && !it.name.startsWith(".") }
-            ?.mapNotNull { topicDir ->
-                val specFile = File(topicDir, "spec.md")
-                if (specFile.exists()) topicDir.name to specFile else null
-            }
-            ?.sortedBy { it.first }
-            ?: emptyList()
-    }
+    fun listSpecFiles(changeDir: File): List<Pair<String, File>> =
+        SpecFiles.discover(File(changeDir, "specs")).map { it.topic to it.file }
 
-    /** True if specs/ holds at least one spec.md. It reads no content and returns on the first hit. This
-     *  is the changes-list hot path (count, called per change during a scan). So it does not build the full
-     *  listSpecFiles list only to ask isNotEmpty(). It walks the same specs/<topic>/spec.md shape. */
-    private fun hasSpecsTree(changeDir: File): Boolean {
-        val specsDir = File(changeDir, "specs")
-        if (!specsDir.isDirectory) return false
-        return specsDir.listFiles()
-            ?.any { it.isDirectory && !it.name.startsWith(".") && File(it, "spec.md").exists() }
-            ?: false
-    }
+    /** True if specs/ holds at least one spec. This is the changes-list hot path (count, called per
+     *  change during a scan), so it stops at the first hit rather than building the full list. */
+    private fun hasSpecsTree(changeDir: File): Boolean = SpecFiles.hasAny(File(changeDir, "specs"))
 
     /** The sort time of the specs artifact: the newest mtime of every spec.md file (0 if none). */
     fun specsMtime(changeDir: File): Long =

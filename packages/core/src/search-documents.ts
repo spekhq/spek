@@ -9,6 +9,7 @@
 import fs from "node:fs";
 import path from "node:path";
 import { rootArtifacts } from "./artifact-files.js";
+import { discoverSpecFiles } from "./spec-files.js";
 import type { SearchResult } from "./types.js";
 import { searchDocuments, specSearchDocument, type SearchDocument } from "./search.js";
 
@@ -52,12 +53,8 @@ export function collectSearchDocuments(basePath: string): SearchDocument[] {
   const openspecDir = path.join(basePath, "openspec");
   const documents: SearchDocument[] = [];
 
-  const specsDir = path.join(openspecDir, "specs");
-  for (const entry of readDir(specsDir)) {
-    if (!entry.isDirectory()) continue;
-    const specPath = path.join(specsDir, entry.name, "spec.md");
-    if (!fs.existsSync(specPath)) continue;
-    documents.push(specSearchDocument(entry.name, fs.readFileSync(specPath, "utf-8")));
+  for (const { topic, file } of discoverSpecFiles(path.join(openspecDir, "specs"))) {
+    documents.push(specSearchDocument(topic, fs.readFileSync(file, "utf-8")));
   }
 
   const changesDir = path.join(openspecDir, "changes");

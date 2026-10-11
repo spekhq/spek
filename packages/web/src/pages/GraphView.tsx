@@ -1,6 +1,7 @@
 import { SpecGraph } from "@spekjs/ui";
 import { useCallback } from "react";
 import { useNavigate } from "react-router-dom";
+import { specRoute } from "@spekjs/core/spec-topic";
 import { useTheme } from "../contexts/ThemeContext";
 import { useGraphData } from "../hooks/useOpenSpec";
 
@@ -16,7 +17,7 @@ export function GraphView() {
   const navigate = useNavigate();
 
   const handleSelectSpec = useCallback(
-    (topic: string) => navigate(`/specs/${topic}`),
+    (topic: string) => navigate(specRoute(topic)),
     [navigate],
   );
 

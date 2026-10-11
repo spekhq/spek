@@ -33,7 +33,7 @@
 ## 功能特色
 
 - **Dashboard 總覽** — Specs 數量、Changes 數量、任務完成率一覽，加上生命週期統計（已封存 change 平均週期、超過 30 天未封存的 stale active）
-- **Specs 瀏覽** — 依字母排序的主題列表，含詳細內容與修訂歷史；requirement 與 scenario 就地摺疊，一份 spec 打開時是一張仍帶著規範句的大綱
+- **Specs 瀏覽** — 以資料夾樹呈現所有 spec、支援篩選，巢狀結構與 `openspec/specs/` 在磁碟上的樣子一致，含詳細內容與修訂歷史；requirement 與 scenario 就地摺疊，一份 spec 打開時是一張仍帶著規範句的大綱
 - **Changes 瀏覽** — 進行中與已封存的 changes，分頁顯示 Proposal / Design / Tasks / Specs；每筆 row 顯示建立日期、封存日期與生命週期天數
 - **Schemas 瀏覽** — 列出該 repo 可用的每個 workflow schema，含來源與它定義了哪些 artifact；詳情頁把一份 schema 畫成可讀的流程 —— artifact 依相依順序排列，各自標明產生哪個檔案、動工前需要什麼，以及完整的 instruction 內文。repo 的預設 schema 會被標示，每個 schema 也能點進正在使用它的 change。若某個步驟是在實作**之後**才產出，它會被畫在 `apply` 之後，以虛線標明這是 spek 的推論 —— OpenSpec 格式無法宣告這種順序，因此圖只陳述它，不宣稱 CLI 會據此擋下
 - **Worktree 聚合** — 自動探索 repo 的所有 git worktree，把各 worktree 進行中的 change 去重後合併到單一畫面 —— 為 AI agent 平行開發時代而生；也以實驗性選項支援 Jujutsu（jj）workspace
@@ -44,7 +44,7 @@
 - **深色 / 淺色主題** — 可切換，預設深色主題
 - **Spec 歷史追蹤** — 基於 Git 的時間戳記追蹤 spec 修訂紀錄
 - **響應式版面** — 適應不同螢幕尺寸
-- **VS Code 側邊欄** — Activity Bar icon + TreeView，直接從側邊欄瀏覽 specs 與 changes
+- **VS Code 側邊欄** — Activity Bar icon + TreeView，直接從側邊欄瀏覽 specs（依資料夾巢狀）與 changes
 
 ## Worktree 聚合
 
@@ -121,7 +121,8 @@ Specs 數量、Changes 數量、任務完成率一覽。
 ![Dashboard](screenshots/dashboard.png)
 
 ### Specs 瀏覽
-依字母排序的主題列表，支援篩選。
+以資料夾樹呈現所有 spec，支援篩選。分在資料夾裡的 spec（`specs/contracts/pagination/spec.md`）照磁碟上的結構巢狀顯示，
+不限層數；spec 的名稱就是它的完整路徑 —— `contracts/pagination`。
 
 ![Specs 列表](screenshots/specs-list.png)
 
@@ -262,8 +263,10 @@ spek 預期你的 repo 底下有以下結構：
 {repo}/openspec/
 ├── config.yaml
 ├── specs/
-│   └── {topic}/
-│       └── spec.md              # BDD 格式的規格文件
+│   ├── {topic}/
+│   │   └── spec.md              # BDD 格式的規格文件
+│   └── {group}/{topic}/
+│       └── spec.md              # spec 可以分資料夾放，不限層數
 └── changes/
     ├── {active-change}/         # 進行中的變更
     │   ├── .openspec.yaml
@@ -391,6 +394,9 @@ spek 會監看 `openspec/` 並在檔案變更時即時重載。在不傳遞原�
 
 - [@Katsz](https://github.com/Katsz)（Alex）
   - Spec 差異檢視中，新增／刪除行的紅綠底色鋪滿整個橫向捲動範圍 —— 過長的行不再只有第一個畫面寬度有底色
+
+- [@flatrick](https://github.com/flatrick)（Patrik）
+  - 巢狀 spec 資料夾 —— `openspec/specs/` 底下任意深度的 `spec.md` 都依 OpenSpec 自己的規則被探索，在各介面以資料夾樹瀏覽；每次讀取 spec 都只限於掃描列出的那些
 
 ## 授權
 

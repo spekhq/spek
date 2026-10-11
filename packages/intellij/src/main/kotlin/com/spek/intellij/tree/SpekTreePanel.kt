@@ -6,9 +6,13 @@ import java.awt.BorderLayout
 import java.awt.event.MouseAdapter
 import java.awt.event.MouseEvent
 import javax.swing.JComponent
+import javax.swing.JTree
 import javax.swing.JPanel
 import javax.swing.JScrollPane
+import javax.swing.ToolTipManager
 import javax.swing.tree.DefaultMutableTreeNode
+import javax.swing.tree.TreeModel
+import javax.swing.tree.TreePath
 
 class SpekTreePanel(
     private val projectPath: String,
@@ -25,8 +29,10 @@ class SpekTreePanel(
         tree = Tree(model)
         tree.isRootVisible = false
         tree.cellRenderer = SpekTreeCellRenderer()
+        // A JTree shows its renderer's tooltip only once registered.
+        ToolTipManager.sharedInstance().registerComponent(tree)
 
-        expandRoots()
+        expandRoots(tree)
 
         tree.addMouseListener(object : MouseAdapter() {
             override fun mouseClicked(e: MouseEvent) {
@@ -44,20 +50,9 @@ class SpekTreePanel(
         val selectedNode = tree.lastSelectedPathComponent as? DefaultMutableTreeNode ?: return
         val nodeData = selectedNode.userObject as? SpekTreeNode ?: return
 
-        val path = when (nodeData) {
-            is SpekTreeNode.SpecItem -> "/specs/${nodeData.spec.topic}"
-            is SpekTreeNode.ChangeItem -> "/changes/${nodeData.change.slug}"
-            else -> return
-        }
-
+        // A grouping folder has no spec, so it opens nothing; the double-click only toggles it.
+        val path = navigationPath(nodeData) ?: return
         onNavigate(path)
-    }
-
-    /** 展開 Specs 和 Changes 根節點。rowCount 隨展開而增長，故邊走邊展。 */
-    private fun expandRoots() {
-        for (i in 0 until tree.rowCount) {
-            tree.expandRow(i)
-        }
     }
 
     /** 由 file watcher 的 Timer 執行緒呼叫，故可見性判斷走閘門，不讀 Swing 狀態。 */
@@ -94,10 +89,44 @@ class SpekTreePanel(
         ApplicationManager.getApplication().executeOnPooledThread {
             val newModel = SpekTreeModel.build(projectPath)
             ApplicationManager.getApplication().invokeLater {
-                tree.model = newModel
-                expandRoots()
+                replaceModel(tree, newModel)
                 onDone?.invoke()
             }
         }
     }
+}
+
+/**
+ * Opens the Specs and Changes roots and nothing below them. By path, not by row: expanding one row
+ * shifts every row after it, so a row index taken first lands on a child of Specs instead of Changes.
+ */
+internal fun expandRoots(tree: JTree) {
+    val root = tree.model.root
+    for (i in 0 until tree.model.getChildCount(root)) {
+        tree.expandPath(TreePath(arrayOf(root, tree.model.getChild(root, i))))
+    }
+}
+
+/**
+ * Swaps in a rebuilt model with the roots open, and every spec folder the reader had open still open.
+ * A refresh rebuilds every node, so folders are matched by full topic, never by node identity.
+ */
+internal fun replaceModel(tree: JTree, model: TreeModel) {
+    val open = specFolders(tree.model)
+        .filter { (node, _) -> tree.isExpanded(TreePath(node.path)) }
+        .map { (_, topic) -> topic }
+        .toSet()
+    tree.model = model
+    expandRoots(tree)
+    specFolders(model)
+        .filter { (_, topic) -> topic in open }
+        .forEach { (node, _) -> tree.expandPath(TreePath(node.path)) }
+}
+
+/** Every spec folder node in [model], with its full topic. */
+private fun specFolders(model: TreeModel): Sequence<Pair<DefaultMutableTreeNode, String>> {
+    val root = model.root as? DefaultMutableTreeNode ?: return emptySequence()
+    return root.depthFirstEnumeration().asSequence()
+        .map { it as DefaultMutableTreeNode }
+        .mapNotNull { node -> (node.userObject as? SpekTreeNode.SpecFolder)?.let { node to it.path } }
 }

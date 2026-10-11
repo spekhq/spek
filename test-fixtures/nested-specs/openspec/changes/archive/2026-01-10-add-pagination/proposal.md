@@ -1,0 +1,3 @@
+## Why
+
+Add `contracts/pagination`.

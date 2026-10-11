@@ -1,5 +1,18 @@
 # Changelog
 
+## 1.4.0
+
+### Changed
+
+- **`@spekjs/core` peer range is now `>=1.14.0`.** `SpecGraph` imports `specNodeTopic` and the
+  `@spekjs/core/spec-topic` subpath, neither of which an older core has; under the previous `>=1.3.0`, a
+  consumer on an older core installed this version and failed at bundle time.
+- **`onSelectSpec` receives the full topic, read from the node id.** It previously received `node.label`. For
+  the graph data core builds the two are the same string; a host passing its own spec labels now gets the
+  topic rather than the label, and two nested specs sharing a final segment no longer report the same value.
+- **A spec node shows its label's final `/` segment**, with the full topic (from the node id) as its tooltip, because a
+  nested topic does not fit under a node. A label without `/` renders as before.
+
 ## 1.3.1
 
 ### Fixed

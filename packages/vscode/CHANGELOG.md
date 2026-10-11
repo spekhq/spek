@@ -1,5 +1,25 @@
 # Changelog
 
+## 1.19.1
+
+No changes to the VS Code extension. This release fixes the web app's development server and the IntelliJ plugin; the extension runs no network server, so it was never exposed in this way.
+
+## 1.19.0
+
+**Highlight: specs grouped into folders are visible.** OpenSpec accepts a `spec.md` at any depth under `openspec/specs/` — `specs/contracts/pagination/spec.md` is a valid capability — but spek only looked one level down, so a repository that groups its capabilities into folders showed nothing for them. Thanks to [@flatrick](https://github.com/flatrick) (Patrik) ([#61](https://github.com/spekhq/spek/pull/61))
+
+- **Specs are found at any depth**, in the main specs tree and in every change's delta specs, by OpenSpec's own rule: dot-entries are skipped, symlinked folders are not followed, and a linked `spec.md` counts only if it points inside the specs tree. A spec's name is its full path, e.g. `contracts/pagination`
+- **The Specs sidebar nests by folder.** A spec that also has specs under it lists them before its own headings, and the panel's Specs page is a folder tree with a filter
+- **The graph labels a nested spec by its last segment**, with the full path as its tooltip, and two specs with the same last segment open their own pages
+- **Every spec read checks the name it is given** and serves only a spec the list would show, so no name can reach a file outside the specs tree
+- **Behaviour change**: a symlinked folder under `specs/` is no longer listed, and neither is a `spec.md` symlink pointing outside it, matching what OpenSpec itself validates and archives
+
+## 1.18.1
+
+- **VS Code in a browser no longer opens a broken tab on every in-app click** ([#59](https://github.com/spekhq/spek/issues/59)). In code-server, GitHub Codespaces and vscode.dev, clicking the sidebar's Overview / Specs / Changes, a change card or a spec link also opened a new browser tab at a 404 address, on top of the navigation that did happen inside the panel. VS Code forwards every link click in a webview to the workbench to open, even one the page already handled; desktop VS Code silently refuses those addresses, which is why the bug never showed there. In-app links now stay in the panel, external links still open as before, and the spec page's table of contents scrolls smoothly instead of jumping. Thanks to [@Philogag](https://github.com/Philogag) for reporting
+
+The release's other two fixes are to the GitHub Action and its generated HTML snapshot, which the extension does not use.
+
 ## 1.18.0
 
 **Highlight: a keyword's casing is read the way OpenSpec reads it.** spek marked one casing rule across every keyword it highlights, and the keywords do not carry the same obligation. A scenario body is free text that no version of OpenSpec parses, so uppercase `WHEN` / `THEN` is a template convention — a spec written with `**Given**` / `**When**` / `**Then**` is perfectly valid and rendered with no highlighting at all. `SHALL` / `MUST` is the opposite: OpenSpec matches it case-sensitively. The rule is now decided per keyword group.

@@ -132,13 +132,6 @@ The server SHALL implement a Kotlin-based OpenSpec scanner that reads the `opens
 - **WHEN** a request attempts to read files outside the `openspec/` directory
 - **THEN** the server SHALL reject the request
 
-### Requirement: CORS headers for JCEF
-The server SHALL include appropriate CORS headers to allow requests from the JCEF webview (which loads content from file:// or the built-in server).
-
-#### Scenario: CORS preflight
-- **WHEN** the JCEF webview sends a cross-origin request to the API
-- **THEN** the server SHALL respond with `Access-Control-Allow-Origin` headers permitting the request
-
 ### Requirement: API handler readiness check before webview load
 The plugin SHALL verify that `SpekHttpRequestHandler` is responding to HTTP requests before loading the webview URL in JCEF. This ensures the frontend does not encounter HTTP 404 errors due to the handler not being registered yet.
 
@@ -185,3 +178,67 @@ The schemas endpoints SHALL be reachable only after the API handler readiness ch
 #### Scenario: Degraded enumeration without the CLI
 - **WHEN** `GET /api/spek/openspec/schemas?projectPath=...` is called on a machine with no `openspec` CLI
 - **THEN** it returns HTTP 200 with an empty schema list and a reason stating that schemas could not be enumerated
+
+### Requirement: Kotlin scanner discovers nested specs
+The IntelliJ scanner SHALL include every main and change delta `spec.md` at any depth under its respective specs tree, by the same discovery rule and in the same order as the TypeScript scanner (see `openspec-scanner`), with the slash-separated relative directory path as topic. Nested specs SHALL participate in list, detail, history, search, graph, and change artifact responses with the same identity as the TypeScript host.
+
+#### Scenario: Nested list and change response
+- **WHEN** a project has main and delta specs for `contracts/pagination/streaming-search`
+- **THEN** the IntelliJ specs list and change detail return that full topic path
+
+#### Scenario: Exact nested history
+- **WHEN** separate changes affect `contracts/pagination` and `contracts/pagination/streaming-search`
+- **THEN** IntelliJ history for the child includes only its own change
+
+### Requirement: IntelliJ API selects nested specs safely
+The IntelliJ server SHALL accept `GET /api/spek/openspec/specs?projectPath=<project>&topic=<full-topic>` for detail and the same request with `at=<change-slug>` for version content. The request without `topic` SHALL remain the list endpoint; existing single-level routes SHALL remain available and SHALL apply the same topic and slug validation. Topic validation SHALL match the TypeScript rule exactly; patterns SHALL anchor with `\A`/`\z`, since Java's `$` also matches before a trailing newline. Invalid or escaping topic paths, malformed change slugs, or `at` without `topic` SHALL return HTTP 400, and absent content SHALL return HTTP 404 without reading outside the requested specs tree.
+
+#### Scenario: Get nested detail and version
+- **WHEN** a client requests topic `contracts/pagination/streaming-search`, with and without `at=add-streaming-search`
+- **THEN** the corresponding full spec detail or change delta content is returned
+
+#### Scenario: Reject escaping topic
+- **WHEN** a request supplies a topic containing `..`, an empty segment, or an absolute path
+- **THEN** the server returns HTTP 400 and reads no file outside the specs tree
+
+#### Scenario: Reject a topic with a trailing newline
+- **WHEN** a request supplies topic `auth%0A`
+- **THEN** the server returns HTTP 400
+
+#### Scenario: Reject malformed version selector
+- **WHEN** a request supplies `at` without `topic` or a change slug containing a path separator
+- **THEN** the server returns HTTP 400
+
+### Requirement: Same-origin access only
+The handler SHALL serve a request — API or webview resource — only when it comes from the built-in server's
+own origin. On top of the IDE built-in server's own admission (a `Host` naming a local host, and an `Origin` /
+`Referer`, when present, naming a local host), the handler SHALL refuse a request whose `Origin` header is
+present and is not `http://` followed by the request's `Host` (compared case-insensitively), and a request whose
+`Sec-Fetch-Site` header is present and is neither `same-origin` nor `none`.
+
+The platform's admission compares host names without ports, so it admits a page served on any other local port,
+and the built-in server echoes each request's `Origin` back as `Access-Control-Allow-Origin`. Refusing the
+request is therefore the only control that stops another local page from reading the API. The tool window and
+the external-browser fallback both load the SPA from the built-in server and call it on the same origin, so they
+are unaffected.
+
+The handler SHALL NOT itself add `Access-Control-Allow-*` headers. The platform may still add them to a refused
+response; such a response carries no API data.
+
+#### Scenario: The plugin's own requests
+- **WHEN** the tool window's webview, loaded from `http://localhost:{port}/spek/webview/`, requests
+  `GET /api/spek/openspec/changes?projectPath=...` or sends the Refresh `POST /api/spek/openspec/resync` with
+  `Origin: http://localhost:{port}`
+- **THEN** the request is served
+
+#### Scenario: Another local port
+- **WHEN** a page served from `http://localhost:8080` requests `http://localhost:{port}/api/spek/openspec/changes`
+- **THEN** the handler does not serve it
+
+#### Scenario: Cross-site request without an Origin
+- **WHEN** a request arrives with `Sec-Fetch-Site: same-site` or `Sec-Fetch-Site: cross-site`
+- **THEN** the handler does not serve it
+
+#### Scenario: Foreign Host
+- **WHEN** a request arrives with `Host: evil.example`
+- **THEN** the handler does not serve it

@@ -37,6 +37,9 @@ scrutiny are therefore:
 - **Local file access** — the Web/IntelliJ servers should only ever read `.md` / `.yaml` files
   under an `openspec/` directory. Any path-traversal or arbitrary-file-read beyond that is
   in scope.
+- **Network exposure** — the Web app's API server and the IntelliJ plugin's endpoints should answer
+  only the local app's own pages: not another machine, and not a web page from another origin
+  (including another port on `localhost`). Any way to reach them otherwise is in scope.
 - **The published npm packages** (`@spekjs/core`, `@spekjs/ui`) as consumed by third-party hosts.
 - **The `spekhq/spek` composite GitHub Action**, which runs in users' CI.
 

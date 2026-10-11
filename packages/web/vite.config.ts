@@ -1,6 +1,7 @@
 import { defineConfig } from "vite";
 import react from "@vitejs/plugin-react";
 import tailwindcss from "@tailwindcss/vite";
+import { API_HOST, API_PORT, APP_PORT } from "./server/address";
 
 export default defineConfig({
   plugins: [react(), tailwindcss()],
@@ -9,10 +10,17 @@ export default defineConfig({
   // single-file builds do not.
   define: { __SPEK_DRAWS_DIAGRAMS__: "true" },
   server: {
-    port: 5173,
+    // Loopback only, stated rather than inherited: the proxy below rewrites Host to the API's own, so a dev
+    // server reachable from the network would reopen the API to it whatever the API itself checks.
+    host: "localhost",
+    port: APP_PORT,
+    // The API admits exactly this app origin, so moving to another port would lock the app out of it.
+    strictPort: true,
+    // The app is same-origin with this server; no other page needs to read anything from it.
+    cors: false,
     proxy: {
       "/api": {
-        target: "http://localhost:3001",
+        target: `http://${API_HOST}:${API_PORT}`,
         changeOrigin: true,
       },
     },

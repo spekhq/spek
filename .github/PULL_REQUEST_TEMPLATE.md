@@ -27,7 +27,7 @@ Keep the PR focused — one logical change per PR is easier to review.
 
 - [ ] `npm test` passes
 - [ ] `npm run type-check` passes
-- [ ] I followed the [contributing guidelines](../CONTRIBUTING.md) and matched the surrounding code style
+- [ ] I followed the [contributing guidelines](https://github.com/spekhq/spek/blob/master/CONTRIBUTING.md) and matched the surrounding code style
 - [ ] My editor did **not** reformat whole-file line endings (see CONTRIBUTING → Coding conventions)
 
 <!--

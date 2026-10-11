@@ -4,7 +4,7 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "dev": "concurrently -n vite,api -c cyan,green \"vite\" \"tsx watch server/index.ts\"",
+    "dev": "concurrently --kill-others-on-fail -n vite,api -c cyan,green \"vite\" \"tsx watch server/index.ts\"",
     "build": "tsc -p tsconfig.json --noEmit && vite build",
     "build:webview": "vite build --config vite.webview.config.ts",
     "build:intellij": "vite build --config vite.intellij.config.ts",
@@ -17,7 +17,6 @@
     "@spekjs/ui": "*",
     "@types/diff": "^7.0.2",
     "chokidar": "^5.0.0",
-    "cors": "^2.8.5",
     "diff": "^8.0.3",
     "express": "^4.21.0",
     "hast-util-to-text": "^4.0.2",
@@ -33,7 +32,6 @@
   },
   "devDependencies": {
     "@tailwindcss/vite": "^4.0.0",
-    "@types/cors": "^2.8.17",
     "@types/express": "^5.0.0",
     "@types/node": "^22.10.0",
     "@types/react": "^19.0.0",

@@ -104,6 +104,22 @@ Automate the spek release process — update CHANGELOGs, bump version, create ta
    - Update `packages/<pkg>/CHANGELOG.md`. Its readers are API consumers, so write about the API
      surface, not about spek's UI. These entries do **not** go in the three product CHANGELOGs.
    - Bump `version` in `packages/<pkg>/package.json`.
+   - **When releasing `@spekjs/ui`, check its `peerDependencies["@spekjs/core"]` floor.** ui is built
+     with plain `tsc`, so its `@spekjs/core` imports stay external in `dist` and resolve against
+     whatever core the consumer has installed. If ui now imports a core export or subpath that the
+     current floor's version does not have, raise the floor to the first core version that ships it —
+     usually the core version being released in this same step:
+
+     ```bash
+     last=$(git tag -l "ui-v*" --sort=-v:refname | head -1)
+     git diff --no-color "${last}..HEAD" -- packages/ui/src | grep -E '^\+.*from "@spekjs/core'
+     ```
+
+     Any hit naming something new in core → raise the floor and say so in ui's CHANGELOG. Left at the
+     old floor, a consumer on an older core satisfies the peer range, installs the new ui, and their
+     bundler fails on the missing export. The floor is release-time for the same reason the version
+     is: the core version that carries the export is only known here. (`>=1.3.0` was set this way, for
+     the `./graph-node-id` subpath.)
    - Commit as `chore(npm): publish @spekjs/<pkg>@X.Y.Z` (one commit may cover both packages — see
      `2e65a11`).
 

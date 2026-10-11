@@ -1,0 +1,28 @@
+{
+  "note": "What every scanner must report for this repository. Read by packages/core/src/nested-specs.test.ts and packages/intellij NestedSpecsTest.kt, so the two hosts are held to one answer.",
+  "topics": [
+    "auth",
+    "contracts/pagination",
+    "contracts/pagination/streaming-search",
+    "contracts/streaming-search",
+    "guides/pagination",
+    "guides/streaming-search"
+  ],
+  "historyCounts": {
+    "auth": 0,
+    "contracts/pagination": 1,
+    "contracts/pagination/streaming-search": 1,
+    "contracts/streaming-search": 0,
+    "guides/pagination": 1,
+    "guides/streaming-search": 0
+  },
+  "edges": [
+    ["change:2026-01-10-add-pagination", "spec:contracts/pagination"],
+    ["change:2026-02-01-add-guides", "spec:guides/pagination"],
+    ["change:add-streaming-search", "spec:contracts/pagination/streaming-search"]
+  ],
+  "searchSpecTopics": {
+    "pagination": ["contracts/pagination", "contracts/pagination/streaming-search", "guides/pagination"],
+    "DELTAONLYTERM": []
+  }
+}

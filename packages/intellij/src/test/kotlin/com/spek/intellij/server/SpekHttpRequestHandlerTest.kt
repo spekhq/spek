@@ -1,13 +1,53 @@
 package com.spek.intellij.server
 
+import io.netty.handler.codec.http.DefaultFullHttpRequest
+import io.netty.handler.codec.http.HttpMethod
+import io.netty.handler.codec.http.HttpVersion
 import java.io.File
 import kotlin.test.Test
 import kotlin.test.assertEquals
+import kotlin.test.assertFalse
 import kotlin.test.assertIs
 import kotlin.test.assertNull
 import kotlin.test.assertTrue
 
 class SpekHttpRequestHandlerTest {
+
+    private fun request(vararg headers: Pair<String, String>): DefaultFullHttpRequest =
+        DefaultFullHttpRequest(HttpVersion.HTTP_1_1, HttpMethod.GET, "/api/spek/openspec/changes?projectPath=/x").apply {
+            headers.forEach { (name, value) -> headers().set(name, value) }
+        }
+
+    /**
+     * The platform admits any local Origin regardless of port and echoes it back as
+     * Access-Control-Allow-Origin, so refusing the request is the only guard: the plugin's own pages
+     * (no Origin, or exactly http://<Host>) pass, everything else is refused.
+     */
+    @Test
+    fun admitsOnlyTheServersOwnOrigin() {
+        val handler = SpekHttpRequestHandler()
+        val host = "Host" to "localhost:63342"
+
+        assertTrue(handler.isAccessible(request(host)), "no Origin: the webview's own GET")
+        assertTrue(handler.isAccessible(request(host, "Origin" to "http://localhost:63342")), "same-origin POST")
+        assertTrue(handler.isAccessible(request(host, "Sec-Fetch-Site" to "same-origin")))
+        assertTrue(handler.isAccessible(request(host, "Sec-Fetch-Site" to "none")), "external-browser navigation")
+
+        assertFalse(handler.isAccessible(request(host, "Origin" to "http://localhost:8080")), "another local port")
+        assertFalse(handler.isAccessible(request(host, "Origin" to "https://evil.example")))
+        assertFalse(handler.isAccessible(request(host, "Origin" to "null")))
+        assertFalse(handler.isAccessible(request(host, "Sec-Fetch-Site" to "same-site")), "no-cors from another port")
+        assertFalse(handler.isAccessible(request(host, "Sec-Fetch-Site" to "cross-site")))
+    }
+
+    /** The platform's own Host check still applies underneath: a rebinding host name is refused. */
+    @Test
+    fun refusesAForeignHost() {
+        val handler = SpekHttpRequestHandler()
+
+        assertFalse(handler.isAccessible(request("Host" to "evil.example")))
+        assertFalse(handler.isAccessible(request("Host" to "evil.example:63342", "Origin" to "http://evil.example:63342")))
+    }
 
     /**
      * 迴歸測試：這條路由曾經根本不存在，導致三個宿主共用的前端每按一次 Refresh，

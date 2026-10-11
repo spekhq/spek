@@ -2,6 +2,7 @@ import { useState, useEffect, useRef, useCallback, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
 import { useApiAdapter } from "../api/ApiAdapterContext";
 import type { SearchResult } from "@spekjs/core";
+import { specRoute } from "@spekjs/core/spec-topic";
 
 interface SearchDialogProps {
   open: boolean;
@@ -107,11 +108,7 @@ export function SearchDialog({ open, onClose }: SearchDialogProps) {
 
   const navigateToResult = useCallback(
     (result: SearchResult) => {
-      const path =
-        result.type === "spec"
-          ? `/specs/${encodeURIComponent(result.topic ?? result.title)}`
-          : `/changes/${encodeURIComponent(result.slug ?? result.title)}`;
-      navigate(path);
+      navigate(resultPath(result));
       onClose();
     },
     [navigate, onClose]
@@ -255,6 +252,13 @@ export function SearchDialog({ open, onClose }: SearchDialogProps) {
       </div>
     </div>
   );
+}
+
+/** The page a result opens. A spec opens by its full topic, so same-named specs in two folders differ. */
+export function resultPath(result: SearchResult): string {
+  return result.type === "spec"
+    ? specRoute(result.topic ?? result.title)
+    : `/changes/${encodeURIComponent(result.slug ?? result.title)}`;
 }
 
 /**

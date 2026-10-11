@@ -39,8 +39,8 @@ schema-authoritative artifact ordering, and degrades gracefully when the CLI is 
 | --- | --- |
 | `scanOpenSpec(basePath)` | Scan a single directory's OpenSpec structure |
 | `scanOpenSpecAggregated(basePath, opts)` | Scan across every worktree of the same repo |
-| `readSpec(basePath, topic)` | Read one spec, including its history |
-| `readSpecAtChange(basePath, topic, slug)` | Read a spec as of a given change |
+| `readSpec(basePath, topic)` | Read one spec, including its history; `null` unless a scan would list `topic` |
+| `readSpecAtChange(basePath, topic, slug)` | Read a spec as of a given change; `null` for a topic or slug that is not one |
 | `readChange(basePath, slug, orderProvider?)` | Read one change and its artifacts |
 | `parseTasks(content)` | Parse `- [x]` / `- [ ]` checkboxes, grouped by `##` section |
 | `buildGraphData(basePath)` | Build spec–change relationship graph data |
@@ -65,6 +65,28 @@ keeps its own entry flagged `conflictsWith`, and the copy that `@` is editing is
 
 Nothing is spawned unless jj is requested, and `jj` is never required: with the CLI absent or the
 directory not a jj repo, the jj helpers resolve to `[]` and results are identical to `includeJj: false`.
+
+## Spec topics
+
+A topic is the slash-separated path of a `spec.md`'s folder relative to `openspec/specs/` — `auth`, or
+`contracts/pagination` for `specs/contracts/pagination/spec.md`. Specs are discovered at any depth, by
+OpenSpec's own rule (dot-entries skipped, symlinked folders not followed, a linked `spec.md` accepted only if
+it resolves inside the specs tree), so **a topic may contain `/`**: build a file path or URL from one segment
+by segment, never as a single path component.
+
+`readSpec` and `readSpecAtChange` return `null` for a topic a scan would not list, including one carrying
+`..`, a backslash or a different spelling of an existing folder. `isSafeSpecTopic` / `isSafeChangeSlug`
+state the name rule on its own, for a host validating input before it reaches core.
+
+```js
+import { buildSpecTree, specRoute, specTopicLabel } from '@spekjs/core/spec-topic'
+
+buildSpecTree(scan.specs)               // folder tree, ordered per segment by code unit
+specRoute('contracts/pagination')       // '/specs/contracts/pagination', each segment encoded
+specTopicLabel('contracts/pagination')  // 'pagination'
+```
+
+`@spekjs/core/spec-topic` is browser-safe. Its validators are also exported from the package root.
 
 ## Subpath exports
 

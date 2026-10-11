@@ -5,8 +5,7 @@ import java.io.File
 object SpecReader {
 
     fun read(projectPath: String, topic: String): SpecDetail? {
-        val specFile = File(projectPath, "openspec/specs/$topic/spec.md")
-        if (!specFile.exists()) return null
+        val specFile = SpecFiles.resolve(File(projectPath, "openspec/specs"), topic) ?: return null
 
         val content = specFile.readText()
         val relatedChanges = findRelatedChanges(projectPath, topic)
@@ -35,15 +34,14 @@ object SpecReader {
     }
 
     fun readAtChange(projectPath: String, topic: String, slug: String): SpecVersionContent? {
+        if (!SpecTopic.isSafeChangeSlug(slug)) return null
         val base = File(projectPath, "openspec/changes")
 
-        // 先檢查 active changes
-        var specFile = File(base, "$slug/specs/$topic/spec.md")
-        if (specFile.exists()) return SpecVersionContent(specFile.readText())
-
-        // 再檢查 archive
-        specFile = File(base, "archive/$slug/specs/$topic/spec.md")
-        if (specFile.exists()) return SpecVersionContent(specFile.readText())
+        // Active changes first, then the archive.
+        for (changeDir in listOf(File(base, slug), File(base, "archive/$slug"))) {
+            val specFile = SpecFiles.resolve(File(changeDir, "specs"), topic) ?: continue
+            return SpecVersionContent(specFile.readText())
+        }
 
         return null
     }
@@ -53,23 +51,21 @@ object SpecReader {
         val changesDir = File(base, "changes")
         val archiveDir = File(changesDir, "archive")
         val related = mutableListOf<String>()
+        // Exact full topic: a parent, its child, and a same-named spec in another folder each keep their own history.
+        fun hasDelta(changeDir: File) = SpecFiles.resolve(File(changeDir, "specs"), topic) != null
 
         // 搜尋 active changes
         changesDir.listFiles()
             ?.filter { it.isDirectory && it.name != "archive" && !it.name.startsWith(".") }
             ?.forEach { dir ->
-                if (File(dir, "specs/$topic/spec.md").exists()) {
-                    related.add(dir.name)
-                }
+                if (hasDelta(dir)) related.add(dir.name)
             }
 
         // 搜尋 archived changes
         archiveDir.listFiles()
             ?.filter { it.isDirectory && !it.name.startsWith(".") }
             ?.forEach { dir ->
-                if (File(dir, "specs/$topic/spec.md").exists()) {
-                    related.add(dir.name)
-                }
+                if (hasDelta(dir)) related.add(dir.name)
             }
 
         return related

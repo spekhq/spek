@@ -14,6 +14,24 @@ import kotlinx.serialization.json.jsonObject
 import org.jetbrains.ide.HttpRequestHandler
 import java.nio.charset.StandardCharsets
 
+/** `same-site` is refused on purpose: a site ignores ports, so every other local page is same-site. */
+private val ALLOWED_FETCH_SITES = setOf("same-origin", "none")
+
+/**
+ * A request admitted by the platform is still refused unless it comes from this server's own origin: an
+ * `Origin`, when present, must be `http://` plus the request's `Host`, and a `Sec-Fetch-Site`, when present,
+ * must be `same-origin` or `none` (which also covers cross-site `no-cors` requests that carry no `Origin`).
+ */
+internal fun isOwnOrigin(headers: HttpHeaders): Boolean {
+    val origin = headers.get(HttpHeaderNames.ORIGIN)
+    if (origin != null) {
+        val host = headers.get(HttpHeaderNames.HOST) ?: return false
+        if (!origin.equals("http://$host", ignoreCase = true)) return false
+    }
+    val fetchSite = headers.get("Sec-Fetch-Site")
+    return fetchSite == null || fetchSite in ALLOWED_FETCH_SITES
+}
+
 class SpekHttpRequestHandler : HttpRequestHandler() {
     private val log = Logger.getInstance(SpekHttpRequestHandler::class.java)
     private val json = Json { encodeDefaults = true }
@@ -22,6 +40,19 @@ class SpekHttpRequestHandler : HttpRequestHandler() {
         private const val API_PREFIX = "/api/spek/"
         private const val WEBVIEW_PREFIX = "/spek/webview/"
     }
+
+    /**
+     * Serve only the plugin's own pages. The platform's default admission checks that `Host`, `Origin` and
+     * `Referer` name a local host, but compares host names without ports — so a page on any other local port
+     * passes it — and the built-in server's pipeline echoes every request's `Origin` back as
+     * `Access-Control-Allow-Origin` (with credentials) whatever this handler writes. Withholding a CORS header
+     * here can therefore never stop a cross-origin read; refusing the request is the only control we hold.
+     *
+     * The webview and the external-browser fallback both load from this server and call it on the same
+     * origin, so a legitimate request carries no `Origin` or exactly `http://<Host>`.
+     */
+    override fun isAccessible(request: HttpRequest): Boolean =
+        super.isAccessible(request) && isOwnOrigin(request.headers())
 
     override fun isSupported(request: FullHttpRequest): Boolean {
         val uri = request.uri().substringBefore("?")
@@ -117,21 +148,31 @@ class SpekHttpRequestHandler : HttpRequestHandler() {
         if (specAtChangeMatch != null) {
             val topic = specAtChangeMatch.groupValues[1]
             val slug = specAtChangeMatch.groupValues[2]
-            return handleSpecAtChange(projectPath, topic, slug)?.let(ApiResult::Json)
-                ?: notFound("Spec version not found")
+            return specResult(projectPath, topic, slug)
         }
 
         // openspec/specs/:topic
         val specDetailMatch = Regex("""^openspec/specs/([^/]+)$""").find(apiPath)
         if (specDetailMatch != null) {
-            val topic = specDetailMatch.groupValues[1]
-            return handleSpecDetail(projectPath, topic)?.let(ApiResult::Json)
-                ?: notFound("Spec not found")
+            return specResult(projectPath, specDetailMatch.groupValues[1], null)
         }
 
-        // openspec/specs
+        // Anything else under the single-segment routes. QueryStringDecoder.path() has already decoded
+        // `%2F`, so `/specs/..%2F..%2Fx` arrives here as `openspec/specs/../../x`: a topic these routes
+        // cannot hold, refused as malformed — the same answer Express gives once it decodes the parameter.
+        if (apiPath.startsWith("openspec/specs/")) {
+            return badRequest("topic must be one relative spec path")
+        }
+
+        // openspec/specs — the list; `topic` selects a spec and `topic` + `at` its content at a change.
+        // Query selectors, because a nested topic holds `/`, which a path segment cannot carry unambiguously.
         if (apiPath == "openspec/specs") {
-            return ApiResult.Json(handleSpecs(projectPath))
+            val topics = params["topic"]
+            val ats = params["at"]
+            if (topics == null && ats == null) return ApiResult.Json(handleSpecs(projectPath))
+            if (topics?.size != 1) return badRequest("topic must be one relative spec path")
+            if (ats != null && ats.size != 1) return badRequest("at must be one change slug")
+            return specResult(projectPath, topics.single(), ats?.single())
         }
 
         // openspec/changes/:slug
@@ -224,6 +265,20 @@ class SpekHttpRequestHandler : HttpRequestHandler() {
     private fun handleSpecs(projectPath: String): String {
         val scan = OpenSpecScanner.scan(projectPath)
         return json.encodeToString(scan.specs)
+    }
+
+    /**
+     * One spec read for every route that names a spec. The topic and slug are checked before the read, so
+     * a malformed one is a 400 rather than an indistinguishable 404.
+     */
+    private fun specResult(projectPath: String, topic: String, slug: String?): ApiResult {
+        if (!SpecTopic.isSafeTopic(topic)) return badRequest("topic must be one relative spec path")
+        if (slug == null) {
+            return handleSpecDetail(projectPath, topic)?.let(ApiResult::Json) ?: notFound("Spec not found")
+        }
+        if (!SpecTopic.isSafeChangeSlug(slug)) return badRequest("at must be one change slug")
+        return handleSpecAtChange(projectPath, topic, slug)?.let(ApiResult::Json)
+            ?: notFound("Spec version not found")
     }
 
     private fun handleSpecDetail(projectPath: String, topic: String): String? {
@@ -340,7 +395,6 @@ class SpekHttpRequestHandler : HttpRequestHandler() {
         response.headers().apply {
             set(HttpHeaderNames.CONTENT_TYPE, contentType)
             set(HttpHeaderNames.CONTENT_LENGTH, bytes.size)
-            set(HttpHeaderNames.ACCESS_CONTROL_ALLOW_ORIGIN, "*")
             set(HttpHeaderNames.CACHE_CONTROL, "no-cache")
         }
         context.channel().writeAndFlush(response)
@@ -361,9 +415,6 @@ class SpekHttpRequestHandler : HttpRequestHandler() {
         response.headers().apply {
             set(HttpHeaderNames.CONTENT_TYPE, "application/json; charset=utf-8")
             set(HttpHeaderNames.CONTENT_LENGTH, bytes.size)
-            set(HttpHeaderNames.ACCESS_CONTROL_ALLOW_ORIGIN, "*")
-            set(HttpHeaderNames.ACCESS_CONTROL_ALLOW_METHODS, "GET, POST, OPTIONS")
-            set(HttpHeaderNames.ACCESS_CONTROL_ALLOW_HEADERS, "Content-Type")
         }
         context.channel().writeAndFlush(response)
         return true
@@ -384,7 +435,6 @@ class SpekHttpRequestHandler : HttpRequestHandler() {
         response.headers().apply {
             set(HttpHeaderNames.CONTENT_TYPE, "application/json; charset=utf-8")
             set(HttpHeaderNames.CONTENT_LENGTH, bytes.size)
-            set(HttpHeaderNames.ACCESS_CONTROL_ALLOW_ORIGIN, "*")
         }
         context.channel().writeAndFlush(response)
         return true

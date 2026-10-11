@@ -1,5 +1,32 @@
 # Changelog
 
+## 1.19.1
+
+**Security: spek's servers answer only spek's own pages.** ([#69](https://github.com/spekhq/spek/pull/69))
+
+- **Web: the API server is local-only.** While `npm run dev` ran, the API server listened on every network interface and let any web page read its responses, so another device on the same network, or any page open in your browser, could list directories on your machine and read OpenSpec content. It now listens on `127.0.0.1` only and refuses any request that is not from the app itself: another site, another port on `localhost`, or a host name pointed at your machine (DNS rebinding). The dev server on 5173 is loopback-only as well
+- **IntelliJ: the plugin's endpoints refuse other local pages.** The IDE already refused other sites, but a page served on another port of your machine could read the plugin's API, because the IDE's built-in server allows any local origin. Only the plugin's own pages (the tool window and the external-browser view) are served now
+- **Behaviour change**: the web app can no longer be opened from another machine (for example a phone on your LAN). `npm run dev` now stops with an error when port 5173 is taken, instead of moving to another port. One dev server can browse every worktree, so a second one is not needed
+
+## 1.19.0
+
+**Highlight: specs grouped into folders are visible.** OpenSpec accepts a `spec.md` at any depth under `openspec/specs/` — `specs/contracts/pagination/spec.md` is a valid capability — but spek only looked one level down, so a repository that groups its capabilities into folders showed nothing for them. Thanks to [@flatrick](https://github.com/flatrick) (Patrik) ([#61](https://github.com/spekhq/spek/pull/61))
+
+- **Specs are found at any depth**, in the main specs tree and in every change's delta specs, by OpenSpec's own rule: dot-entries are skipped, symlinked folders are not followed, and a linked `spec.md` counts only if it points inside the specs tree. A spec's name is its full path, e.g. `contracts/pagination`
+- **The Specs page is a folder tree with a filter**, and the VS Code sidebar and IntelliJ tool window nest the same way. In VS Code, a spec that also has specs under it lists them before its own headings
+- **The graph labels a nested spec by its last segment**, with the full path as its tooltip, and two specs with the same last segment open their own pages
+- **Security: a spec read can no longer reach outside the specs a scan lists.** The web server built the file path straight from the spec or change name in the URL, so a name carrying `../` (also as an encoded `%2F`) could read a file outside the repository. Every spec read, on every surface, now checks the name and serves only a spec the list would show
+- **Behaviour change**: a symlinked folder under `specs/` is no longer listed, and neither is a `spec.md` symlink pointing outside it, matching what OpenSpec itself validates and archives
+- *Internal:* `@spekjs/core` 1.14.0 adds the `@spekjs/core/spec-topic` subpath; `@spekjs/ui` 1.4.0 requires it
+
+## 1.18.1
+
+Three fixes, two of them to the GitHub Action.
+
+- **VS Code in a browser no longer opens a broken tab on every in-app click** ([#59](https://github.com/spekhq/spek/issues/59)). In code-server, GitHub Codespaces and vscode.dev, clicking the sidebar's Overview / Specs / Changes, a change card or a spec link also opened a new browser tab at a 404 address, on top of the navigation that did happen inside the panel. VS Code forwards every link click in a webview to the workbench to open, even one the page already handled; desktop VS Code silently refuses those addresses, which is why the bug never showed there. In-app links now stay in the panel, external links still open as before, and the spec page's table of contents scrolls smoothly instead of jumping. Thanks to [@Philogag](https://github.com/Philogag) for reporting
+- **The generated HTML snapshot survives content that looks like markup** ([#54](https://github.com/spekhq/spek/issues/54)). An artifact containing `</script>` ended the page's data early, so the viewer never started and the rest of the data showed up as page text; an artifact containing `<!--` followed by `<script>` stopped the viewer from starting too. Both built without an error. The embedded data and the page title are now escaped, and the build fails, naming the part, if the page it assembled would not read back as written. This affects the GitHub Action's output and the live demo. Thanks to [@pierreboissinot](https://github.com/pierreboissinot) (Pierre Boissinot) for reporting and proposing the fix
+- **The GitHub Action treats its inputs as text, never as shell commands** ([#56](https://github.com/spekhq/spek/issues/56)). `repo-path`, `output-path` and `title` were pasted into the action's shell scripts, so a title such as `My "draft" specs` broke the build's arguments, and a workflow passing in an outside value (a PR title, a branch name) could have that value run as a command. They are now passed as data, and an `output-path` containing a newline is refused. **Behaviour change**: a value that relied on the shell expanding it, such as `output-path: $HOME/x.html`, now arrives literally; `${{ }}` expressions in your own workflow are unaffected. Users of `spekhq/spek@v1` receive this with this release
+
 ## 1.18.0
 
 **Highlight: a keyword's casing is read the way OpenSpec reads it.** spek marked one casing rule across every keyword it highlights, and the keywords do not carry the same obligation. A scenario body is free text that no version of OpenSpec parses, so uppercase `WHEN` / `THEN` is a template convention — a spec written with `**Given**` / `**When**` / `**Then**` is perfectly valid and rendered with no highlighting at all. `SHALL` / `MUST` is the opposite: OpenSpec matches it case-sensitively and reports a requirement carrying no uppercase one. The rule is now decided per keyword group, against what OpenSpec actually does with each.

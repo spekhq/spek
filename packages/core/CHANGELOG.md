@@ -3,6 +3,39 @@
 `@spekjs/core` has its own version line, independent of the spek product releases tracked in the
 repository root `CHANGELOG.md`.
 
+## 1.14.0
+
+### Added
+
+- **`@spekjs/core/spec-topic`**, a browser-safe subpath for spec topics: `isSafeSpecTopic` / `isSafeChangeSlug`
+  (the name rule every read applies), `compareCodeUnits`, `specTopicLabel` (a topic's final segment),
+  `specRoute` (the app route, each segment encoded), and `buildSpecTree` / `pruneSpecTree` with
+  `SpecTreeNode` (the folder tree, ordered per segment). `isSafeSpecTopic` and `isSafeChangeSlug` are also
+  exported from the package root.
+- **`specNodeTopic(node)`** on `@spekjs/core/graph-node-id` and the package root: a spec node's topic, read
+  from its id. Use it rather than `node.label` to identify the spec a node stands for.
+
+### Changed
+
+- **Specs are discovered at any depth, so a topic may contain `/`.** `specs/contracts/pagination/spec.md` is
+  the topic `contracts/pagination`, in `SpecInfo.topic`, graph node ids (`spec:contracts/pagination`), search
+  results, history and change deltas alike. Discovery follows OpenSpec's own rule: dot-entries are skipped,
+  symlinked directories are not followed, a `spec.md` directly in the `specs/` root is ignored, and a linked
+  `spec.md` counts only if it resolves inside the specs root or its own folder. A consumer that builds a file
+  path or URL from a topic as a single component breaks on a nested repository — build it per segment
+  (`specRoute` does this for app routes). Flat repositories return the same topics as before.
+- **Two flat-repository differences follow from that rule:** a symlinked folder under `specs/` is no longer
+  listed, nor is a `spec.md` symlink pointing outside it, where 1.13.0 followed both; and specs are ordered by
+  UTF-16 code unit rather than `localeCompare`, matching the Kotlin implementation.
+
+### Security
+
+- **`readSpec` and `readSpecAtChange` read only a spec a scan would list.** 1.13.0 joined the topic and change
+  slug straight into a path, so a topic such as `../../outside/x` read a file outside the repository. Both now
+  return `null` for a topic or slug failing `isSafeSpecTopic` / `isSafeChangeSlug`, for a path through a
+  symlinked directory, and for a spelling that differs from the folder on disk (`AUTH` on a case-insensitive
+  filesystem).
+
 ## 1.13.0
 
 ### Changed

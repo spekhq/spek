@@ -24,6 +24,8 @@ import {
   shouldUsePolling,
   pollingInterval,
   withAuthoritativeChokidarEnv,
+  isSafeSpecTopic,
+  isSafeChangeSlug,
 } from "@spekjs/core";
 
 // --- File watcher 共享管理 ---
@@ -152,30 +154,54 @@ openspecRouter.get("/overview", async (req, res) => {
   });
 });
 
-openspecRouter.get("/specs", async (req, res) => {
-  const dir = req.query.dir as string;
-  const scan = await scanOpenSpec(dir);
-  res.json(scan.specs);
-});
-
-openspecRouter.get("/specs/:topic", async (req, res) => {
-  const dir = req.query.dir as string;
-  const result = await readSpec(dir, req.params.topic);
-  if (!result) {
-    res.status(404).json({ error: "Spec not found" });
+// One spec read for every route that names a spec. The topic is checked here, before the read, so a
+// malformed one is a 400 rather than an indistinguishable 404 — and the legacy path routes need it as much
+// as the query form: Express decodes `%2F` inside a parameter, so `/specs/..%2F..%2Fx` arrives as `../../x`.
+async function sendSpec(res: Response, dir: string, topic: unknown, slug: unknown): Promise<void> {
+  if (typeof topic !== "string" || !isSafeSpecTopic(topic)) {
+    res.status(400).json({ error: "topic must be one relative spec path" });
     return;
   }
-  res.json(result);
-});
-
-openspecRouter.get("/specs/:topic/at/:slug", (req, res) => {
-  const dir = req.query.dir as string;
-  const result = readSpecAtChange(dir, req.params.topic, req.params.slug);
+  if (slug === undefined) {
+    const result = await readSpec(dir, topic);
+    if (!result) {
+      res.status(404).json({ error: "Spec not found" });
+      return;
+    }
+    res.json(result);
+    return;
+  }
+  if (typeof slug !== "string" || !isSafeChangeSlug(slug)) {
+    res.status(400).json({ error: "at must be one change slug" });
+    return;
+  }
+  const result = readSpecAtChange(dir, topic, slug);
   if (!result) {
     res.status(404).json({ error: "Spec version not found" });
     return;
   }
   res.json(result);
+}
+
+// Without `topic` this is the list; `topic` selects a spec, and `topic` + `at` its content at a change.
+// Query selectors, because a nested topic holds `/`, which a path segment cannot carry unambiguously.
+openspecRouter.get("/specs", async (req, res) => {
+  const dir = req.query.dir as string;
+  const { topic, at } = req.query;
+  if (topic === undefined && at === undefined) {
+    const scan = await scanOpenSpec(dir);
+    res.json(scan.specs);
+    return;
+  }
+  await sendSpec(res, dir, topic, at);
+});
+
+openspecRouter.get("/specs/:topic", async (req, res) => {
+  await sendSpec(res, req.query.dir as string, req.params.topic, undefined);
+});
+
+openspecRouter.get("/specs/:topic/at/:slug", async (req, res) => {
+  await sendSpec(res, req.query.dir as string, req.params.topic, req.params.slug);
 });
 
 openspecRouter.get("/changes", async (req, res) => {

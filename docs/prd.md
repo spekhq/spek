@@ -58,7 +58,7 @@ change in parallel.
 {repo}/openspec/
 ├── config.yaml                     # repo default schema (e.g. schema: spec-driven)
 ├── specs/
-│   └── {topic}/spec.md             # BDD-format capability spec (WHEN / THEN / AND / MUST)
+│   └── {topic}/spec.md             # BDD-format capability spec (WHEN / THEN / AND / MUST); {topic} may nest
 └── changes/
     ├── archive/
     │   └── {YYYY-MM-DD-desc}/       # archived change
@@ -76,10 +76,13 @@ Key properties spek relies on:
   exists: every root `*.md` is an artifact, every root `.yaml` / `.yml` / `.json` is a `data` artifact,
   every root `.mmd` / `.mermaid` is a `diagram` artifact, and a non-empty `specs/` is one artifact,
   classified by kind (`markdown` / `tasks` / `data` / `diagram` / `specs`). A `data` artifact renders as
-  a syntax-highlighted code block; a `diagram` artifact renders as a drawn Mermaid diagram on the Web
-  build and as its source on the single-file builds. This is what lets **custom OpenSpec schemas**
-  render their own artifacts as tabs without spek knowing them in advance — including schemas whose
-  artifacts are not Markdown, such as `event-driven`'s `asyncapi.yaml`.
+  a syntax-highlighted code block; a `diagram` artifact renders as a drawn Mermaid diagram on the Web,
+  VS Code and IntelliJ builds and as its source in the single-file demo. This is what lets **custom
+  OpenSpec schemas** render their own artifacts as tabs without spek knowing them in advance — including
+  schemas whose artifacts are not Markdown, such as `event-driven`'s `asyncapi.yaml`.
+- **A spec topic is its directory path relative to `specs/`.**
+  `specs/contracts/pagination/spec.md` is topic `contracts/pagination`, distinct from a child `contracts/pagination/streaming-search` and from `guides/pagination`.
+  Discovery follows OpenSpec's own rule, so spek lists exactly the capabilities OpenSpec validates and archives; the same applies to a change's delta `specs/` tree.
 - **Schema-aware.** A change's schema is read from `.openspec.yaml` (`schema:`), falling back to
   `openspec/config.yaml`. The schema badge is hidden when a change matches its worktree's default.
 - **Default sort is file mtime (newest first)**, so an artifact being actively edited (e.g.
@@ -123,6 +126,13 @@ The frontend abstracts its transport behind an `ApiAdapter` interface, injected 
 Each non-Web host sets a global flag (`window.__vscodeApi`, `window.__spekIntellij`,
 `window.__DEMO_DATA__`) so the live-update layer picks the right refresh channel.
 
+The VS Code webview also keeps in-app link clicks to itself. VS Code's own host script forwards every
+link click in a webview to the workbench to open; desktop VS Code drops a route like `/changes`
+(its `vscode-webview://` address is not something the workbench opens), but a browser-hosted VS Code
+(code-server, Codespaces, vscode.dev) opened each one as a broken tab. So route links, relative links
+and modified clicks never leave the webview, while external links and markdown `#fragment` links are
+still handled by VS Code.
+
 ### 5.3 Web API endpoints
 
 All `openspec` routes accept a `dir` query param. `/changes`, `/overview`, `/graph`, `/watch` also
@@ -133,8 +143,10 @@ GET /api/fs/browse?path=...                       # directory browse (repo picke
 GET /api/fs/detect?path=...                        # detect an openspec/ dir
 GET /api/openspec/overview?dir=...&aggregate=      # overview stats
 GET /api/openspec/specs?dir=...                    # spec list
-GET /api/openspec/specs/:topic?dir=...             # single spec
-GET /api/openspec/specs/:topic/at/:slug?dir=...    # spec content at a change (diff)
+GET /api/openspec/specs?dir=...&topic=...          # single spec (full, possibly nested topic)
+GET /api/openspec/specs?dir=...&topic=...&at=...   # spec content at a change (diff)
+GET /api/openspec/specs/:topic?dir=...             # single spec (legacy single-segment route)
+GET /api/openspec/specs/:topic/at/:slug?dir=...    # spec content at a change (legacy route)
 GET /api/openspec/changes?dir=...&aggregate=       # change list
 GET /api/openspec/changes/:slug?dir=...&wt=        # single change (wt = source worktree)
 GET /api/openspec/graph?dir=...&aggregate=         # spec↔change graph data
@@ -217,6 +229,11 @@ Each maps to one or more specs under `openspec/specs/`; that directory is author
 - **Local-only file access.** The server only ever reads `.md` / `.yaml` files under an `openspec/`
   directory — no arbitrary file access. This is the load-bearing security property behind
   "nothing leaves your machine."
+- **Local-only access.** The web app's API server listens on the loopback address only and answers only
+  the app's own origin: a foreign `Host` (DNS rebinding), a foreign `Origin` (including another local port)
+  and a cross-site `Sec-Fetch-Site` are refused, and no CORS access is granted. The IntelliJ handler
+  refuses any origin but the built-in server's own. Another device on the network, or a web page open in
+  the user's browser, cannot use either server to list directories or read OpenSpec content.
 - **English is the single source of truth** for everything committed to the repo — code, comments,
   OpenSpec artifacts, `docs/`, community files. The maintainer may draft in Traditional Chinese and
   have an agent finalize the committed English; readers who want another language are served by

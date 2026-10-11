@@ -19,17 +19,8 @@ object OpenSpecScanner {
         // repo 預設 schema 只讀一次，供本次掃描每個 change 共用（避免每個 change 重讀 config.yaml）
         val defaultSchema = readRepoSchema(projectPath)
 
-        val specs = safeListDirs(specsDir)
-            .filter { File(it, "spec.md").exists() }
-            .map { dir ->
-                SpecInfo(
-                    topic = dir.name,
-                    path = File(dir, "spec.md").absolutePath,
-                    historyCount = 0,
-                )
-            }
-            .sortedBy { it.topic }
-            .toMutableList()
+        val specs = SpecFiles.discover(specsDir)
+            .map { SpecInfo(topic = it.topic, path = it.file.absolutePath, historyCount = 0) }
 
         val activeChanges = safeListDirs(changesDir)
             .filter { it.name != "archive" }
@@ -40,19 +31,20 @@ object OpenSpecScanner {
             .map { scanChangeDir(it, "archived", defaultSchema) }
             .sortedByDescending { it.timestamp ?: it.date ?: "" }
 
-        // 計算每個 spec 被多少 changes 引用
+        // How many changes reference each spec. Each change's delta tree is walked once, not once per spec.
         val allChangeDirs = safeListDirs(changesDir).filter { it.name != "archive" } +
             safeListDirs(archiveDir)
+        val historyCounts = allChangeDirs
+            .flatMap { dir -> SpecFiles.discover(File(dir, "specs")).map { it.topic } }
+            .groupingBy { it }
+            .eachCount()
 
-        for (i in specs.indices) {
-            val topic = specs[i].topic
-            val count = allChangeDirs.count { dir ->
-                File(dir, "specs/$topic/spec.md").exists()
-            }
-            specs[i] = specs[i].copy(historyCount = count)
-        }
-
-        return ScanResult(specs, activeChanges, archivedChanges, defaultSchema)
+        return ScanResult(
+            specs.map { it.copy(historyCount = historyCounts[it.topic] ?: 0) },
+            activeChanges,
+            archivedChanges,
+            defaultSchema,
+        )
     }
 
     private fun scanChangeDir(dir: File, status: String, defaultSchema: String?): ChangeInfo {

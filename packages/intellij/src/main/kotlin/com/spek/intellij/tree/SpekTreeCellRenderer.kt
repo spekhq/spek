@@ -18,6 +18,8 @@ class SpekTreeCellRenderer : DefaultTreeCellRenderer() {
         hasFocus: Boolean,
     ): Component {
         super.getTreeCellRendererComponent(tree, value, sel, expanded, leaf, row, hasFocus)
+        // One renderer paints every row, so a tooltip set for one row would otherwise stay on the next.
+        toolTipText = null
 
         val node = (value as? DefaultMutableTreeNode)?.userObject as? SpekTreeNode ?: return this
 
@@ -26,9 +28,10 @@ class SpekTreeCellRenderer : DefaultTreeCellRenderer() {
                 text = "Specs (${node.specs.size})"
                 icon = AllIcons.Nodes.Folder
             }
-            is SpekTreeNode.SpecItem -> {
-                text = node.spec.topic
-                icon = AllIcons.FileTypes.Text
+            is SpekTreeNode.SpecFolder -> {
+                text = node.name
+                toolTipText = node.path
+                icon = if (node.spec != null) AllIcons.FileTypes.Text else AllIcons.Nodes.Folder
             }
             is SpekTreeNode.ChangesRoot -> {
                 val total = node.activeChanges.size + node.archivedChanges.size

@@ -15,7 +15,8 @@ import { select } from "d3-selection";
 import "d3-transition";
 import { zoom, zoomIdentity } from "d3-zoom";
 import { useEffect, useRef } from "react";
-import { changeNodeSlug } from "@spekjs/core/graph-node-id";
+import { changeNodeSlug, specNodeTopic } from "@spekjs/core/graph-node-id";
+import { nodeDisplayLabel } from "./nodeText.js";
 import { CSS_VARS, resolveColor } from "./theme.js";
 
 interface SimNode extends SimulationNodeDatum, GraphNode {
@@ -52,13 +53,32 @@ function truncateLabel(label: string, max = 25): string {
   return label.length > max ? label.slice(0, max) + "..." : label;
 }
 
-function nodeRadius(node: SimNode): number {
+function nodeRadius(node: GraphNode): number {
   if (node.type === "spec") {
     const count = node.historyCount || 0;
     return Math.min(45, Math.max(20, 20 + count * 5));
   }
   const count = node.specCount || 1;
   return Math.min(40, Math.max(18, 14 + count * 6));
+}
+
+/** A label's baseline sits this far below its node's centre, past the node's radius. */
+const LABEL_OFFSET = 16;
+/** How far a label reaches below its baseline: descenders plus the halo. */
+const LABEL_DESCENT = 5;
+
+/**
+ * The collision radius, sized so the collide force keeps every label clear of other nodes and other
+ * labels as well as keeping nodes apart.
+ *
+ * Two nodes are held `collideRadius(a) + collideRadius(b)` apart, so each radius only needs its share
+ * of the gap: half its label's width sideways, and below, enough that the pair together clears a
+ * label hanging `r + 21` under one of them. A circle reaching the label's bottom corners would hold
+ * that gap twice over and spread the graph past legibility. It still covers a change node's corners,
+ * at `hypot(r, 0.7r)`. The test sweeps every direction to keep both claims true.
+ */
+export function collideRadius(node: GraphNode, labelWidth: number): number {
+  return Math.hypot(labelWidth / 2, nodeRadius(node) + 10) + 4;
 }
 
 /**
@@ -112,7 +132,9 @@ export function SpecGraph({
     sel.attr("width", width).attr("height", height);
 
     // 準備資料（deep copy 避免 D3 mutation 衝突）
-    const nodes: SimNode[] = data.nodes.map((n) => ({ ...n, x: 0, y: 0 }) as SimNode);
+    // No x / y: d3 seeds only nodes without a position, spreading them on a spiral. Starting every
+    // node on one point left the layout to random jiggle, a different tangle on each load.
+    const nodes: SimNode[] = data.nodes.map((n) => ({ ...n }) as SimNode);
     const nodeMap = new Map(nodes.map((n) => [n.id, n]));
     const links: SimLink[] = data.edges
       .filter((e) => nodeMap.has(e.source) && nodeMap.has(e.target))
@@ -196,9 +218,9 @@ export function SpecGraph({
       .selectAll<SVGTextElement, SimNode>("text")
       .data(nodes)
       .join("text")
-      .text((d) => truncateLabel(d.label))
+      .text((d) => truncateLabel(nodeDisplayLabel(d)))
       .attr("text-anchor", "middle")
-      .attr("dy", (d) => nodeRadius(d) + 16)
+      .attr("dy", (d) => nodeRadius(d) + LABEL_OFFSET)
       .attr("fill", labelColor)
       .attr("font-size", 12)
       // A halo of the mounted surface's colour, drawn behind the glyphs (`paint-order`), so a label keeps its own
@@ -214,6 +236,12 @@ export function SpecGraph({
       .attr("stroke-width", 3)
       .attr("stroke-linejoin", "round")
       .attr("pointer-events", "none");
+
+    // A spec node's label is one segment; its full topic is the tooltip.
+    nodeSel
+      .filter((d) => d.type === "spec")
+      .append("title")
+      .text((d) => specNodeTopic(d));
 
     // 聚合圖：非主 worktree 的 change 節點以 <title> 標示來源 worktree / branch
     nodeSel
@@ -251,25 +279,38 @@ export function SpecGraph({
     nodeSel.on("click", (_event, d) => {
       if (dragged) return;
       if (d.type === "spec") {
-        onSelectSpecRef.current?.(d.label);
+        // From the id, never the label: two same-named specs in different folders share a label.
+        onSelectSpecRef.current?.(specNodeTopic(d));
       } else {
         onSelectChangeRef.current?.(changeNodeSlug(d), d.source?.key);
       }
     });
 
+    // Measured as rendered, so the layout makes room for the host's font rather than a guess at it.
+    const labelWidth = new Map<string, number>();
+    labelSel.each(function (d) {
+      labelWidth.set(d.id, this.getComputedTextLength());
+    });
+    const radius = (d: SimNode) => collideRadius(d, labelWidth.get(d.id) ?? 0);
+    const aspect = width > 0 && height > 0 ? height / width : 1;
+
     // Force simulation
     const simulation = forceSimulation(nodes)
       .force(
         "link",
+        // Rest length is where the collide force lets two nodes sit; a shorter one pulls against it.
         forceLink<SimNode, SimLink>(links)
           .id((d) => d.id)
-          .distance(80),
+          .distance((l) => radius(l.source) + radius(l.target)),
       )
       .force("charge", forceManyBody().strength(-120))
       .force("center", forceCenter(width / 2, height / 2))
-      .force("x", forceX(width / 2).strength(0.05))
+      // A weaker sideways pull on a wide container spreads the layout to the container's shape
+      // rather than a disc, which the fit would scale down to the container's height. Squared,
+      // because a linear factor still left the layout well short of the container's width.
+      .force("x", forceX(width / 2).strength(0.05 * aspect ** 2))
       .force("y", forceY(height / 2).strength(0.05))
-      .force("collide", forceCollide<SimNode>().radius((d) => nodeRadius(d) + 8))
+      .force("collide", forceCollide<SimNode>().radius(radius))
       .on("tick", () => {
         linkSel
           .attr("x1", (d) => d.source.x)
@@ -316,18 +357,22 @@ export function SpecGraph({
       let minY = Infinity;
       let maxX = -Infinity;
       let maxY = -Infinity;
+      // Bounds take in the labels: they hang below their node and are often wider than it.
       for (const n of nodes) {
-        const r = nodeRadius(n) + 20;
-        if (n.x - r < minX) minX = n.x - r;
+        const r = nodeRadius(n);
+        const halfWidth = Math.max(r, (labelWidth.get(n.id) ?? 0) / 2);
+        const bottom = r + LABEL_OFFSET + LABEL_DESCENT;
+        if (n.x - halfWidth < minX) minX = n.x - halfWidth;
         if (n.y - r < minY) minY = n.y - r;
-        if (n.x + r > maxX) maxX = n.x + r;
-        if (n.y + r > maxY) maxY = n.y + r;
+        if (n.x + halfWidth > maxX) maxX = n.x + halfWidth;
+        if (n.y + bottom > maxY) maxY = n.y + bottom;
       }
       const bw = maxX - minX;
       const bh = maxY - minY;
       if (bw <= 0 || bh <= 0) return;
 
-      const padding = 60;
+      // The bounds above are exact, labels included, so this is margin only.
+      const padding = 32;
       const scale = Math.min((width - padding * 2) / bw, (height - padding * 2) / bh, 1.5);
       const tx = width / 2 - (minX + bw / 2) * scale;
       const ty = height / 2 - (minY + bh / 2) * scale;

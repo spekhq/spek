@@ -49,7 +49,7 @@ npm run build:intellij # Build IntelliJ webview assets
 npm run build:demo     # Build the standalone demo (docs/demo.html)
 npm run type-check     # Type-check every package + scripts/ (test files included)
 npm run lint           # ESLint
-npm test               # Run the test suites (core + ui + web + scripts/)
+npm test               # Run the test suites (core + ui + web + vscode + scripts/)
 ```
 
 Packaging the VS Code extension and IntelliJ plugin is documented in

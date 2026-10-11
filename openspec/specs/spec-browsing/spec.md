@@ -4,28 +4,30 @@ Provide the spec list and the single-spec reading experience, including its tabl
 
 ## Requirements
 ### Requirement: Spec list with filtering
-The system SHALL display all specs sorted alphabetically with history count metadata. A filter input SHALL allow instant client-side filtering by spec topic name. Each spec item SHALL display the topic name and the number of related changes (history count) as secondary information.
+The system SHALL display all specs in a folder tree with history count metadata, with siblings ordered by comparing one path segment at a time by UTF-16 code unit, matching the VS Code and IntelliJ trees. A filter input SHALL allow instant client-side filtering by any part of the full topic path, retaining ancestor folders needed to reach matching specs. Each spec item SHALL show its topic's final path segment and the number of related changes as secondary information; its full topic path SHALL remain available to distinguish duplicate names.
 
 #### Scenario: Display all specs
 - **WHEN** user navigates to the SpecList page
-- **THEN** all spec topics are listed alphabetically, each showing the topic name and history change count
+- **THEN** all spec topics appear in a folder tree, ordered per segment by code unit within each folder, with each spec's history count
 
 #### Scenario: Filter specs
 - **WHEN** user types in the filter input
-- **THEN** the list is filtered in real-time to show only specs whose topic name contains the search text (case-insensitive)
+- **THEN** the tree shows only specs whose full topic path contains the text (case-insensitive), together with their ancestor folders
 
 #### Scenario: Spec with no history
 - **WHEN** a spec has zero related changes
 - **THEN** the history count is not displayed (or shows "No changes")
 
+#### Scenario: Parent spec with child specs
+- **WHEN** a folder has its own `spec.md` and contains child spec folders
+- **THEN** its spec remains openable and its child topics can be expanded
+
 ### Requirement: Spec detail display
-The system SHALL display the full content of a spec when the user navigates to its detail page. The
-content SHALL be rendered as Markdown, with its requirements and scenarios folded according to the
-spec section folding capability, and SHALL offer the controls to expand and collapse every section.
+The system SHALL display the full content of a spec when the user navigates to its detail page by full topic path. The content SHALL be rendered as Markdown, with its requirements and scenarios folded according to the spec section folding capability, and SHALL offer the controls to expand and collapse every section.
 
 #### Scenario: View spec content
-- **WHEN** user navigates to `/specs/:topic`
-- **THEN** system displays the spec topic as title and the full spec.md content, rendered as Markdown
+- **WHEN** user navigates to `/specs/contracts/pagination`
+- **THEN** system displays topic `contracts/pagination` as the title and its full `spec.md` content as rendered Markdown
 
 #### Scenario: Requirements and scenarios are folded
 - **WHEN** the rendered spec contains requirement and scenario headings

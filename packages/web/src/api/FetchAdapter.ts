@@ -70,12 +70,15 @@ export class FetchAdapter implements ApiAdapter {
     return fetchJson(`${this.baseUrl}/openspec/specs?${this.q()}`);
   }
 
+  // Query selectors, flat topic or nested: a nested topic's `/` has no unambiguous place in a path.
   getSpec(topic: string): Promise<SpecDetail> {
-    return fetchJson(`${this.baseUrl}/openspec/specs/${encodeURIComponent(topic)}?${this.q()}`);
+    return fetchJson(`${this.baseUrl}/openspec/specs?${this.q()}&topic=${encodeURIComponent(topic)}`);
   }
 
   getSpecAtChange(topic: string, slug: string): Promise<SpecVersionContent> {
-    return fetchJson(`${this.baseUrl}/openspec/specs/${encodeURIComponent(topic)}/at/${encodeURIComponent(slug)}?${this.q()}`);
+    return fetchJson(
+      `${this.baseUrl}/openspec/specs?${this.q()}&topic=${encodeURIComponent(topic)}&at=${encodeURIComponent(slug)}`,
+    );
   }
 
   getChanges(aggregate?: boolean, includeJj?: boolean): Promise<ChangesData> {

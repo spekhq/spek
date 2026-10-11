@@ -1,17 +1,6 @@
-import express from "express";
-import cors from "cors";
-import { filesystemRouter } from "./routes/filesystem.js";
-import { openspecRouter } from "./routes/openspec.js";
+import { startServer } from "./app.js";
+import { API_HOST } from "./address.js";
 
-const app = express();
-const PORT = 3001;
-
-app.use(cors());
-app.use(express.json());
-
-app.use("/api/fs", filesystemRouter);
-app.use("/api/openspec", openspecRouter);
-
-app.listen(PORT, () => {
-  console.log(`[spek] API server running on http://localhost:${PORT}`);
-});
+const server = await startServer();
+const { port } = server.address() as import("node:net").AddressInfo;
+console.log(`[spek] API server running on http://${API_HOST}:${port} (local only)`);

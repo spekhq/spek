@@ -7,11 +7,13 @@ import {
   specHeadingLabel,
 } from "@spekjs/core";
 import type { SpecInfo, ChangeInfo, Heading } from "@spekjs/core";
+import { buildSpecTree, specRoute, type SpecTreeNode } from "@spekjs/core/spec-topic";
+import { headingRoute, specFolderChildren } from "./spec-tree";
 import { formatTreeItemDescription } from "./lifecycle";
 
 // --- Specs TreeView ---
 
-type SpecsTreeNode = SpecTreeItem | SpecHeadingItem;
+type SpecsTreeNode = SpecFolderItem | SpecHeadingItem;
 
 export class SpecsTreeProvider implements vscode.TreeDataProvider<SpecsTreeNode> {
   private _onDidChangeTreeData = new vscode.EventEmitter<void>();
@@ -30,15 +32,11 @@ export class SpecsTreeProvider implements vscode.TreeDataProvider<SpecsTreeNode>
   }
 
   async getChildren(element?: SpecsTreeNode): Promise<SpecsTreeNode[]> {
-    if (element instanceof SpecTreeItem) {
-      try {
-        const detail = await readSpec(this.workspacePath, element.topic);
-        if (!detail) return [];
-        const headings = extractHeadings(detail.content);
-        return headings.map((h) => new SpecHeadingItem(element.topic, h));
-      } catch {
-        return [];
-      }
+    if (element instanceof SpecFolderItem) {
+      const headings = element.node.spec ? await this.readHeadings(element.node.path) : [];
+      return specFolderChildren(element.node, headings).map((child) =>
+        child.kind === "folder" ? new SpecFolderItem(child.node) : new SpecHeadingItem(child.topic, child.heading),
+      );
     }
 
     if (element instanceof SpecHeadingItem) {
@@ -47,29 +45,36 @@ export class SpecsTreeProvider implements vscode.TreeDataProvider<SpecsTreeNode>
 
     try {
       const scan = await scanOpenSpec(this.workspacePath);
-      return scan.specs
-        .sort((a, b) => a.topic.localeCompare(b.topic))
-        .map((spec) => new SpecTreeItem(spec));
+      return buildSpecTree(scan.specs).map((node) => new SpecFolderItem(node));
+    } catch {
+      return [];
+    }
+  }
+
+  private async readHeadings(topic: string): Promise<Heading[]> {
+    try {
+      const detail = await readSpec(this.workspacePath, topic);
+      return detail ? extractHeadings(detail.content) : [];
     } catch {
       return [];
     }
   }
 }
 
-class SpecTreeItem extends vscode.TreeItem {
-  readonly topic: string;
-
-  constructor(spec: SpecInfo) {
-    super(spec.topic, vscode.TreeItemCollapsibleState.Collapsed);
-    this.topic = spec.topic;
-    this.tooltip = spec.topic;
-    this.iconPath = new vscode.ThemeIcon("file-text");
-    // 點擊 spec 本體仍開啟完整 spec 頁面；展開 chevron 會列出 heading 子節點
-    this.command = {
-      command: "spek.navigateTo",
-      title: "Open Spec",
-      arguments: [`/specs/${spec.topic}`],
-    };
+/** A topic folder. With its own spec it opens that spec; without one it only groups. */
+class SpecFolderItem extends vscode.TreeItem {
+  constructor(readonly node: SpecTreeNode<SpecInfo>) {
+    super(node.name, vscode.TreeItemCollapsibleState.Collapsed);
+    this.tooltip = node.path;
+    this.iconPath = new vscode.ThemeIcon(node.spec ? "file-text" : "folder");
+    // Clicking a spec still opens the full spec page; expanding it lists child topics and headings.
+    if (node.spec) {
+      this.command = {
+        command: "spek.navigateTo",
+        title: "Open Spec",
+        arguments: [specRoute(node.path)],
+      };
+    }
   }
 }
 
@@ -90,7 +95,7 @@ class SpecHeadingItem extends vscode.TreeItem {
     this.command = {
       command: "spek.navigateTo",
       title: "Open Heading",
-      arguments: [`/specs/${topic}#${heading.slug}`],
+      arguments: [headingRoute(topic, heading)],
     };
   }
 }
@@ -179,10 +184,10 @@ class ChangeTreeItem extends vscode.TreeItem {
       tooltipLines.push(`${kind}: ${change.source.branch ?? change.source.path}`);
     }
     if (change.isCurrent) {
-      tooltipLines.push("目前 jj working copy (@) 正在編輯這個 change");
+      tooltipLines.push("The jj working copy (@) is currently editing this change");
     }
     if (change.conflictsWith) {
-      tooltipLines.push(`此版本與 ${change.conflictsWith} 的內容分歧（conflicts）`);
+      tooltipLines.push(`This jj workspace's copy diverges in content from ${change.conflictsWith}`);
     }
     this.tooltip = tooltipLines.join("\n");
 

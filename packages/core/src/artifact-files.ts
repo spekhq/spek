@@ -1,5 +1,6 @@
 import fs from "node:fs";
 import path from "node:path";
+import { discoverSpecFiles, hasSpecFiles } from "./spec-files.js";
 
 /**
  * The filesystem view of one change directory: which files are artifacts, their kinds, their names,
@@ -86,33 +87,18 @@ export function rootArtifacts(changePath: string): { file: string; kind: RootKin
 }
 
 /**
- * The specs/ delta tree as a { topic, file } list, sorted by topic. It reads directory entries and tests
- * for each spec.md. It does not read content. hasSpecsTree, specsMtime, and the spec content read in
- * discoverArtifacts all derive from it, so the tree walk is written one time.
+ * The specs/ delta tree as a { topic, file } list, at any depth, sorted by topic in code-unit order.
+ * It reads directory entries only. hasSpecsTree, specsMtime, and the spec content read in
+ * discoverArtifacts all derive from the one walker in spec-files.ts.
  */
 export function listSpecFiles(changePath: string): { topic: string; file: string }[] {
-  const specsDir = path.join(changePath, "specs");
-  if (!fs.existsSync(specsDir) || !fs.statSync(specsDir).isDirectory()) return [];
-  const out: { topic: string; file: string }[] = [];
-  for (const topic of fs.readdirSync(specsDir).filter((n) => !n.startsWith("."))) {
-    const file = path.join(specsDir, topic, "spec.md");
-    if (fs.existsSync(file)) out.push({ topic, file });
-  }
-  return out.sort((a, b) => a.topic.localeCompare(b.topic));
+  return discoverSpecFiles(path.join(changePath, "specs"));
 }
 
-/** True if specs/ holds at least one spec.md. It reads no content and returns on the first hit. This is
- *  the changes-list hot path (countArtifacts, called per change during a scan). So it does not build the
- *  full listSpecFiles list only to ask `.length > 0`. It walks the same specs/<topic>/spec.md shape as
- *  listSpecFiles. Keep the two in step. */
+/** True if specs/ holds at least one spec. This is the changes-list hot path (countArtifacts, called
+ *  per change during a scan), so it stops at the first hit rather than building the full list. */
 function hasSpecsTree(changePath: string): boolean {
-  const specsDir = path.join(changePath, "specs");
-  if (!fs.existsSync(specsDir) || !fs.statSync(specsDir).isDirectory()) return false;
-  for (const topic of fs.readdirSync(specsDir)) {
-    if (topic.startsWith(".")) continue;
-    if (fs.existsSync(path.join(specsDir, topic, "spec.md"))) return true;
-  }
-  return false;
+  return hasSpecFiles(path.join(changePath, "specs"));
 }
 
 /** The sort time of the specs artifact: the newest mtime of every spec.md file (0 if none). */

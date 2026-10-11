@@ -22,15 +22,11 @@ object SearchService {
         val base = File(projectPath, "openspec")
         val documents = mutableListOf<SearchRule.Document>()
 
-        val specsDir = File(base, "specs")
-        for (topicDir in entries(specsDir)) {
-            if (!topicDir.isDirectory) continue
-            val specFile = File(topicDir, "spec.md")
-            if (!specFile.exists()) continue
+        for ((topic, specFile) in SpecFiles.discover(File(base, "specs"))) {
             documents.add(
                 SearchRule.Document(
                     type = "spec",
-                    name = topicDir.name,
+                    name = topic,
                     file = "spec.md",
                     text = specFile.readText(),
                 )

@@ -86,6 +86,7 @@ temporary workflow asserting the outputs, then removed: on the PR branch with `u
 packages/
 ├── core/       # @spekjs/core — pure logic (scanner.ts, tasks.ts, artifact-files.ts, artifact-discovery.ts, schema-order.ts, schemas.ts,
 │            #   search.ts=the search rule, search-documents.ts=its Node corpus,
+│            #   spec-files.ts=nested spec discovery, spec-topic.ts=topic rule + tree,
 │            #   schema-flow.ts, openspec-cli.ts, git-cache.ts, types.ts)
 ├── ui/         # @spekjs/ui — visual components (SpecGraph.tsx, timeline/*, theme.ts=color contract, styles.css)
 ├── web/        # @spekjs/web — server/ (Express API) + src/ (React SPA + API adapters)
@@ -108,7 +109,7 @@ npm run build:demo       # standalone demo (docs/demo.html; needs NODE_ENV=produ
 npm run build:intellij   # IntelliJ webview assets
 npm run type-check       # type-check core + ui + web + vscode + scripts/ (tests included)
 npm run lint             # ESLint over every package's src, web's server, and scripts/
-npm test                 # core + ui + web + scripts/ tests
+npm test                 # core + ui + web + vscode + scripts/ tests
 ```
 
 **CI runs exactly these scripts** (`.github/workflows/ci.yml`, on `pull_request` + `push:[master]`), plus
@@ -194,6 +195,21 @@ behavior lives in `openspec/specs/`; the key entry points:
   source the only rendering a diagram file could ever get. `DIAGRAM_EXTENSIONS` sits beside `DATA_EXTENSIONS` so every
   watcher derives its set from one source. Both kinds keep their extension in the title and share `rootArtifacts`'
   second bucket, so `flow.md` keeps the id `flow` and `flow.mmd` becomes `flow-2`
+
+- **Nested spec topics**: a topic is the `/`-joined directory path relative to a `specs/` root
+  (`contracts/pagination/streaming-search`), on every OS, for main specs and change deltas alike. `discoverSpecFiles`
+  (`spec-files.ts`; Kotlin `SpecFiles.kt`) states **OpenSpec's own discovery rule** — skip dot-entries, never follow a
+  symlinked directory, ignore a `spec.md` in the `specs/` root, accept a symlinked `spec.md` only if it resolves inside
+  the specs root or its own capability dir. One deliberate divergence: where OpenSpec *throws* (an escaping link, an
+  unreadable dir) spek omits that entry and keeps scanning — a viewer blanking the whole repo over one entry is worse
+  than one missing spec; don't "fix" it back to a throw. **A spec is readable only if discovery would list it**:
+  `resolveSpecFile` re-applies the rule to the one path (each segment spelled as its directory lists it — a case-insensitive filesystem would otherwise resolve `AUTH` — then lstat), and `isSafeSpecTopic` / `isSafeChangeSlug`
+  (browser-safe `@spekjs/core/spec-topic` subpath; Kotlin `SpecTopic.kt`, `\A`/`\z`-anchored) guard **every** read,
+  legacy single-segment routes included, since Express decodes `%2F` inside a path parameter. Flat lists sort by
+  `compareCodeUnits` on the full topic; trees (`buildSpecTree` / `pruneSpecTree`) sort **per segment**, or `a-b` lands
+  between `a` and `a/c`. A displayed label is the final segment (`specTopicLabel`) and **no action reads its target off a
+  label** — the graph navigates via `specNodeTopic(node)`, which reads the `spec:<topic>` id, since two `streaming-search` nodes share a label. Nested
+  *changes* are out of scope: OpenSpec rejects them, so a slug stays one directory name
 - `readSpec` / `readSpecAtChange`, `buildGraphData` / `buildGraphDataAggregated` (aggregated node ids
   `change:<wtKey>:<slug>` avoid collisions), `listWorktrees`, `parseTasks`
 - **jj workspace support (EXPERIMENTAL)**: `listJjWorkspaces(dir)` (`jj workspace list`),
@@ -411,8 +427,10 @@ GET /api/fs/browse?path=...                        # directory browse
 GET /api/fs/detect?path=...                         # detect openspec/
 GET /api/openspec/overview?dir=...&aggregate=       # overview stats
 GET /api/openspec/specs?dir=...                     # spec list
-GET /api/openspec/specs/:topic?dir=...              # single spec
-GET /api/openspec/specs/:topic/at/:slug?dir=...     # spec at a change (diff)
+GET /api/openspec/specs?dir=...&topic=...           # single spec (full topic path, may be nested)
+GET /api/openspec/specs?dir=...&topic=...&at=...    # spec at a change (diff)
+GET /api/openspec/specs/:topic?dir=...              # legacy single-segment route, same topic validation
+GET /api/openspec/specs/:topic/at/:slug?dir=...     # legacy single-segment route, same topic validation
 GET /api/openspec/changes?dir=...&aggregate=        # changes list
 GET /api/openspec/changes/:slug?dir=...&wt=         # single change
 GET /api/openspec/graph?dir=...&aggregate=          # spec-change graph
@@ -427,6 +445,19 @@ GET /api/openspec/search?dir=...&q=...              # full-text search
 - commands: `spek.open` / `spek.search` / `spek.navigateTo` (the last accepts a route with a `#hash`)
 - activation: `workspaceContains:openspec/config.yaml`; the Webview loads the IIFE-bundled React app; the extension host calls `@spekjs/core` directly
 - Sidebar Specs TreeView: each spec expands into its h2/h3 headings; clicking one jumps to the matching webview anchor
+- **In-app link clicks never reach the VS Code host** (issue #59). VS Code's webview host script listens for `click`
+  on the webview's `window` (bubble phase) and posts *every* `<a href>` to the workbench to open, without reading
+  `defaultPrevented` — so a React Router `<Link>` that already navigated is forwarded all the same. Desktop hid this:
+  the webview is `vscode-webview://`, a scheme the workbench refuses to open. A browser-hosted VS Code (code-server,
+  Codespaces, vscode.dev) serves it from `https://` and opened a 404 tab per sidebar click. `main.webview.tsx` installs
+  a bubble-phase `document` listener — after React's root listener, before VS Code's — and the rule
+  (`utils/webviewLinkGuard.ts`) blocks (`preventDefault` + `stopPropagation`) every link resolving to the webview's
+  own protocol + host, except a bare `#fragment` the app did not handle, which is left to VS Code's own scroll.
+  Protocol + host, **not `URL.origin`**: under `vscode-webview:` the origin is `"null"`, so an origin check calls
+  every desktop link external. Only the VS Code entry installs it — a Ctrl-click opening a tab is correct in the Web
+  app. **Only a browser-hosted VS Code reproduces this class**, so verify link behaviour there (a Codespace with the
+  packaged `.vsix`), not only in desktop VS Code where the bug is invisible. If VS Code ever moves its listener to
+  `document` or the capture phase, the guard silently stops working
 - **Both webview bundles are build artifacts and neither is in version control** — `packages/vscode/webview/` and
   IntelliJ's `src/main/resources/webview/` are gitignored, and each publish workflow builds its own before packaging
   (`vscode-publish.yml` → `npm run build:webview`; `intellij-publish.yml` → `npm run build:intellij`). So **a webview
@@ -466,7 +497,7 @@ GET /api/openspec/search?dir=...&q=...              # full-text search
     Platform Gradle Plugin is pinned at **2.9.0**: 2.11.0+ needs Gradle 8.13+, 2.14.0+ needs Gradle 9, and the wrapper
     is 8.11.1 — 2.9.0 is also the version that added the `intellijIdea(...)` helper the 2026.x target needs.
 
-**Frontend routes**: `/` (SelectRepo, web only) → `/dashboard` → `/specs` → `/specs/:topic` → `/changes` → `/changes/:slug` → `/graph` → `/schemas` → `/schemas/:name`
+**Frontend routes**: `/` (SelectRepo, web only) → `/dashboard` → `/specs` → `/specs/*` (full topic path, each segment encoded via `specRoute`) → `/changes` → `/changes/:slug` → `/graph` → `/schemas` → `/schemas/:name`
 
 ## Key Design Decisions
 
@@ -482,6 +513,31 @@ GET /api/openspec/search?dir=...&q=...              # full-text search
   before it reaches the CLI *or* the filesystem, and the same rule is stated in Kotlin with `\A`/`\z`
   anchors (Java's `$` also matches before a trailing newline, so `^…$` would accept `"spec-driven\n"`
   on that side only). The property is unchanged; only the mechanism differs for that one path
+- **Who may ask is a second, separate property: only the local app** (`web-api-access`). Containment limits
+  *what* a request can read; `/api/fs/browse` still lists any directory (the repo picker needs it), so the
+  server must also refuse *who* should not ask. The Express API listens on `127.0.0.1:3001` only, and a
+  middleware first in the chain (`server/guard.ts`) refuses with 403 a `Host` that is not a loopback name plus
+  the bound port (DNS rebinding), an `Origin` other than the app's dev origin (`http://{localhost,127.0.0.1,[::1]}:5173`,
+  so another local port is refused too), and a `Sec-Fetch-Site` other than `same-origin` / `none` (cross-site
+  `no-cors` requests carry no `Origin`). There is **no CORS** — the SPA reaches the API through Vite's
+  same-origin `/api` proxy — and **refusing is the control, not withholding headers**: a refused request must
+  never run, because even `GET` routes spawn `git` / the `openspec` CLI and start watchers in the caller's
+  `dir`. Addresses live in one module (`server/address.ts`) read by both the server and `vite.config.ts`.
+  Three things that are not the obvious shape:
+  - **The proxy rewrites `Host`** (`changeOrigin`), so the API's `Host` rule sees nothing of a proxied request.
+    Network exposure through the dev server is prevented only by Vite listening on loopback — which is why
+    `server.host` is stated in `vite.config.ts` rather than left to Vite's default — and rebinding against
+    it by Vite's own `allowedHosts`.
+  - **`strictPort` is load-bearing**: the API admits exactly one app origin, so a Vite that moved to 5174
+    would have its `POST /resync` refused — silently, since the refresh invariant swallows resync failures.
+    `npm run dev` runs under `concurrently --kill-others-on-fail` so a busy port ends the command.
+  - **IntelliJ cannot withhold a CORS header — the platform writes it.** The built-in server's pipeline
+    installs Netty's `CorsHandler` (`forAnyOrigin().allowCredentials()`), echoing every request's `Origin`
+    back, and the platform's default `isAccessible` compares host names without ports. So
+    `SpekHttpRequestHandler` overrides `isAccessible` to narrow it — `Origin`, when present, must be
+    `http://` + `Host`; `Sec-Fetch-Site` must be `same-origin` / `none` — and a refused request falls through
+    to the platform's 404 (still carrying the echoed header, with no data). Read from 2023.3.8 by
+    disassembly and confirmed against a `runIde` sandbox; never *widen* `super.isAccessible`
 - **BDD highlighting**: WHEN/GIVEN (blue), THEN (green), AND (gray), MUST/SHALL (red), and a badge per
   delta operation — ADDED orange, MODIFIED blue, REMOVED purple, RENAMED pink. **All four operations are
   marked**; two of them went unhandled for a long time because the only occurrences in-repo are section

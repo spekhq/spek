@@ -33,7 +33,7 @@ All are **read-only** and **local-only**. No server deployment, no authenticatio
 ## Features
 
 - **Dashboard** — Overview of specs count, changes count, task completion rates, plus lifecycle stats (avg archived lifecycle, stale active changes)
-- **Specs Browser** — Alphabetical listing with detail view and revision history; requirements and scenarios fold in place, so a spec opens as an outline that still carries its normative sentences
+- **Specs Browser** — Every spec as a folder tree with a filter, nested as `openspec/specs/` is on disk, plus detail view and revision history; requirements and scenarios fold in place, so a spec opens as an outline that still carries its normative sentences
 - **Changes Browser** — Active and archived changes with tabbed views (Proposal / Design / Tasks / Specs); each row surfaces creation and archive dates plus lifecycle duration
 - **Schemas Browser** — Every workflow schema available to the repo, with its source and the artifacts it defines; the detail view renders one schema as a readable flow — each artifact in dependency order with the file it generates, what it requires before it can be written, and its full instruction text. The repo's default schema is marked, and each schema links through to the active changes using it. A step a schema produces only *after* implementation is drawn after `apply` on a dashed edge marked as spek's own inference — OpenSpec's format has no way to declare that ordering, so the diagram states it without claiming the CLI enforces it
 - **Worktree Aggregation** — Discovers every git worktree of a repo and merges their in-flight changes into one view, deduplicated so each change appears once — built for the AI-agent era of parallel worktrees. Jujutsu (jj) workspaces are supported too, as an experimental opt-in
@@ -44,7 +44,7 @@ All are **read-only** and **local-only**. No server deployment, no authenticatio
 - **Dark / Light Theme** — Toggle between themes; dark by default
 - **Spec History** — Git-based timestamp tracking for spec revisions
 - **Responsive Layout** — Works on various screen sizes
-- **VS Code Sidebar** — Activity Bar icon with TreeView for browsing specs and changes directly from the sidebar
+- **VS Code Sidebar** — Activity Bar icon with TreeView for browsing specs (nested by folder) and changes directly from the sidebar
 
 ## Worktree Aggregation
 
@@ -121,7 +121,8 @@ Overview of specs count, changes count, and task completion rates.
 ![Dashboard](screenshots/dashboard.png)
 
 ### Specs Browser
-Alphabetical listing of all spec topics with filter support.
+Every spec as a folder tree with a filter. Specs grouped into folders (`specs/contracts/pagination/spec.md`)
+nest as they do on disk, at any depth, and a spec's name is its full path — `contracts/pagination`.
 
 ![Specs List](screenshots/specs-list.png)
 
@@ -264,8 +265,10 @@ spek expects the following structure under your repository:
 {repo}/openspec/
 ├── config.yaml
 ├── specs/
-│   └── {topic}/
-│       └── spec.md              # BDD-formatted specification
+│   ├── {topic}/
+│   │   └── spec.md              # BDD-formatted specification
+│   └── {group}/{topic}/
+│       └── spec.md              # Specs may be grouped into folders, at any depth
 └── changes/
     ├── {active-change}/         # In-progress changes
     │   ├── .openspec.yaml
@@ -396,6 +399,9 @@ Thanks to everyone who has contributed to spek:
 
 - [@Katsz](https://github.com/Katsz) (Alex)
   - Added and removed lines in a spec diff keep their red / green tint across the whole scrollable width, instead of losing it past the first screenful on lines too wide to fit
+
+- [@flatrick](https://github.com/flatrick) (Patrik)
+  - Nested spec folders — a `spec.md` at any depth under `openspec/specs/` is discovered by OpenSpec's own rule and browsable on every surface as a folder tree, with every spec read confined to the specs a scan lists
 
 ## License
 

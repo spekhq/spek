@@ -1,6 +1,6 @@
 {
   "name": "@spekjs/core",
-  "version": "1.13.0",
+  "version": "1.14.0",
   "description": "Framework-agnostic engine for reading OpenSpec repositories — scanner, tasks parser, worktree aggregation and shared types.",
   "keywords": [
     "openspec",
@@ -56,6 +56,10 @@
     "./search": {
       "types": "./dist/search.d.ts",
       "import": "./dist/search.js"
+    },
+    "./spec-topic": {
+      "types": "./dist/spec-topic.d.ts",
+      "import": "./dist/spec-topic.js"
     }
   },
   "scripts": {
