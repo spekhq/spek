@@ -22,13 +22,17 @@
 
 **[線上 Demo](https://spekhq.github.io/spek/demo.html)** — 直接在瀏覽器體驗，免安裝。
 
-提供三種使用方式：
+**官網與使用文件：[spekterm.com/zh-tw/spek](https://spekterm.com/zh-tw/spek/)** —— 使用說明在
+[spekterm.com/zh-tw/spek/docs](https://spekterm.com/zh-tw/spek/docs/)，有英文與繁體中文。
+
+提供四種使用方式，呈現的畫面都一樣：
 
 - **Web 版** — 本地 Express + React 應用，瀏覽器即可使用
 - **VS Code Extension** — 直接在 VS Code 內開啟 Webview Panel 瀏覽
-- **IntelliJ Plugin** — 在 IntelliJ IDEA 系列 IDE 中透過 JCEF Tool Window 瀏覽
+- **JetBrains Plugin** — 在 IntelliJ IDEA、WebStorm、PyCharm 等 JetBrains IDE 中透過 JCEF Tool Window 瀏覽
+- **GitHub Action** — 在 CI 中為你的 repo 建置 spek 靜態網站與狀態徽章（見 [GitHub Action](#github-action)）
 
-三者皆為**唯讀**且**純本地**運作。不需要部署伺服器、不需要登入、資料不會離開你的電腦。
+全部都是**唯讀**的。前三者**純本地**運作：不需要部署伺服器、不需要登入、資料不會離開你的電腦。
 
 ## 功能特色
 
@@ -357,6 +361,19 @@ spek 會監看 `openspec/` 並在檔案變更時即時重載。在不傳遞原�
 
 - `SPEK_WATCH_POLLING=on`（或 `off`）—— 對所有版本強制開啟 / 關閉 polling
 - `CHOKIDAR_USEPOLLING=1` / `CHOKIDAR_INTERVAL=<ms>` —— Web 與 VS Code 另外尊重 chokidar 原生環境變數
+
+## spek 與 spekterm
+
+[spekterm](https://github.com/spekhq/spekterm) 是 spek 的姊妹專案，出自同一群維護者：一個桌面工作台，
+在同一個視窗裡為你的每個 repo 跑 Claude Code session，並把每個 session 正在處理的 OpenSpec change
+直接顯示在終端機旁邊。它的側欄是站在 spek 的成果上：
+
+- **讀懂 OpenSpec 的引擎** —— 掃描 spec 與 change、task 進度、worktree 聚合，都來自
+  [`@spekjs/core`](https://www.npmjs.com/package/@spekjs/core)。
+- **關係圖與時間軸** —— 和 spek 畫的是同一套元件，來自 [`@spekjs/ui`](https://www.npmjs.com/package/@spekjs/ui)。
+
+想在平常工作的地方讀 spec —— 瀏覽器、編輯器、CI —— 用 spek；要在多個 repo 之間駕駛 agent、讓 spec 待在
+旁邊，用 spekterm。兩者讀的是同一批檔案，誰也不需要誰。兩者的官網都在 [spekterm.com](https://spekterm.com/zh-tw/)。
 
 ## 參與貢獻
 

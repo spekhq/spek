@@ -22,13 +22,17 @@
 
 **[Live Demo](https://spekhq.github.io/spek/demo.html)** — Try it instantly in your browser, no install needed.
 
-Available in three forms:
+**Website and documentation: [spekterm.com/spek](https://spekterm.com/spek/)** — the user guide lives at
+[spekterm.com/spek/docs](https://spekterm.com/spek/docs/), in English and Traditional Chinese.
+
+Available in four forms, all showing the same views:
 
 - **Web** — Local Express + React app, accessible in any browser
 - **VS Code Extension** — Integrated Webview Panel within your editor
-- **IntelliJ Plugin** — JCEF-based Tool Window for IntelliJ IDEA and other JetBrains IDEs
+- **JetBrains Plugin** — JCEF-based Tool Window for IntelliJ IDEA, WebStorm, PyCharm, and other JetBrains IDEs
+- **GitHub Action** — Builds a static spek site and status badges for your repository in CI (see [GitHub Action](#github-action))
 
-All are **read-only** and **local-only**. No server deployment, no authentication, no data leaves your machine.
+All are **read-only**. The first three are **local-only**: no server deployment, no authentication, no data leaves your machine.
 
 ## Features
 
@@ -361,6 +365,21 @@ spek watches `openspec/` and live-reloads on changes. On filesystems that don't 
 
 - `SPEK_WATCH_POLLING=on` (or `off`) — force polling on/off for all surfaces
 - `CHOKIDAR_USEPOLLING=1` / `CHOKIDAR_INTERVAL=<ms>` — Web and VS Code also honor chokidar's native env vars
+
+## spek and spekterm
+
+[spekterm](https://github.com/spekhq/spekterm) is spek's sibling project, from the same maintainers: a
+desktop workbench that runs Claude Code sessions for each of your repositories in one window, with the
+OpenSpec change each one is working on shown right beside the terminal. Its side panel stands on spek:
+
+- **The engine that reads OpenSpec** — scanning specs and changes, task progress, and worktree aggregation
+  come from [`@spekjs/core`](https://www.npmjs.com/package/@spekjs/core).
+- **The Graph and the Timeline** — the same components spek draws, from
+  [`@spekjs/ui`](https://www.npmjs.com/package/@spekjs/ui).
+
+Use spek to read specs where you already work — your browser, your editor, your CI. Use spekterm when you
+drive agents across repositories and want the spec beside them. They read the same files, and neither
+needs the other. Both live at [spekterm.com](https://spekterm.com).
 
 ## Contributing
 
