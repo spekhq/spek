@@ -15,11 +15,16 @@
 - 可讓 spek 從「檢視器」升級為「spec 演進追蹤工具」
 - **已實作**：`SpecDiffViewer.tsx` — 可在 spec 詳情頁比較不同 change 版本間的差異
 
-### 2. Mermaid 圖表支援
+### 2. ~~Mermaid 圖表支援~~ ✅ 已完成
 在 markdown 中渲染 mermaid 圖表（架構圖、流程圖、序列圖）。OpenSpec 的 design doc 很適合搭配圖表。
 
 - 技術方向：加 remark plugin 或在 MarkdownRenderer 中偵測 mermaid code block
 - 投入產出比高，實作不複雜
+- **已實作**：`MermaidDiagram.tsx` + `rehypeSpekMermaid`（改寫 ```mermaid fence），並新增 `.mmd` /
+  `.mermaid` 根層 artifact kind（`diagram`）。圖表顏色取自 `--color-*` token（`diagramTheme.ts`），
+  由 `contrast.test.ts` 量測。**只有 Web build 會畫圖**：VS Code / IntelliJ / demo 是單檔 IIFE，
+  無法 code-split，mermaid 內聯進去要多 5.23 MB（719 KB → 5.95 MB），因此那三個 surface 改為顯示
+  mermaid 原始碼
 
 ### 3. ~~Spec 關聯圖（Graph View）~~ ✅ 已完成
 把 specs 之間的引用關係、以及 changes 影響了哪些 specs，用互動式圖表呈現。類似 Obsidian 的 graph view。

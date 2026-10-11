@@ -1,9 +1,17 @@
 import type { ChangeArtifact } from "@spekjs/core";
 
-// Whether an artifact renders as Markdown with a table of contents (markdown and specs yes, tasks and
-// data no).
+// Whether an artifact renders as Markdown with a table of contents (markdown and specs yes; tasks, data
+// and diagram no — none of the three is Markdown, so there are no headings to list).
 export function isMarkdownLike(kind: ChangeArtifact["kind"]): boolean {
   return kind === "markdown" || kind === "specs";
+}
+
+// The kinds whose title keeps its file extension (`asyncapi.yaml`, `flow.mmd`), and which therefore need
+// the stem-plus-badge tab label below. Stated once: the collision rule and the badge both ask this
+// question, and two answers to it is how a `flow.mmd` ends up labelled one way in the strip and another
+// in the badge.
+function keepsExtension(kind: string): boolean {
+  return kind === "data" || kind === "diagram";
 }
 
 // Per-extension metadata for a data artifact: the highlight.js fence language and the short format badge
@@ -16,6 +24,11 @@ const DATA_META: Record<string, { language: string; format: string }> = {
   ".json": { language: "json", format: "JSON" },
   ".yaml": { language: "yaml", format: "YAML" },
   ".yml": { language: "yaml", format: "YAML" },
+  // A diagram artifact is not fenced, so `language` is unused for these two — the entries exist for the
+  // badge. Written out rather than left to the uppercased-extension fallback, which would label the two
+  // spellings of one format "MMD" and "MERMAID": the badge names the format, and there is one format.
+  ".mmd": { language: "", format: "MERMAID" },
+  ".mermaid": { language: "", format: "MERMAID" },
 };
 
 // The file's last extension, lowercased and including the dot (`asyncapi.YAML` -> `.yaml`), or "" if none.
@@ -44,23 +57,26 @@ export function dataStem(title: string): string {
   return title.replace(/\.[^.]+$/, "");
 }
 
-// Per data artifact, the tab label to show: the stem plus a format badge. The strip then reads
-// `Proposal / asyncapi [YAML] / Specs` rather than a raw filename. The extension is restored only when the
-// stem would collide with another tab's label (a markdown `notes` beside a data `notes.yaml`). That
-// collision is the one ambiguity the extension in the title used to prevent. The map is keyed by artifact
-// id. Non-data artifacts are absent, so they keep their own title. It is pure, so a unit test covers the
-// collision rule.
+// Per extension-keeping artifact, the tab label to show: the stem plus a format badge. The strip then
+// reads `Proposal / asyncapi [YAML] / flow [MERMAID] / Specs` rather than raw filenames. The extension is
+// restored only when the stem would collide with another tab's label (a markdown `notes` beside a data
+// `notes.yaml`, or a `flow.md` beside a `flow.mmd`). That collision is the one ambiguity the extension in
+// the title used to prevent. The map is keyed by artifact id. Other artifacts are absent, so they keep
+// their own title. It is pure, so a unit test covers the collision rule.
+//
+// It covers data and diagram alike rather than gaining a diagram-specific twin: one label rule means a
+// `flow.md` beside a `flow.mmd` cannot be disambiguated by one rule and left ambiguous by the other.
 export function dataTabNames(
   artifacts: { id: string; title: string; kind: string }[],
 ): Map<string, { name: string; format: string }> {
   const counts = new Map<string, number>();
   for (const a of artifacts) {
-    const key = (a.kind === "data" ? dataStem(a.title) : a.title).toLowerCase();
+    const key = (keepsExtension(a.kind) ? dataStem(a.title) : a.title).toLowerCase();
     counts.set(key, (counts.get(key) ?? 0) + 1);
   }
   const out = new Map<string, { name: string; format: string }>();
   for (const a of artifacts) {
-    if (a.kind !== "data") continue;
+    if (!keepsExtension(a.kind)) continue;
     const stem = dataStem(a.title);
     const collides = (counts.get(stem.toLowerCase()) ?? 0) > 1;
     out.set(a.id, { name: collides ? a.title : stem, format: dataFormat(a.title) });

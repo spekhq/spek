@@ -64,12 +64,13 @@ export function parseOrderFromStatus(json: unknown): SchemaArtifactRef[] | null 
 
 /**
  * Map an openspec artifact's outputPath to a known artifact id, or null if none matches (a glob only
- * resolves the specs tree). `dataFileToId` maps a data artifact's exact filename to its id.
+ * resolves the specs tree). `fileToId` maps the exact filename of every artifact that keeps its
+ * extension in its title (data and diagram) to its id.
  */
 function idForOutputPath(
   outputPath: string,
   knownIds: Set<string>,
-  dataFileToId: Map<string, string>,
+  fileToId: Map<string, string>,
 ): string | null {
   const g = outputPath.trim();
   if (g.includes("*")) {
@@ -78,10 +79,11 @@ function idForOutputPath(
   }
   const base = g.split(/[\\/]/).pop() || g;
   // An exact filename match wins first. Discovery gives a markdown file the bare stem, and a same-stem
-  // data file the `-2` suffix (`asyncapi.md` -> `asyncapi`, `asyncapi.yaml` -> `asyncapi-2`). A data
-  // artifact's title IS its filename. So a data outputPath resolves to the data id, not the markdown
-  // sibling that claimed the bare stem. The stem path below already resolves the markdown side correctly.
-  const byFile = dataFileToId.get(base);
+  // extension-keeping file the `-2` suffix (`asyncapi.md` -> `asyncapi`, `asyncapi.yaml` -> `asyncapi-2`;
+  // `flow.md` -> `flow`, `flow.mmd` -> `flow-2`). Those artifacts' titles ARE their filenames. So such an
+  // outputPath resolves to its own id, not the markdown sibling that claimed the bare stem. The stem path
+  // below already resolves the markdown side correctly.
+  const byFile = fileToId.get(base);
   if (byFile) return byFile;
   // Otherwise strip the last extension, exactly as discoverArtifacts' stripExt (`\.[^.]+$`) does when it
   // assigns the id, so a declared artifact inverts to the same id discovery produced (`asyncapi.yaml` ->
@@ -101,11 +103,11 @@ function idForOutputPath(
 export function resolveSchemaOrder(
   refs: SchemaArtifactRef[] | null,
   knownIds: string[],
-  dataFileToId?: Map<string, string>,
+  fileToId?: Map<string, string>,
 ): string[] | null {
   if (!refs) return null;
   const known = new Set(knownIds);
-  const byFile = dataFileToId ?? new Map<string, string>();
+  const byFile = fileToId ?? new Map<string, string>();
   const ordered: string[] = [];
   const used = new Set<string>();
   for (const ref of refs) {

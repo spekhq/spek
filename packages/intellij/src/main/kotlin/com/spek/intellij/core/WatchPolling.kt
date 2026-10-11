@@ -16,10 +16,11 @@ import java.io.File
  * 分離，方便單元測試。
  */
 object WatchPolling {
-    /** The file extensions a change edit can touch: markdown plus every data artifact extension. It comes
-     *  from ArtifactFiles' one source, so the snapshot cannot drift from what discovery treats as an
-     *  artifact. */
-    private val WATCHED_EXTENSIONS = listOf(".md") + ArtifactFiles.DATA_EXTENSIONS
+    /** The file extensions a change edit can touch: markdown plus every extension that classifies as a
+     *  root artifact. It comes from ArtifactFiles' own lists, so the snapshot cannot drift from what
+     *  discovery treats as an artifact. */
+    private val WATCHED_EXTENSIONS =
+        listOf(".md") + ArtifactFiles.DATA_EXTENSIONS + ArtifactFiles.DIAGRAM_EXTENSIONS
 
     /** 不傳遞原生事件、需改用 polling 的 fstype（小寫比對；`fuse.*` 另以前綴判定） */
     private val NON_EVENT_FS_TYPES = setOf(

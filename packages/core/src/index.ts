@@ -57,7 +57,12 @@ export type { Heading } from "./headings.js";
 export { changeNodeSlug, specNodeTopic } from "./graph-node-id.js";
 // Also on the node-free `./spec-topic` subpath, for browser bundles.
 export { isSafeSpecTopic, isSafeChangeSlug } from "./spec-topic.js";
-export { listChangeMarkdownFiles, listChangeArtifactFiles, DATA_EXTENSIONS } from "./artifact-files.js";
+export {
+  listChangeMarkdownFiles,
+  listChangeArtifactFiles,
+  DATA_EXTENSIONS,
+  DIAGRAM_EXTENSIONS,
+} from "./artifact-files.js";
 export { shouldUsePolling, pollingInterval, withAuthoritativeChokidarEnv } from "./watch-polling.js";
 
 export type {

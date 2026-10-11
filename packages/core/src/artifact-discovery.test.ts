@@ -480,3 +480,101 @@ test("the tasks artifact carries the file's raw text alongside its parsed struct
   assert.ok(!JSON.stringify(tasks.tasks).includes("callout"));
   fs.rmSync(repo, { recursive: true, force: true });
 });
+
+test("discoverArtifacts: root .mmd / .mermaid surface as diagram artifacts, titled with extension", () => {
+  const repo = mkRepo();
+  const changePath = writeChange(repo, "diagram-change", {
+    "proposal.md": "## Why\n",
+    "flow.mmd": "graph TD\n  A-->B\n",
+    "sequence.mermaid": "sequenceDiagram\n  A->>B: hi\n",
+  });
+  const arts = discoverArtifacts(changePath);
+  const flow = arts.find((a) => a.title === "flow.mmd")!;
+  assert.equal(flow.kind, "diagram");
+  assert.equal(flow.id, "flow"); // id is the stem; title keeps the extension
+  assert.equal(flow.content, "graph TD\n  A-->B\n"); // raw text, unparsed
+  const seq = arts.find((a) => a.title === "sequence.mermaid")!;
+  assert.equal(seq.kind, "diagram"); // both extensions, not just the short one
+  assert.equal(arts.find((a) => a.id === "proposal")!.kind, "markdown");
+  assert.equal(arts.length, 3);
+});
+
+test("discoverArtifacts: a .mmd inside a subdirectory is not discovered (root-only)", () => {
+  const repo = mkRepo();
+  const changePath = writeChange(repo, "c", {
+    "proposal.md": "## Why\n",
+    "nested/flow.mmd": "graph TD\n  A-->B\n",
+  });
+  const arts = discoverArtifacts(changePath);
+  assert.deepEqual(arts.map((a) => a.id), ["proposal"]);
+});
+
+test("discoverArtifacts: a dotfile .mmd is never a diagram artifact", () => {
+  const repo = mkRepo();
+  const changePath = writeChange(repo, "c", {
+    "proposal.md": "## Why\n",
+    ".draft.mmd": "graph TD\n  A-->B\n",
+  });
+  const arts = discoverArtifacts(changePath);
+  assert.deepEqual(arts.map((a) => a.id), ["proposal"]);
+  assert.equal(arts.some((a) => a.kind === "diagram"), false);
+});
+
+test("discoverArtifacts: flow.md and flow.mmd get different ids (markdown wins the stem)", () => {
+  const repo = mkRepo();
+  const changePath = writeChange(repo, "c", {
+    "flow.md": "## markdown\n",
+    "flow.mmd": "graph TD\n  A-->B\n",
+  });
+  const arts = discoverArtifacts(changePath);
+  const md = arts.find((a) => a.kind === "markdown")!;
+  const diagram = arts.find((a) => a.kind === "diagram")!;
+  assert.equal(md.id, "flow"); // markdown producer runs first → keeps the bare stem
+  assert.equal(diagram.id, "flow-2"); // disambiguated, no content lost
+  assert.equal(diagram.title, "flow.mmd"); // and its tab label keeps the extension
+  assert.equal(arts.length, 2);
+});
+
+test("discoverArtifacts / countArtifacts: diagram artifacts are counted, count equals tab count", () => {
+  const repo = mkRepo();
+  const changePath = writeChange(repo, "c", {
+    "proposal.md": "## Why\n",
+    "flow.mmd": "graph TD\n  A-->B\n",
+    "specs/foo/spec.md": "## ADDED\n",
+  });
+  const arts = discoverArtifacts(changePath);
+  assert.equal(arts.length, 3); // proposal (markdown) + flow (diagram) + specs
+  assert.equal(countArtifacts(changePath), 3); // count matches the number of tabs
+});
+
+test("listChangeArtifactFiles: includes diagram files alongside markdown, tasks and data", () => {
+  const repo = mkRepo();
+  const changePath = writeChange(repo, "c", {
+    "proposal.md": "## Why\n",
+    "tasks.md": "- [ ] a\n",
+    "asyncapi.yaml": "asyncapi: 3.0.0\n",
+    "flow.mmd": "graph TD\n  A-->B\n",
+    "seq.mermaid": "sequenceDiagram\n",
+    ".draft.mmd": "graph TD\n",
+    "nested/deep.mmd": "graph TD\n",
+  });
+  assert.deepEqual(listChangeArtifactFiles(changePath), [
+    "asyncapi.yaml",
+    "flow.mmd",
+    "proposal.md",
+    "seq.mermaid",
+    "tasks.md",
+  ]);
+});
+
+test("changeDirMtime: an edit to only a diagram file bumps the change mtime", () => {
+  const repo = mkRepo();
+  const changePath = writeChange(repo, "c", {
+    "proposal.md": "## Why\n",
+    "flow.mmd": "graph TD\n  A-->B\n",
+  });
+  setMtime(changePath, "proposal.md", 1000);
+  setMtime(changePath, "flow.mmd", 5000); // the diagram is the newest edit
+  const diagramMtime = fs.statSync(path.join(changePath, "flow.mmd")).mtimeMs;
+  assert.equal(changeDirMtime(changePath), diagramMtime); // reflected, not ignored
+});

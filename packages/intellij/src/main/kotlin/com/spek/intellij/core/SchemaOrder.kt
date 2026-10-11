@@ -123,12 +123,13 @@ object SchemaOrder {
 
     /**
      * Map an openspec artifact's outputPath to a known artifact id, or null if none matches (a glob only
-     * resolves the specs tree). `dataFileToId` maps a data artifact's exact filename to its id.
+     * resolves the specs tree). `fileToId` maps the exact filename of every artifact that keeps its
+     * extension in its title (data and diagram) to its id.
      */
     private fun idForOutputPath(
         outputPath: String,
         knownIds: Set<String>,
-        dataFileToId: Map<String, String>,
+        fileToId: Map<String, String>,
     ): String? {
         val g = outputPath.trim()
         if (g.contains("*")) {
@@ -140,7 +141,7 @@ object SchemaOrder {
         // same-stem data file the `-2` suffix (`asyncapi.md` -> `asyncapi`, `asyncapi.yaml` ->
         // `asyncapi-2`). A data artifact's title IS its filename. So a data outputPath resolves to the
         // data id, not the markdown sibling. The stem path below already resolves the markdown side.
-        dataFileToId[base]?.let { return it }
+        fileToId[base]?.let { return it }
         // Otherwise strip the last extension, exactly as ArtifactDiscovery.stripExt does when it assigns
         // the id, so a declared artifact inverts to the same id, not only `.md`. Anchored with `\z` per
         // the repo's filename convention (#33).
@@ -155,19 +156,20 @@ object SchemaOrder {
     /**
      * 由 refs（schema 權威順序）與已探索的 artifact id 集合，產生排序後的 artifact-id 清單。
      * 每個 ref 依 outputPath 對應到一個已知 id、去重；對不到略過。refs 為 null 或無有效對應時回 null。
-     * `dataFileToId` 把 data artifact 的檔名對應到 id，用於區分同 stem 的 markdown / data 手足。
+     * `fileToId` maps the filename of each extension-keeping artifact (data, diagram) to its id, which is
+     * what tells a same-stem markdown sibling apart from it (flow.md vs flow.mmd).
      */
     fun resolveSchemaOrder(
         refs: List<SchemaArtifactRef>?,
         knownIds: List<String>,
-        dataFileToId: Map<String, String> = emptyMap(),
+        fileToId: Map<String, String> = emptyMap(),
     ): List<String>? {
         if (refs == null) return null
         val known = knownIds.toSet()
         val ordered = mutableListOf<String>()
         val used = HashSet<String>()
         for (ref in refs) {
-            val id = idForOutputPath(ref.outputPath, known, dataFileToId)
+            val id = idForOutputPath(ref.outputPath, known, fileToId)
             if (id != null && !used.contains(id)) {
                 ordered.add(id)
                 used.add(id)

@@ -74,8 +74,10 @@ Key properties spek relies on:
 
 - **Artifacts are discovered from disk, not hard-coded.** A change's tabs come from what actually
   exists: every root `*.md` is an artifact, every root `.yaml` / `.yml` / `.json` is a `data` artifact,
-  and a non-empty `specs/` is one artifact, classified by kind (`markdown` / `tasks` / `data` /
-  `specs`). A `data` artifact renders as a syntax-highlighted code block. This is what lets **custom
+  every root `.mmd` / `.mermaid` is a `diagram` artifact, and a non-empty `specs/` is one artifact,
+  classified by kind (`markdown` / `tasks` / `data` / `diagram` / `specs`). A `data` artifact renders as
+  a syntax-highlighted code block; a `diagram` artifact renders as a drawn Mermaid diagram on the Web,
+  VS Code and IntelliJ builds and as its source in the single-file demo. This is what lets **custom
   OpenSpec schemas** render their own artifacts as tabs without spek knowing them in advance — including
   schemas whose artifacts are not Markdown, such as `event-driven`'s `asyncapi.yaml`.
 - **A spec topic is its directory path relative to `specs/`.**

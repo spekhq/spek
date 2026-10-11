@@ -398,4 +398,38 @@ class SchemaOrderTest {
             assertEquals(2, calls.get(), "a settled change survived clearCache")
         }
     }
+
+    // Reported in review: with flow.md + flow.mmd and a schema generating flow.mmd, the declared
+    // outputPath fell past the exact-filename map (which held only `data`) to the stem, and resolved to
+    // the markdown sibling holding the bare stem — dropping the diagram from the order. Mirrors
+    // schema-order.test.ts.
+    @Test
+    fun resolveDiagramOutputPathResolvesToDiagramNotMarkdownSibling() {
+        val order = SchemaOrder.resolveSchemaOrder(
+            refs("proposal" to "proposal.md", "flow" to "flow.mmd"),
+            listOf("proposal", "flow", "flow-2"),
+            mapOf("flow.mmd" to "flow-2"),
+        )
+        assertEquals(listOf("proposal", "flow-2"), order)
+    }
+
+    @Test
+    fun resolveMarkdownSiblingStillResolvesByStem() {
+        val order = SchemaOrder.resolveSchemaOrder(
+            refs("flow" to "flow.md"),
+            listOf("flow", "flow-2"),
+            mapOf("flow.mmd" to "flow-2"),
+        )
+        assertEquals(listOf("flow"), order)
+    }
+
+    @Test
+    fun resolveBothSiblingsOrderedTogether() {
+        val order = SchemaOrder.resolveSchemaOrder(
+            refs("flow" to "flow.md", "diagram" to "flow.mmd"),
+            listOf("flow", "flow-2"),
+            mapOf("flow.mmd" to "flow-2"),
+        )
+        assertEquals(listOf("flow", "flow-2"), order)
+    }
 }

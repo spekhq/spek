@@ -189,7 +189,13 @@ behavior lives in `openspec/specs/`; the key entry points:
   — plus the one `rootKind` classifier that decides which root file is which kind; `artifact-discovery.ts` reads
   content and builds the objects. count, search, and discovery all derive from `rootKind`, so a shown tab is always
   counted and searchable. Kotlin mirrors the pair: `ArtifactFiles.kt` + `ArtifactDiscovery.kt`. A `data` artifact
-  renders as a syntax-highlighted code block (fence language from the extension), with no TOC and no folding
+  renders as a syntax-highlighted code block (fence language from the extension), with no TOC and no folding. A
+  `diagram` artifact (`.mmd` / `.mermaid`) is a **separate kind, not another data extension**: `data` means "show
+  this file's text", `diagram` means "show what this file describes", and folding them together would make the raw
+  source the only rendering a diagram file could ever get. `DIAGRAM_EXTENSIONS` sits beside `DATA_EXTENSIONS` so every
+  watcher derives its set from one source. Both kinds keep their extension in the title and share `rootArtifacts`'
+  second bucket, so `flow.md` keeps the id `flow` and `flow.mmd` becomes `flow-2`
+
 - **Nested spec topics**: a topic is the `/`-joined directory path relative to a `specs/` root
   (`contracts/pagination/streaming-search`), on every OS, for main specs and change deltas alike. `discoverSpecFiles`
   (`spec-files.ts`; Kotlin `SpecFiles.kt`) states **OpenSpec's own discovery rule** — skip dot-entries, never follow a
@@ -437,7 +443,7 @@ GET /api/openspec/search?dir=...&q=...              # full-text search
 ### VS Code Extension
 
 - commands: `spek.open` / `spek.search` / `spek.navigateTo` (the last accepts a route with a `#hash`)
-- activation: `workspaceContains:openspec/config.yaml`; the Webview loads the IIFE-bundled React app; the extension host calls `@spekjs/core` directly
+- activation: `workspaceContains:openspec/config.yaml`; the Webview loads the ES-module React app (entry plus lazy chunks, see the Mermaid entry under Key Design Decisions); the extension host calls `@spekjs/core` directly
 - Sidebar Specs TreeView: each spec expands into its h2/h3 headings; clicking one jumps to the matching webview anchor
 - **In-app link clicks never reach the VS Code host** (issue #59). VS Code's webview host script listens for `click`
   on the webview's `window` (bubble phase) and posts *every* `<a href>` to the workbench to open, without reading
@@ -496,8 +502,9 @@ GET /api/openspec/search?dir=...&q=...              # full-text search
 ## Key Design Decisions
 
 - **Security**: **no arbitrary file access.** For repo-local reads that is achieved by containment —
-  Express only reads markdown and data-artifact files (`.md` / `.yaml` / `.yml` / `.json`) under
-  `openspec/` (search reads every root artifact file a change holds, data artifacts included). Schema
+  Express only reads markdown, data- and diagram-artifact files (`.md` / `.yaml` / `.yml` / `.json` /
+  `.mmd` / `.mermaid`) under `openspec/` (search reads every root artifact file a change holds, data
+  and diagram artifacts included). Schema
   reading is the one path that
   reaches outside it: a package schema lives wherever npm installed the CLI, so the path comes from
   `openspec schema which <name> --json` and the `schema.yaml` there is read directly. Containment
@@ -566,6 +573,69 @@ GET /api/openspec/search?dir=...&q=...              # full-text search
   the emphasis around it. Each keyword's entry carries its **group**, in the table rather than in a
   list beside it, so adding a keyword forces the casing choice — a second list is how two of the four
   delta operations once went unhandled
+- **Mermaid diagrams — every surface that can split code draws them; the demo cannot.** A
+  ` ```mermaid ` fence (rewritten by `rehypeSpekMermaid`, which runs **before** the highlighter so it
+  never sees the block) and a root `.mmd` / `.mermaid` artifact both go through `MermaidDiagram.tsx`.
+  Mermaid is ~5.2 MB, so it must never land in an entry bundle: the Web, VS Code and IntelliJ builds
+  emit **ES modules**, and it arrives as chunks fetched only when a document holds a diagram. The
+  webview build was IIFE until diagrams landed — IIFE cannot code-split, so the same import inlines
+  (measured 718,653 B → 5,952,548 B). `docs/demo.html` still cannot split, being one committed file,
+  so it alone sets `__SPEK_DRAWS_DIAGRAMS__: "false"` and aliases `mermaid` to a stand-in; its diagrams
+  show source, which `diagram-rendering` states as a behaviour rather than a failure.
+  **The webview needs two things to load chunks** (`panel.ts`): the entry is a module script, and the
+  CSP carries `${cspSource}` *next to* the nonce in `script-src` — a dynamic `import()` carries no
+  nonce, so without the host source every chunk is blocked. `panel.ts` also rewrites Vite's **generated**
+  HTML rather than hard-coding a filename, because an ESM build emits a hashed stylesheet and however
+  many chunks the split produced. **The webview build's `base` is `"./"`, and only a real VS Code shows
+  why**: Vite's preload helper builds each lazy chunk's dependency URLs from the base, and `/assets/...`
+  resolves against the `vscode-webview://` origin, where nothing is served — the first diagram on a page
+  failed with "Unable to preload CSS", and later ones drew only because the failed `<link>` was already in
+  the document. A browser serving the build from an origin root resolves `/assets/` either way, so a
+  browser-served check passes. IntelliJ keeps its absolute `/spek/webview/`, which its built-in server
+  serves. `diagramBuilds.test.ts` guards all of this, including that neither host's built entry holds
+  `dagre` / `cytoscape` / `katex`, because **an entry eight times too big fails no type-check, no lint
+  and no other test**. CI builds both webviews before `npm test`, and in CI a missing bundle **fails**
+  that check rather than skipping it — it skipped on every run when it first landed.
+  Four more things that are not obvious: the SVG is inserted as markup under `securityLevel: "strict"`
+  with `suppressErrorRendering: true` (Mermaid otherwise draws its own error bomb into `<body>` and
+  leaves it there) and `bindFunctions` is **never** called; the wheel handler is attached natively with
+  `{ passive: false }`, because React registers wheel passively and `preventDefault()` in an `onWheel`
+  is ignored, so Ctrl+wheel zooms the page too; the `div` override in `MarkdownRenderer` is at **module
+  scope**, since an inline component literal is a new type each render and remounts every fenced
+  diagram, discarding its drawing, zoom and toggle; and drawing is deferred to `IntersectionObserver`
+  purely for **laziness** — `mermaid.render` without a container lays out in a temp div under `<body>`,
+  so a closed `<details>` does *not* zero its measurements, whatever an earlier version of this note
+  claimed.
+- **A palette handed to a renderer that draws its own markup is measured at the declaration.** Mermaid
+  writes our colours into an SVG that does not exist until a reader opens the page, so neither the
+  `global.css` parse nor any source scan in `contrast.test.ts` can see one of them — the check would find
+  nothing to report, which is indistinguishable from finding nothing wrong. This is the SVG-attribute gap
+  arriving by a second route, and it arrives whenever a capability is added by adopting a renderer rather
+  than by writing markup. `utils/diagramTheme.ts` is therefore the complete set of colours handed over,
+  each naming its `--color-*` token and the floor its use answers to, with `DECLARED_DEFAULTS` listing
+  what is deliberately left to mermaid and why. `contrast.test.ts` imports and measures it; a literal in
+  that table fails its own test. `theme: "base"` specifically — every other built-in mermaid theme ignores
+  most `themeVariables`, so a partial override silently leaves the library's palette in place.
+  **"No silent defaults" is enforced against mermaid itself, not a hand-list**: the test resolves the
+  theme twice with different palettes and flags any colour that does not move, because a value our
+  input never reached is a library literal. That is how `doneTaskBkgColor: "lightgrey"`,
+  `critBkgColor: "red"` and `altSectionBkgColor: "white"` were found still in place — a dark gantt drew
+  light text at ~1.1:1 while this file reported a complete palette.
+  **A label is measured on the fills it is drawn on — all of them** (`textOn`, a list): mermaid reuses one
+  text variable across fills, and the gantt's `taskTextColor` labels both a normal and a critical bar, so
+  measuring it against the page let the critical label sit at ~1.7:1 light / ~2.3:1 dark. Which text
+  lands on which fill is mermaid's choice, read from its gantt styles, and it shapes the gantt block:
+  normal and critical bars are solid fills under one `bg-primary` label, while done and active bars are
+  page surfaces told apart by their outlines (active carries the accent), because their label variable
+  also labels text beside the bars, on the page.
+  **Where hue is the only key, marks take the categorical ramp** (`--color-cat-1..8`, 400 step dark / 700
+  step light, each 3:1 against every surface and 4.5:1 under a `bg-primary` label). Today that is pie
+  slices, with `pieOpacity` set to 1 in `DIAGRAM_SETTINGS` — mermaid's 0.7 blends each slice into the page
+  and voids the ratios. Surface-derived slices had all drawn the same near-black / near-white. Not mapped,
+  and stated where they are declared: `cScale*` / `git*` (hue repeats structure there, and mermaid derives
+  inverted and peer colours from each that would need measuring too) and the **event-model block
+  palette**, which stays mermaid's own pastels because its labels have no colour variable — they inherit
+  page text, which the ramp's bright dark-theme fills do not clear.
 - **Syntax highlighting** (fenced code blocks + `data` artifacts): `rehype-highlight` (`detect: false`) maps
   highlight.js `hljs-*` classes to per-theme `--color-hl-*` tokens (base, keyword, string, number, comment,
   punctuation). highlight.js's own theme is deliberately **not** imported — its hard-coded colours bypass the
@@ -808,7 +878,7 @@ GET /api/openspec/search?dir=...&q=...              # full-text search
   vocabulary. `id` stays the label and the value a `requires` resolves against. Upstream has the same collision
   (OpenSpec #1456: `openspec instructions` cannot reach an artifact named `archive`), so be tolerant of the input rather
   than normalising it away — renaming it would make the view disagree with `openspec status`
-- **Webview CSP**: IIFE + nonce script + unsafe-inline styles (Tailwind needs it)
+- **Webview CSP**: nonce on the module entry + `${cspSource}` for its lazy chunks + unsafe-inline styles (Tailwind needs it)
 - **Host flags**: VS Code sets `window.__vscodeApi` (`acquireVsCodeApi` called once, stored globally), IntelliJ
   `window.__spekIntellij`, Demo `window.__DEMO_DATA__`. `useFileWatcher` picks its refresh channel from these flags, so
   **every non-Web host must have its own flag** — IntelliJ once lacked one, was mistaken for Web, and opened an
