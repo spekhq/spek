@@ -117,6 +117,13 @@ jobs:
           npm run build:core
           npm run build:ui
 
+      # Also for the same reason as ci.yml: the diagram tests read the built VS Code and IntelliJ
+      # webviews and fail, rather than skip, in CI when they are missing.
+      - name: Build webviews
+        run: |
+          npm run build:webview -w @spekjs/web
+          npm run build:intellij -w @spekjs/web
+
       # The gates run here rather than chaining on ci.yml via workflow_run: that trigger evaluates
       # the workflow file from the default branch rather than the triggering commit, and getting its
       # success coupling subtly wrong publishes on a red build — which cannot be undone, because a
