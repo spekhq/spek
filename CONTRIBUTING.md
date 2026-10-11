@@ -135,7 +135,7 @@ reference — several were authored by external contributors.
 - **Code is written in English** — identifiers, symbols, filenames.
 - **Write OpenSpec artifacts and docs in English.** The `openspec/` change and spec documents are
   spek's canonical, English-language record — and they're what the
-  [live demo](https://spekhq.github.io/spek/demo.html) showcases. Author proposals, designs, tasks,
+  [live demo](https://spekterm.com/spek/demo/) showcases. Author proposals, designs, tasks,
   and spec deltas in English.
 - **Write comments in English too.** Some existing code still has Traditional Chinese comments — no
   need to translate those wholesale, but write new comments in English.

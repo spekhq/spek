@@ -21,7 +21,7 @@
 **spek** 把 repo 裡的 `openspec/` 目錄變成可以瀏覽的介面：spec 以大綱呈現，change 的 proposal、design、
 tasks 與 delta spec 各自成為分頁，另有 workflow schema、關聯圖、時間軸與全文搜尋。它只讀不寫，不會改動任何檔案。
 
-- **[線上 Demo](https://spekhq.github.io/spek/demo.html)** —— spek 呈現自己的 OpenSpec，直接在瀏覽器體驗，免安裝。
+- **[線上 Demo](https://spekterm.com/spek/demo/)** —— spek 呈現自己的 OpenSpec，直接在瀏覽器體驗，免安裝。
 - **[官網](https://spekterm.com/zh-tw/spek/)** 與 **[使用說明](https://spekterm.com/zh-tw/spek/docs/)** —— 有英文與繁體中文。
 
 ![Change 詳細](screenshots/change-detail.png)

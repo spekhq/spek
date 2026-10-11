@@ -22,7 +22,7 @@
 changes with their proposal, design, tasks and delta specs as tabs, workflow schemas, a graph and a timeline,
 and full-text search. It only reads; it never changes a file.
 
-- **[Live Demo](https://spekhq.github.io/spek/demo.html)** — spek showing its own OpenSpec, in your browser, no install needed.
+- **[Live Demo](https://spekterm.com/spek/demo/)** — spek showing its own OpenSpec, in your browser, no install needed.
 - **[Website](https://spekterm.com/spek/)** and **[user guide](https://spekterm.com/spek/docs/)** — in
   English and Traditional Chinese.
 
