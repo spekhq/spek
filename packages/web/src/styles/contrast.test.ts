@@ -45,7 +45,7 @@ function tokensIn(selector: string): Map<string, string> {
   return out;
 }
 
-const DARK = tokensIn("@theme");
+const DARK = tokensIn("@theme(?:\\s+static)?");
 // Light overrides only part of the palette and inherits the rest — which is how the theme works, and
 // why a missing override is not an error anywhere else.
 const LIGHT = new Map([...DARK, ...tokensIn('\\[data-theme="light"\\]')]);
@@ -380,16 +380,19 @@ for (const [theme, tokens] of Object.entries(THEMES)) {
       assert.ok(fg, `${mermaidVar} names --color-${token}, which ${theme} does not define`);
       if (role.kind === "surface") continue; // a fill; what is drawn on it is measured on its own line
       if (role.kind === "textOn") {
-        // Drawn on another declared variable's fill, not on the page. Measuring it against the page
-        // is how the sequence autonumber sat at ~2.1:1 while every check here passed.
-        const fill = tokens.get(role.on);
-        assert.ok(fill, `${mermaidVar} is measured on --color-${role.on}, undefined in ${theme}`);
-        const ratio = contrast(fg, fill);
-        assert.ok(
-          ratio >= TEXT_FLOOR,
-          `${theme} ${mermaidVar} (${label}): --color-${token} (${fg}) on its fill --color-${role.on} ` +
-            `(${fill}) is ${ratio.toFixed(2)}:1, below ${TEXT_FLOOR}:1`
-        );
+        // Drawn on other declared variables' fills, not on the page. Measuring it against the page
+        // is how the sequence autonumber sat at ~2.1:1 while every check here passed — and measuring a
+        // label only where it is not drawn is how a gantt critical bar's sat at 1.7:1.
+        for (const on of role.on) {
+          const fill = tokens.get(on);
+          assert.ok(fill, `${mermaidVar} is measured on --color-${on}, undefined in ${theme}`);
+          const ratio = contrast(fg, fill);
+          assert.ok(
+            ratio >= TEXT_FLOOR,
+            `${theme} ${mermaidVar} (${label}): --color-${token} (${fg}) on its fill --color-${on} ` +
+              `(${fill}) is ${ratio.toFixed(2)}:1, below ${TEXT_FLOOR}:1`
+          );
+        }
         continue;
       }
       const floor = role.kind === "text" ? TEXT_FLOOR : GRAPHIC_FLOOR;

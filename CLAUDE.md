@@ -443,7 +443,7 @@ GET /api/openspec/search?dir=...&q=...              # full-text search
 ### VS Code Extension
 
 - commands: `spek.open` / `spek.search` / `spek.navigateTo` (the last accepts a route with a `#hash`)
-- activation: `workspaceContains:openspec/config.yaml`; the Webview loads the IIFE-bundled React app; the extension host calls `@spekjs/core` directly
+- activation: `workspaceContains:openspec/config.yaml`; the Webview loads the ES-module React app (entry plus lazy chunks, see the Mermaid entry under Key Design Decisions); the extension host calls `@spekjs/core` directly
 - Sidebar Specs TreeView: each spec expands into its h2/h3 headings; clicking one jumps to the matching webview anchor
 - **In-app link clicks never reach the VS Code host** (issue #59). VS Code's webview host script listens for `click`
   on the webview's `window` (bubble phase) and posts *every* `<a href>` to the workbench to open, without reading
@@ -586,9 +586,16 @@ GET /api/openspec/search?dir=...&q=...              # full-text search
   CSP carries `${cspSource}` *next to* the nonce in `script-src` — a dynamic `import()` carries no
   nonce, so without the host source every chunk is blocked. `panel.ts` also rewrites Vite's **generated**
   HTML rather than hard-coding a filename, because an ESM build emits a hashed stylesheet and however
-  many chunks the split produced. `diagramBuilds.test.ts` guards all of this, including that the built
-  entry holds no `dagre` / `cytoscape` / `katex`, because **an entry eight times too big fails no
-  type-check, no lint and no other test**.
+  many chunks the split produced. **The webview build's `base` is `"./"`, and only a real VS Code shows
+  why**: Vite's preload helper builds each lazy chunk's dependency URLs from the base, and `/assets/...`
+  resolves against the `vscode-webview://` origin, where nothing is served — the first diagram on a page
+  failed with "Unable to preload CSS", and later ones drew only because the failed `<link>` was already in
+  the document. A browser serving the build from an origin root resolves `/assets/` either way, so a
+  browser-served check passes. IntelliJ keeps its absolute `/spek/webview/`, which its built-in server
+  serves. `diagramBuilds.test.ts` guards all of this, including that neither host's built entry holds
+  `dagre` / `cytoscape` / `katex`, because **an entry eight times too big fails no type-check, no lint
+  and no other test**. CI builds both webviews before `npm test`, and in CI a missing bundle **fails**
+  that check rather than skipping it — it skipped on every run when it first landed.
   Four more things that are not obvious: the SVG is inserted as markup under `securityLevel: "strict"`
   with `suppressErrorRendering: true` (Mermaid otherwise draws its own error bomb into `<body>` and
   leaves it there) and `bindFunctions` is **never** called; the wheel handler is attached natively with
@@ -613,11 +620,22 @@ GET /api/openspec/search?dir=...&q=...              # full-text search
   theme twice with different palettes and flags any colour that does not move, because a value our
   input never reached is a library literal. That is how `doneTaskBkgColor: "lightgrey"`,
   `critBkgColor: "red"` and `altSectionBkgColor: "white"` were found still in place — a dark gantt drew
-  light text at ~1.1:1 while this file reported a complete palette. The one accepted exemption is the
-  **event-model block palette**, where hue *is* the information (command vs event vs read model) and
-  this theme has no categorical ramp to map it onto; those stay mermaid's own pastels, which means an
-  event-model diagram reads well in the light theme and poorly in the dark one. Giving the project a
-  categorical ramp is the fix, and it is a change of its own.
+  light text at ~1.1:1 while this file reported a complete palette.
+  **A label is measured on the fills it is drawn on — all of them** (`textOn`, a list): mermaid reuses one
+  text variable across fills, and the gantt's `taskTextColor` labels both a normal and a critical bar, so
+  measuring it against the page let the critical label sit at ~1.7:1 light / ~2.3:1 dark. Which text
+  lands on which fill is mermaid's choice, read from its gantt styles, and it shapes the gantt block:
+  normal and critical bars are solid fills under one `bg-primary` label, while done and active bars are
+  page surfaces told apart by their outlines (active carries the accent), because their label variable
+  also labels text beside the bars, on the page.
+  **Where hue is the only key, marks take the categorical ramp** (`--color-cat-1..8`, 400 step dark / 700
+  step light, each 3:1 against every surface and 4.5:1 under a `bg-primary` label). Today that is pie
+  slices, with `pieOpacity` set to 1 in `DIAGRAM_SETTINGS` — mermaid's 0.7 blends each slice into the page
+  and voids the ratios. Surface-derived slices had all drawn the same near-black / near-white. Not mapped,
+  and stated where they are declared: `cScale*` / `git*` (hue repeats structure there, and mermaid derives
+  inverted and peer colours from each that would need measuring too) and the **event-model block
+  palette**, which stays mermaid's own pastels because its labels have no colour variable — they inherit
+  page text, which the ramp's bright dark-theme fills do not clear.
 - **Syntax highlighting** (fenced code blocks + `data` artifacts): `rehype-highlight` (`detect: false`) maps
   highlight.js `hljs-*` classes to per-theme `--color-hl-*` tokens (base, keyword, string, number, comment,
   punctuation). highlight.js's own theme is deliberately **not** imported — its hard-coded colours bypass the
@@ -860,7 +878,7 @@ GET /api/openspec/search?dir=...&q=...              # full-text search
   vocabulary. `id` stays the label and the value a `requires` resolves against. Upstream has the same collision
   (OpenSpec #1456: `openspec instructions` cannot reach an artifact named `archive`), so be tolerant of the input rather
   than normalising it away — renaming it would make the view disagree with `openspec status`
-- **Webview CSP**: IIFE + nonce script + unsafe-inline styles (Tailwind needs it)
+- **Webview CSP**: nonce on the module entry + `${cspSource}` for its lazy chunks + unsafe-inline styles (Tailwind needs it)
 - **Host flags**: VS Code sets `window.__vscodeApi` (`acquireVsCodeApi` called once, stored globally), IntelliJ
   `window.__spekIntellij`, Demo `window.__DEMO_DATA__`. `useFileWatcher` picks its refresh channel from these flags, so
   **every non-Web host must have its own flag** — IntelliJ once lacked one, was mistaken for Web, and opened an

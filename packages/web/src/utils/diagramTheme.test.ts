@@ -3,7 +3,9 @@ import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import {
+  CATEGORICAL,
   DIAGRAM_COLORS,
+  DIAGRAM_SETTINGS,
   DECLARED_DEFAULTS,
   cssVarOf,
   resolveDiagramColors,
@@ -32,13 +34,15 @@ test("every entry declares a role, and a surface says why it owes nothing", () =
       assert.ok(entry.role.reason, `${mermaidVar} is declared a surface but states no reason`);
     }
     if (entry.role.kind === "textOn") {
-      // The fill it sits on must be a token this palette actually draws with, or the measurement in
+      // Each fill it sits on must be a token this palette actually draws with, or the measurement in
       // contrast.test.ts is against a colour that appears nowhere in the diagram.
-      const fill = entry.role.on;
-      assert.ok(
-        Object.values(DIAGRAM_COLORS).some((c) => c.token === fill),
-        `${mermaidVar} is measured on --color-${fill}, which no entry in this table draws`,
-      );
+      assert.ok(entry.role.on.length > 0, `${mermaidVar} is text on a fill but names none`);
+      for (const fill of entry.role.on) {
+        assert.ok(
+          Object.values(DIAGRAM_COLORS).some((c) => c.token === fill && c.role.kind !== "textOn"),
+          `${mermaidVar} is measured on --color-${fill}, which no entry in this table draws as a fill`,
+        );
+      }
     }
   }
 });
@@ -138,4 +142,26 @@ test("the variables we set actually reach Mermaid", async () => {
   const { a } = await resolveTwice();
   const unknown = Object.keys(DIAGRAM_COLORS).filter((k) => !(k in a));
   assert.deepEqual(unknown, [], `not Mermaid theme variables: ${unknown.join(", ")}`);
+});
+
+// --- The categorical ramp ----------------------------------------------------
+
+test("the first eight pie slices take eight different ramp colours", () => {
+  const tokens = Array.from({ length: 8 }, (_, i) => DIAGRAM_COLORS[`pie${i + 1}`]?.token);
+  assert.deepEqual(tokens, [...CATEGORICAL], "pie1..pie8 must walk the ramp in order");
+});
+
+test("every non-colour setting is stated beside the defaults it replaces", () => {
+  for (const name of Object.keys(DIAGRAM_SETTINGS)) {
+    assert.ok(name in DECLARED_DEFAULTS, `${name} is set in DIAGRAM_SETTINGS but not declared`);
+  }
+});
+
+test("the settings reach Mermaid", async () => {
+  const { default: mermaid } = await import("mermaid");
+  mermaid.initialize({ startOnLoad: false, theme: "base", themeVariables: { ...DIAGRAM_SETTINGS } });
+  const resolved = mermaid.mermaidAPI.getConfig().themeVariables as unknown as Record<string, unknown>;
+  for (const [name, value] of Object.entries(DIAGRAM_SETTINGS)) {
+    assert.equal(resolved[name], value, `${name} did not reach Mermaid as set`);
+  }
 });

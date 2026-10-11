@@ -1,7 +1,15 @@
 @import "tailwindcss";
 @import "@spekjs/ui/styles.css";
 
-@theme {
+/*
+ * `static`: emit every token, used by a class or not. Tailwind v4 otherwise drops an @theme variable no
+ * utility class references, and some tokens are read only by JavaScript at runtime — the palette handed
+ * to Mermaid (`utils/diagramTheme.ts`). The categorical ramp, which no class uses, was dropped from the
+ * dark theme entirely while every test passed, since the tests read this file rather than the build; the
+ * other tokens handed to Mermaid survived only because some class happened to use them.
+ * `diagramBuilds.test.ts` checks the built stylesheet for exactly this.
+ */
+@theme static {
   --color-bg-primary: #0a0c0f;
   --color-bg-secondary: #111318;
   --color-bg-tertiary: #1a1d24;
@@ -75,6 +83,25 @@
   --color-hl-number: #f0b866;
   --color-hl-comment: #a7b1bd;
   --color-hl-punctuation: #c9d3de;
+
+  /*
+   * The categorical ramp: eight hues for marks whose colour *is* the information — which slice of a pie
+   * chart a legend entry names. Handed to Mermaid by `utils/diagramTheme.ts` and measured there by
+   * `contrast.test.ts`, never applied as a class. Each value owes two things in each theme: 3:1 against
+   * all three surfaces (a slice or legend swatch is the only carrier of its category), and 4.5:1 for a
+   * `bg-primary` label drawn on it (the percentage inside a slice). Dark is the 400 step, light the 700
+   * step, so labels flip from dark-on-bright to light-on-deep between themes. The order alternates hue
+   * families so that neighbouring slices differ most. Tightest dark: violet, 5.92:1 on bg-tertiary;
+   * tightest light: yellow, 4.50:1 on bg-tertiary and 4.71:1 under its label.
+   */
+  --color-cat-1: #51a2ff;
+  --color-cat-2: #ff8904;
+  --color-cat-3: #00d492;
+  --color-cat-4: #a684ff;
+  --color-cat-5: #fdc700;
+  --color-cat-6: #fb64b6;
+  --color-cat-7: #00d3f2;
+  --color-cat-8: #9ae600;
 }
 
 /*
@@ -158,6 +185,16 @@
   --color-hl-number: #7a3d00;
   --color-hl-comment: #5a6470;
   --color-hl-punctuation: #33393f;
+
+  /* The categorical ramp (light): the 700 step of the same eight hues, in the same order. See @theme. */
+  --color-cat-1: #1447e6;
+  --color-cat-2: #ca3500;
+  --color-cat-3: #007a55;
+  --color-cat-4: #7008e7;
+  --color-cat-5: #a65f00;
+  --color-cat-6: #c6005c;
+  --color-cat-7: #007595;
+  --color-cat-8: #497d00;
 }
 
 body {

@@ -38,11 +38,13 @@ export type DiagramColorRole =
   /** A fill behind other marks. It owes nothing itself; what is drawn on it is measured against it. */
   | { kind: "surface"; reason: string }
   /**
-   * Text drawn on another token's solid fill rather than on a page surface — `on` names that token.
-   * Measured against it, not against the page: a sequence `autonumber` sits on a filled circle, and
-   * measuring it against the background it never touches is how it reached about 2.1:1 unnoticed.
+   * Text drawn on other tokens' solid fills rather than on a page surface — `on` names every fill it
+   * can land on, and it is measured against each. Measured against them, not against the page: a sequence
+   * `autonumber` sits on a filled circle, and measuring it against the background it never touches is how
+   * it reached about 2.1:1 unnoticed. A list because Mermaid often uses one text variable on several
+   * fills: a gantt task label sits on a normal bar or a critical one, a pie percentage on any slice.
    */
-  | { kind: "textOn"; on: string };
+  | { kind: "textOn"; on: string[] };
 
 export interface DiagramColor {
   /** The `--color-*` token, without the prefix, exactly as `global.css` spells it. */
@@ -63,11 +65,44 @@ const surface = (token: string, label: string, reason: string): DiagramColor => 
   role: { kind: "surface", reason },
   label,
 });
-const textOn = (token: string, on: string, label: string): DiagramColor => ({
+const textOn = (token: string, on: string[], label: string): DiagramColor => ({
   token,
   role: { kind: "textOn", on },
   label,
 });
+
+/**
+ * The categorical ramp in `global.css`, in its order.
+ *
+ * Handed to pie slices only, because a pie is where hue is the *only* key: a legend entry names its slice
+ * by colour and nothing else. Mermaid has two more categorical sets — `cScale*` (mindmap, timeline and
+ * journey sections) and `git*` (branches) — where hue repeats what structure already says: a mindmap
+ * branch is its position, a git branch carries its name. Those keep their surface-derived fills, legible
+ * but not told apart by hue. Handing them the ramp is possible (Mermaid applies a supplied value as
+ * given) but is not just these keys: Mermaid derives an inverted and a "peer" colour from each, used for
+ * edges and borders, and those would have to be declared and measured too.
+ */
+export const CATEGORICAL = [
+  "cat-1",
+  "cat-2",
+  "cat-3",
+  "cat-4",
+  "cat-5",
+  "cat-6",
+  "cat-7",
+  "cat-8",
+] as const;
+
+/**
+ * Non-colour theme variables set alongside the palette, because Mermaid's own value would change what a
+ * colour in it measures. Only values that do that belong here; a setting with no bearing on colour is
+ * Mermaid's to keep.
+ */
+export const DIAGRAM_SETTINGS: Record<string, string> = {
+  // Mermaid draws pie slices at 0.7, which composites each slice with the page behind it. The ratios
+  // measured for the ramp are at full strength, so they hold only at 1.
+  pieOpacity: "1",
+};
 
 /**
  * Mermaid `themeVariables` key -> the token it takes its value from.
@@ -111,7 +146,7 @@ export const DIAGRAM_COLORS: Record<string, DiagramColor> = {
   classText: text("text-primary", "class diagram member text"),
   // Drawn inside a circle filled with signalColor, not on the page. As text-primary on that fill it
   // measured about 2.1:1 dark and 2.4:1 light; a surface token on it clears the floor in both.
-  sequenceNumberColor: textOn("bg-primary", "text-secondary", "sequence autonumber, on the signal circle"),
+  sequenceNumberColor: textOn("bg-primary", ["text-secondary"], "sequence autonumber, on the signal circle"),
   altBackground: surface("bg-secondary", "sequence alt block backing", "a fill"),
 
   // --- Graphics that carry their own meaning ---
@@ -133,12 +168,31 @@ export const DIAGRAM_COLORS: Record<string, DiagramColor> = {
   labelBoxBorderColor: graphic("fold-rule", "sequence loop label outline"),
   activationBorderColor: graphic("fold-rule", "sequence activation bar outline"),
 
-  // --- Gantt. Every one of these is a hard-coded literal in Mermaid's base theme, so a dark gantt
-  // drew light text on `lightgrey` at about 1.1:1 until they were declared here. ---
+  // --- Gantt. Several of these are hard-coded literals in Mermaid's base theme, so a dark gantt drew
+  // light text on `lightgrey` at about 1.1:1 until they were declared here.
+  //
+  // Which text lands on which bar is Mermaid's choice, read from its gantt styles, and it is what this
+  // block is built around. A normal bar and a critical bar share one label variable (`taskTextColor`), so
+  // both are solid fills that one label colour clears. Done and active bars take `taskTextDarkColor`,
+  // which also labels text outside any bar, on the page — so it must be page text, and those two bars are
+  // page surfaces told apart by their outlines. An active bar's solid fill was tried and cannot work: a
+  // fill 3:1 from the page and 4.5:1 under page text exists in neither theme. ---
   altSectionBkgColor: surface("bg-secondary", "alternating gantt section band", "a fill"),
   excludeBkgColor: surface("bg-tertiary", "excluded gantt period", "a fill"),
-  doneTaskBkgColor: surface("bg-tertiary", "completed gantt task fill", "a fill; the task label is measured against it"),
-  critBkgColor: graphic("status-error", "critical gantt task fill"),
+  taskBkgColor: graphic("text-secondary", "gantt task bar"),
+  taskBorderColor: graphic("text-secondary", "gantt task bar outline"),
+  critBkgColor: graphic("status-error", "critical gantt task bar"),
+  taskTextColor: textOn(
+    "bg-primary",
+    ["text-secondary", "status-error"],
+    "gantt label inside a normal or critical bar",
+  ),
+  doneTaskBkgColor: surface("bg-tertiary", "completed gantt task fill", "a fill; its label is taskTextDarkColor, measured as page text"),
+  activeTaskBkgColor: surface("bg-secondary", "active gantt task fill", "a fill; its label is taskTextDarkColor, measured as page text"),
+  // The outline is the only thing marking a task active, so it owes 3:1 and carries the accent.
+  activeTaskBorderColor: graphic("accent", "active gantt task outline"),
+  taskTextDarkColor: text("text-primary", "gantt label on a done or active bar, or beside any bar"),
+  taskTextOutsideColor: text("text-primary", "gantt label beside a bar"),
   gridColor: graphic("fold-rule", "gantt grid line"),
   vertLineColor: graphic("fold-rule", "gantt section divider"),
   doneTaskBorderColor: graphic("fold-rule", "completed gantt task outline"),
@@ -146,7 +200,23 @@ export const DIAGRAM_COLORS: Record<string, DiagramColor> = {
   todayLineColor: graphic("accent", "gantt today marker"),
   taskTextClickableColor: text("accent", "clickable gantt task label"),
 
-  // --- Pie, ER, architecture. Slice and cell separators, and edges that state a dependency. ---
+  // --- Pie. Hue is the information here: a legend entry names a slice only by its colour, so the
+  // slices take the categorical ramp rather than anything derived from a surface (which made every slice
+  // the same near-black in dark and near-white in light). The ramp has eight hues; Mermaid has twelve
+  // slots, so a ninth slice repeats the first, and a pie with more than eight slices cannot be read by
+  // colour alone. Opacity is set to 1 alongside this table (DIAGRAM_SETTINGS): Mermaid's 0.7 would
+  // blend each slice into the page and void every ratio measured here. ---
+  ...Object.fromEntries(
+    Array.from({ length: 12 }, (_, i) => [
+      `pie${i + 1}`,
+      graphic(CATEGORICAL[i % CATEGORICAL.length], `pie slice ${i + 1} and its legend swatch`),
+    ]),
+  ),
+  pieSectionTextColor: textOn("bg-primary", [...CATEGORICAL], "pie slice percentage, on any slice"),
+  pieTitleTextColor: text("text-primary", "pie title"),
+  pieLegendTextColor: text("text-primary", "pie legend entry"),
+
+  // --- ER, architecture. Slice and cell separators, and edges that state a dependency. ---
   pieStrokeColor: graphic("fold-rule", "pie slice separator"),
   pieOuterStrokeColor: graphic("fold-rule", "pie outer edge"),
   attributeBackgroundColorOdd: surface("bg-secondary", "ER attribute row", "a fill"),
@@ -170,14 +240,14 @@ export const DECLARED_DEFAULTS: Record<string, string> = {
   darkMode:
     "not a colour — a flag telling Mermaid which direction to derive any value this table does not " +
     "set, so that a derivation still lands on the right side of the page",
-  // The event-model block palette. Unlike everything above, hue here IS the information: which pastel a
-  // block carries is what says whether it is a command, an event, a read model, a processor or UI. This
-  // theme has no categorical ramp to map them onto, and collapsing five hues onto one token would erase
-  // the distinction the diagram exists to draw. They are left as Mermaid's own, with the limitation
-  // stated rather than hidden: they are light-theme pastels, so an event-model diagram is legible in the
-  // light theme and poor in the dark one. Giving this project a categorical ramp is the fix, and it is a
-  // change of its own — see the note in CLAUDE.md.
-  emUiFill: "categorical hue carries the block kind; no categorical ramp exists to map it onto",
+  pieOpacity: "not a colour — set to 1 in DIAGRAM_SETTINGS, alongside this table",
+  // The event-model block palette. Hue here IS the information: which pastel a block carries is what
+  // says whether it is a command, an event, a read model, a processor or UI. The categorical ramp exists
+  // now, but it cannot be handed over: its fills are measured under `bg-primary` labels, and Mermaid
+  // gives event-model block labels no colour variable — they inherit the page's text colour, which the
+  // ramp's bright dark-theme fills do not clear. So they stay Mermaid's own light-theme pastels, legible
+  // in the light theme and poor in the dark one, until Mermaid exposes the label colour.
+  emUiFill: "categorical hue carries the block kind; its label colour is not a theme variable, so the ramp cannot be measured under it",
   emUiStroke: "outline of the above",
   emProcessorFill: "categorical hue carries the block kind",
   emProcessorStroke: "outline of the above",

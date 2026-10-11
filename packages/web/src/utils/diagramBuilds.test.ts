@@ -1,6 +1,6 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { existsSync, readFileSync, statSync } from "node:fs";
+import { existsSync, readdirSync, readFileSync, statSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 
 /**
@@ -113,3 +113,46 @@ for (const bundle of ENTRY_BUNDLES) {
     assert.ok(bytes < 2_000_000, `${bundle.name} entry is ${bytes} B; Mermaid has probably been inlined`);
   });
 }
+
+/**
+ * Every token handed to Mermaid must exist in the **built** stylesheet, in both themes. The palette is
+ * read by JavaScript at draw time, so no utility class needs it, and Tailwind v4 drops an `@theme`
+ * variable no class references: the categorical ramp vanished from the dark theme, and pie slices fell
+ * back to Mermaid's surface-derived near-black, while every source-reading test passed. `global.css`
+ * now declares `@theme static`; this reads what actually ships. Same CI rule as the entry-bundle checks.
+ */
+test("every token handed to Mermaid is in the built stylesheet, in both themes", async (t) => {
+  const { DIAGRAM_COLORS } = await import("./diagramTheme");
+  const assetsDir = fileURLToPath(new URL("../../../vscode/webview/assets/", import.meta.url));
+  const cssFile = existsSync(assetsDir) ? readdirSync(assetsDir).find((f) => f.endsWith(".css")) : undefined;
+  if (!cssFile) {
+    const message = "VS Code webview not built; run npm run build:webview";
+    if (process.env.CI) assert.fail(`${message} (CI must build it before testing)`);
+    return t.skip(message);
+  }
+  const built = readFileSync(`${assetsDir}${cssFile}`, "utf8").toLowerCase();
+  // The value each theme declares in source, read from the same two blocks contrast.test.ts measures.
+  // A presence check is not enough: the ramp's light values shipped while its dark ones did not.
+  const source = readFileSync(fileURLToPath(new URL("../styles/global.css", import.meta.url)), "utf8");
+  const block = (selector: string) => new RegExp(`${selector}\\s*\\{([^}]*)\\}`).exec(source)?.[1] ?? "";
+  const valueIn = (body: string, token: string) =>
+    new RegExp(`--color-${token}:\\s*(#[0-9a-fA-F]{6})\\s*;`).exec(body)?.[1]?.toLowerCase();
+  const dark = block("@theme(?:\\s+static)?");
+  const light = block('\\[data-theme="light"\\]');
+  const tokens = [...new Set(Object.values(DIAGRAM_COLORS).map((c) => c.token))];
+  for (const token of tokens) {
+    for (const [theme, value] of [
+      ["dark", valueIn(dark, token)],
+      ["light", valueIn(light, token)],
+    ] as const) {
+      if (!value) continue; // light inherits a token it does not override
+      // The minifier writes #ffffff as #fff, so either spelling is the declared value.
+      const short = /^#(.)\1(.)\2(.)\3$/.exec(value);
+      const spellings = short ? [value, `#${short[1]}${short[2]}${short[3]}`] : [value];
+      assert.ok(
+        spellings.some((v) => built.includes(`--color-${token}:${v}`)),
+        `--color-${token} (${theme}, ${value}) is handed to Mermaid but missing from the built stylesheet`,
+      );
+    }
+  }
+});

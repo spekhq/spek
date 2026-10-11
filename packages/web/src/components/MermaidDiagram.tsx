@@ -14,7 +14,7 @@ import {
   showsDrawing,
   showsSource,
 } from "../utils/diagramState";
-import { cssVarReader, resolveDiagramColors } from "../utils/diagramTheme";
+import { DIAGRAM_SETTINGS, cssVarReader, resolveDiagramColors } from "../utils/diagramTheme";
 import {
   IDENTITY_VIEW,
   isIdentityView,
@@ -173,6 +173,7 @@ export function MermaidDiagram({ source }: MermaidDiagramProps) {
           theme: "base",
           themeVariables: {
             ...resolveDiagramColors(cssVarReader(document.documentElement)),
+            ...DIAGRAM_SETTINGS,
             // Declared in DECLARED_DEFAULTS as "not a colour". The font is the page's, so a diagram's
             // labels read as part of the document rather than as a picture pasted into it.
             fontFamily: getComputedStyle(document.body).fontFamily,
