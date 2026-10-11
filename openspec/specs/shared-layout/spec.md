@@ -1,7 +1,9 @@
 ## Purpose
 
 Define the layout shell every page shares - header, navigation sidebar, and content area - across all delivery surfaces.
+
 ## Requirements
+
 ### Requirement: Header component
 The system SHALL render a fixed header bar (56px height) containing: an inline SVG logomark (S-curve with diamond accents, 24x24) followed by the "spek" brand text (left), a search button (center), and the current repo path (right, desktop only). On mobile viewports, the header SHALL include a hamburger menu button with `aria-label="Open navigation menu"` and hide the repo path. The header SHALL also include a theme toggle button. The logomark SVG SHALL use `currentColor` to follow the accent color, ensuring theme compatibility.
 
@@ -85,15 +87,19 @@ The system SHALL provide a reusable TabView component that renders tab headers a
 - **THEN** tab content switches instantly without fade animation
 
 ### Requirement: Custom typography
-The system SHALL use "Plus Jakarta Sans" as the primary font family for all UI text, loaded via Google Fonts CDN. The font stack SHALL include `sans-serif` as fallback for offline environments. Code and monospace text SHALL continue to use "JetBrains Mono".
+The system SHALL use "Plus Jakarta Sans" as the primary font family for all UI text. The web app loads it via Google Fonts CDN; the static single-file page — the demo and the GitHub Action's output — embeds it (see `demo-page`) and requests nothing. The VS Code and IntelliJ webviews load no web font and render the fallback. The font stack SHALL include `sans-serif` as fallback for offline environments. Code and monospace text SHALL continue to use "JetBrains Mono".
 
 #### Scenario: Font loading
 - **WHEN** the application loads in a browser with internet access
 - **THEN** "Plus Jakarta Sans" is loaded and applied to all non-code text elements
 
 #### Scenario: Font fallback
-- **WHEN** the application loads without internet access (or Google Fonts is blocked)
+- **WHEN** the web app loads without internet access (or Google Fonts is blocked)
 - **THEN** the browser falls back to the system default sans-serif font
+
+#### Scenario: Static page offline
+- **WHEN** the static single-file page is opened without internet access
+- **THEN** "Plus Jakarta Sans" is applied to all non-code text elements
 
 #### Scenario: Reduced motion preference
 - **WHEN** the user has `prefers-reduced-motion: reduce` set in their OS/browser
@@ -112,4 +118,3 @@ The system SHALL render back navigation links (e.g., "← Back to Specs", "← B
 #### Scenario: Back link display
 - **WHEN** user views a detail page (SpecDetail or ChangeDetail)
 - **THEN** the back navigation link is displayed at 16px font size with medium weight, muted color, and accent color on hover
-

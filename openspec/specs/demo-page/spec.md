@@ -8,10 +8,26 @@ evaluating the project requires neither an install nor a repo of one's own.
 ### Requirement: Self-contained single-file demo
 
 The project SHALL build a demo to `docs/demo.html` that is a **single self-contained file**: JavaScript,
-CSS and OpenSpec data are inlined, and rendering it requires no network request and no server.
+CSS, fonts and OpenSpec data are inlined, and rendering it requires no network request and no server.
 
 `docs/` is what GitHub Pages publishes, so the built file is committed to the repository rather than
 produced at deploy time.
+
+A web font the page loads SHALL be embedded in the page together with the notice its licence requires,
+rather than requested from a font service. The build SHALL enforce this rather than rely on the
+template being remembered: it SHALL fail, naming the element and not writing the output file, if the
+assembled page contains an element that loads a resource from a URL with a scheme other than `data:`
+or from a protocol-relative URL; and the project's tests SHALL fail if the project's own stylesheets,
+or the embedded font CSS, reach such a URL through `url()` or `@import`. `data:` URLs are part of the
+page and are allowed. A hyperlink loads nothing and is not judged.
+
+What the application requests at run time on the reader's action — a remote image an artifact's
+Markdown links to — is the content's own and is outside this requirement, as is CSS shipped inside the
+bundle's third-party dependencies.
+
+**Rationale**: the page template linked Google Fonts from the start, so every visitor's browser asked
+Google for a font while this requirement said the page issued no request. The same template is what the
+GitHub Action publishes for every consumer.
 
 #### Scenario: Build the demo
 
@@ -20,8 +36,30 @@ produced at deploy time.
 
 #### Scenario: No external dependencies
 
-- **WHEN** `docs/demo.html` is opened directly from disk over `file://`, or served from GitHub Pages
-- **THEN** it renders fully, issuing no request to any external host
+- **WHEN** `docs/demo.html` is opened directly from disk over `file://`, or served from any host
+- **THEN** it renders fully in its own font, issuing no request to any external host
+
+#### Scenario: The font's licence travels with it
+
+- **WHEN** the built page is inspected
+- **THEN** it contains the embedded font's copyright notice and licence text
+
+#### Scenario: A template that loads from another origin fails the build
+
+- **WHEN** the page template contains a `<link rel="preconnect">` or a `<script src>` whose URL is
+  `https:` or protocol-relative
+- **THEN** the build fails with a non-zero exit naming that element
+- **AND** the output file is not written
+
+#### Scenario: A part that breaks out is named as that part
+
+- **WHEN** the application stylesheet contains `</style>` followed by a `<link>` to an `https:` URL
+- **THEN** the build fails naming the stylesheet, not the `<link>` element it produced
+
+#### Scenario: A remote import in the project's stylesheet fails the tests
+
+- **WHEN** `global.css` gains `@import url("https://fonts.example.com/f.css")`
+- **THEN** the project's tests fail, naming the file and the URL
 
 ### Requirement: The published demo is a production build
 
@@ -53,14 +91,21 @@ that reaches the payload is served to every visitor.
 Two sources are machine-specific and SHALL be excluded: schemas resolved from the builder's
 user-level directory, and project-local schemas that git does not track — a schema hidden by
 `.git/info/exclude` is on disk and invisible to everyone else. Absolute filesystem paths carried on
-embedded records SHALL be reduced to their source-relative form, since an absolute path is a home
-directory or an npm install location and there is no filesystem behind it in a published page.
+embedded records — schema definitions and spec records alike — SHALL be reduced to their
+source-relative form, since an absolute path is a home directory or an npm install location and there
+is no filesystem behind it in a published page.
 
 This SHALL be enforced by the build rather than by instructions to whoever runs it. The guarantee is
 that the payload is a function of the commit, which a step a person has to remember cannot provide.
+The build SHALL fail, listing each offending field, if a path on a record the build produces — a spec
+record, a schema definition or one of its shadows — is absolute. Content is not such a record: an
+absolute path an author wrote into an artifact, or into a change's metadata, reaches the reader
+unchanged.
 
 **Rationale**: a first build embedded twelve of the maintainer's machine-local schemas plus one
-excluded from git, advertising to every visitor a set of workflows nobody else has.
+excluded from git, advertising to every visitor a set of workflows nobody else has. Spec records
+carried the builder's absolute checkout path through v1.20.0, unread by any page, because only schema
+definitions were reduced.
 
 #### Scenario: Machine-local schemas are excluded
 
@@ -69,8 +114,26 @@ excluded from git, advertising to every visitor a set of workflows nobody else h
 
 #### Scenario: Embedded paths carry no home directory
 
-- **WHEN** an embedded schema definition is inspected in the built file
+- **WHEN** an embedded schema definition or spec record is inspected in the built file
 - **THEN** its location reads in its source's own terms rather than as an absolute path on the build machine
+
+#### Scenario: A spec record's path is relative to the repository
+
+- **WHEN** the repository has a spec at `openspec/specs/contracts/pagination/spec.md`
+- **THEN** that spec's record in the payload carries the path `openspec/specs/contracts/pagination/spec.md`
+
+#### Scenario: An absolute record path fails the build
+
+- **WHEN** a spec record's or schema definition's path is `/home/someone/repo/openspec/specs/a/spec.md`
+  or `C:\repo\openspec\specs\a\spec.md`
+- **THEN** the build fails with a non-zero exit listing that field
+- **AND** the output file is not written
+
+#### Scenario: Content quoting an absolute path is kept
+
+- **WHEN** an artifact's text contains `/home/someone/repo`, or a change's `.openspec.yaml` has
+  `path: /home/someone/repo`
+- **THEN** the build succeeds and the viewer receives that text and that metadata unchanged
 
 #### Scenario: Two machines build the same payload
 
@@ -114,8 +177,8 @@ The behaviour of that adapter is specified by the `api-adapter` capability and i
 
 ### Requirement: Embedded content cannot change the structure of the page
 
-The build SHALL write every value it embeds — the OpenSpec payload, the page title, and the
-application's script and stylesheet — so that the generated document parses into exactly the
+The build SHALL write every value it embeds — the OpenSpec payload, the page title, the embedded font
+CSS, and the application's script and stylesheet — so that the generated document parses into exactly the
 elements the build assembled, in the order it assembled them, each holding the text it was given
 (with line endings normalised as the HTML parser normalises them). What an artifact or a title says
 SHALL NOT decide where an element ends.
@@ -125,11 +188,11 @@ text, and a title passed on the command line or as the GitHub Action's `title` i
 encoded so that no spelling of them is read as markup; the data the viewer receives and the text of
 the page's `<title>` element SHALL be identical to the originals.
 
-The application's script and stylesheet are the project's own build output, and cannot be
-re-encoded without changing what they mean. The build SHALL parse the assembled document before
+The application's script and stylesheet are the project's own build output, and the font CSS is
+assembled from a pinned font package; none of them can be re-encoded without changing what it means. The build SHALL parse the assembled document before
 writing it. If the parsed document does not contain exactly the assembled elements with their text,
 the build SHALL fail with a non-zero exit, name the first part in document order whose element
-diverges — the title, the payload, the script or the stylesheet — and not write the output file. A
+diverges — the title, the payload, the font CSS, the script or the stylesheet — and not write the output file. A
 document whose embedded parts do not parse back as written SHALL NOT be produced by a build that
 reports success.
 
@@ -177,3 +240,9 @@ nothing in CI to say so.
 - **WHEN** the application's script contains `<script>` before any `<!--`, or `<!--`, then `-->`,
   then `<script>`
 - **THEN** the build succeeds
+
+#### Scenario: Font CSS would not parse back as written
+
+- **WHEN** the font CSS contains `</style>`
+- **THEN** the build fails with a non-zero exit, naming the font CSS
+- **AND** the output file is not written

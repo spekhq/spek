@@ -136,7 +136,23 @@ Schema enumeration reads the machine, and **the script guards this itself** — 
 `displayPath`. What survives is what a clean checkout has. This replaced a note asking the builder to move their
 schemas aside by hand; another machine-dependent source belongs in that guard, not in a note here.
 
-Still unfiltered: `specs[].path` carries the builder's absolute repo path — predates schemas, separate cleanup.
+Spec records are reduced the same way (`path` relative to the repository), and **the build refuses an absolute
+path on any record it produces** — `findAbsolutePaths` walks `specs[].path` and `schemaDetails.*.path` /
+`.shadows[].path` and nothing else. Content stays out of it on purpose: artifact text and a change's
+`.openspec.yaml` metadata are the author's, and an absolute path written there must reach the reader, not stop
+an action consumer's build. (This repository's own archived prose once quoted the maintainer's home directory;
+that was reworded, not filtered.)
+
+**The page requests nothing from another origin — the font is embedded.** Plus Jakarta Sans goes in as
+`data:` URLs from the pinned `@fontsource-variable/plus-jakarta-sans` devDependency (`scripts/demo-fonts.ts`,
+pure; `demo-font-sources.ts` reads the files), with the OFL text as a leading comment — byte for byte the four
+woff2 files the old Google Fonts link served, with Google's `400 800` weight range. Two guards hold it:
+`verifyDemoOrigins` fails assembly on any element that loads from another origin (the attribute set spekterm's
+`check-origins` uses, so the page passes the website's check), run **after** the structural check so a part
+that breaks out is named as that part; and `stylesheets-load-nothing-remote.test.ts` fails on a remote `url()`
+/ `@import` in any `packages/{web,ui}/src/**/*.css` or the font CSS — the element walk cannot see CSS, which
+the demo bundle injects at run time. This is what lets spekterm.com serve the demo; the web app still loads
+the font from Google, and the webviews load no web font at all.
 
 **The page is assembled by `scripts/demo-html.ts`, and a page that would not parse back as written fails the
 build.** Where an inline element ends is the HTML tokenizer's call, not ours: an artifact holding `</script>`
