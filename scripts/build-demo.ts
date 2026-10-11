@@ -24,6 +24,8 @@ import type {
 import { assembleDemoHtml, findAbsolutePaths } from "./demo-html.js";
 import { buildFontFaceCss } from "./demo-fonts.js";
 import { readFontSources } from "./demo-font-sources.js";
+import { formatNotices, shippedPackages, type ShippedPackage } from "./demo-notices.js";
+import { readPackageNotice } from "./demo-notice-sources.js";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const ROOT = path.resolve(__dirname, "..");
@@ -238,12 +240,24 @@ async function main() {
       ? fs.readFileSync(path.join(DIST_DEMO, "assets", cssFile), "utf-8")
       : "";
 
+    // The packages whose code the bundle contains (recorded by vite.demo.config.ts), plus two the
+    // module graph does not show: Tailwind, whose generated CSS carries its preflight, and the font.
+    const shippedIds: string[] = JSON.parse(
+      fs.readFileSync(path.join(DIST_DEMO, "assets", "shipped-modules.json"), "utf-8"),
+    );
+    const named: ShippedPackage[] = [{ name: "@fontsource-variable/plus-jakarta-sans", root: null }];
+    if (/tailwindcss v\d/.test(jsContent + cssContent)) named.push({ name: "tailwindcss", root: null });
+    const notices = formatNotices(
+      [...shippedPackages(shippedIds), ...named].map((pkg) => readPackageNotice(pkg, WEB_DIR)),
+    );
+
     // Throws, naming the part, if the page would not parse back as written (#54) — so nothing is
     // written and the build exits non-zero instead of reporting success for a page that cannot boot.
     const html = assembleDemoHtml({
       title: PAGE_TITLE,
       payload: demoData,
       fonts,
+      notices,
       script: jsContent,
       stylesheet: cssContent,
     });

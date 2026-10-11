@@ -2,13 +2,13 @@
  * Assembles the single-file demo page and proves it parses back as written, and that it loads
  * nothing from another origin.
  *
- * The page embeds five values: the title, the OpenSpec payload, the font CSS, and the application's
- * script and stylesheet. Where each element ends is decided by the HTML tokenizer, not by the build — `</script`
+ * The page embeds six values: the title, the OpenSpec payload, the font CSS, the third-party notices,
+ * and the application's script and stylesheet. Where each element ends is decided by the HTML tokenizer, not by the build — `</script`
  * ends a script, and `<!--` followed by `<script` makes a later `</script` stop ending it — so a value
  * holding the wrong sequence silently restructures the page (#54). The payload and the title come
  * from content the build does not control, so they are encoded until no spelling of them is markup.
- * The font CSS, script and stylesheet are the project's own output and cannot be re-encoded without
- * changing what they mean, so the assembled document is parsed and compared with what was written, and any
+ * The font CSS, notices, script and stylesheet are the project's own output and cannot be re-encoded
+ * without changing what they mean, so the assembled document is parsed and compared with what was written, and any
  * divergence fails the build instead of producing a page that cannot boot.
  *
  * Deliberately free of `packages/core/dist` imports and of import-time side effects: its tests run
@@ -19,7 +19,7 @@ import { parse, type DefaultTreeAdapterMap } from "parse5";
 
 type ParsedNode = DefaultTreeAdapterMap["node"];
 
-export type DemoHtmlPart = "title" | "fonts" | "stylesheet" | "payload" | "script";
+export type DemoHtmlPart = "title" | "fonts" | "notices" | "stylesheet" | "payload" | "script";
 
 export interface DemoHtmlParts {
   title: string;
@@ -27,6 +27,11 @@ export interface DemoHtmlParts {
   script: string;
   /** The `@font-face` rules carrying the page's web font, embedded (`scripts/demo-fonts.ts`). */
   fonts?: string;
+  /**
+   * The third-party notices of what the bundle ships (`scripts/demo-notices.ts`), as plain text. Written
+   * into a `<script type="text/plain" id="third-party-notices">`: never run, readable in the source.
+   */
+  notices?: string;
   /** Omitted or empty when the build emitted no CSS file (the demo's IIFE bundle injects its own). */
   stylesheet?: string;
 }
@@ -41,6 +46,7 @@ export interface IntendedElement {
 const PART_LABEL: Record<DemoHtmlPart, string> = {
   title: "the page title",
   fonts: "the font CSS",
+  notices: "the third-party notices",
   stylesheet: "the application stylesheet",
   payload: "the OpenSpec payload",
   script: "the application script",
@@ -55,6 +61,8 @@ export class DemoHtmlError extends Error {
         ? "Its value is encoded before embedding so that nothing it says can do this — the encoding is at fault, not the content."
         : part === "fonts"
           ? "It is assembled from the font package's CSS and licence text — look there for the sequence."
+          : part === "notices"
+            ? "It is assembled from the bundled packages' licence files — look there for the sequence."
           : "The build cannot re-encode its own bundle without changing what it means — find the sequence in the source that emitted it.";
     super(`${PART_LABEL[part]} does not parse back as written: ${detail}. ${cause}`);
     this.name = "DemoHtmlError";
@@ -248,6 +256,9 @@ export function findAbsolutePaths(payload: unknown): string[] {
 export function assembleDemoHtml(parts: DemoHtmlParts): string {
   const payloadScript = `window.__DEMO_DATA__ = ${serializeForInlineScript(parts.payload)};`;
   const fontsBlock = parts.fonts ? `\n    <style>${parts.fonts}</style>` : "";
+  const noticesBlock = parts.notices
+    ? `\n    <script type="text/plain" id="third-party-notices">${parts.notices}</script>`
+    : "";
   const styleBlock = parts.stylesheet ? `\n    <style>${parts.stylesheet}</style>` : "";
 
   const html = `<!DOCTYPE html>
@@ -255,7 +266,7 @@ export function assembleDemoHtml(parts: DemoHtmlParts): string {
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>${escapeHtmlText(parts.title)}</title>${fontsBlock}${styleBlock}
+    <title>${escapeHtmlText(parts.title)}</title>${fontsBlock}${noticesBlock}${styleBlock}
   </head>
   <body>
     <div id="root"></div>
@@ -266,6 +277,7 @@ export function assembleDemoHtml(parts: DemoHtmlParts): string {
 
   const intended: IntendedElement[] = [{ part: "title", tag: "title", text: parts.title }];
   if (parts.fonts) intended.push({ part: "fonts", tag: "style", text: parts.fonts });
+  if (parts.notices) intended.push({ part: "notices", tag: "script", text: parts.notices });
   if (parts.stylesheet) intended.push({ part: "stylesheet", tag: "style", text: parts.stylesheet });
   intended.push({ part: "payload", tag: "script", text: payloadScript }, { part: "script", tag: "script", text: parts.script });
   verifyDemoHtml(html, intended);

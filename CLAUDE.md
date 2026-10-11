@@ -154,6 +154,16 @@ that breaks out is named as that part; and `stylesheets-load-nothing-remote.test
 the demo bundle injects at run time. This is what lets spekterm.com serve the demo; the web app still loads
 the font from Google, and the webviews load no web font at all.
 
+**The page carries the third-party notices of what it bundles**, in a `<script type="text/plain"
+id="third-party-notices">` (a tracked part, so the structural check covers it). The list comes from the bundle,
+not from `package.json`: `vite.demo.config.ts`'s `shippedModules` plugin records every module rendered into the
+chunk after tree-shaking (`assets/shipped-modules.json`, read by `build-demo.ts` and never embedded), and
+`demo-notices.ts` maps each id to its package — Rollup's and Vite's virtual helpers to `vite`, whose
+`LICENSE.md` is cut before the licences of Vite's *own* bundled dependencies, which run in the bundler, not the
+page. Tailwind (its preflight is in the CSS, not the module graph) and the font are added by name. An empty list
+throws: it means the record went blind. Every host of the page redistributes that code — spekterm.com serves it
+and its notices requirement relies on this.
+
 **The page is assembled by `scripts/demo-html.ts`, and a page that would not parse back as written fails the
 build.** Where an inline element ends is the HTML tokenizer's call, not ours: an artifact holding `</script>`
 truncated the data script, and `<!--` followed by `<script>` makes it swallow the bundle after it — both built

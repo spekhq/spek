@@ -314,3 +314,23 @@ test("findAbsolutePaths leaves content alone: artifact text and change metadata 
 test("findAbsolutePaths tolerates a payload without the record lists", () => {
   assert.deepEqual(findAbsolutePaths({}), []);
 });
+
+// The notices part: plain text in a script element that never runs.
+
+test("assembly: the notices are a text/plain script in <head>, read back exactly", () => {
+  const notices = "Third-party software in this page\n\nreact@19.1.0 (MIT)\n\nMIT License <https://opensource.org/licenses/MIT>";
+  const html = assembleDemoHtml({ title: "t", payload: {}, script: SAFE_SCRIPT, fonts: "a{}", notices });
+  const element = elementsOf(html).find((e) => e.attrs.some((a) => a.name === "id" && a.value === "third-party-notices"));
+  assert.ok(element, "the notices element exists");
+  assert.equal(element.tagName, "script");
+  assert.deepEqual(element.attrs.find((a) => a.name === "type")?.value, "text/plain");
+  assert.equal(textOf(element), notices);
+  assert.equal(scriptsOf(html).length, 3, "notices, payload, application");
+});
+
+test("assembly: notices holding </script> fail naming the notices", () => {
+  assert.throws(
+    () => assembleDemoHtml({ title: "t", payload: {}, script: SAFE_SCRIPT, notices: "a </script> b" }),
+    (error: unknown) => isDemoHtmlError("notices")(error) && /licence files/.test((error as Error).message),
+  );
+});
