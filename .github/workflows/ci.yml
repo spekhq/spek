@@ -47,6 +47,14 @@ jobs:
           npm run build:core
           npm run build:ui
 
+      # The diagram bundle guard (packages/web/src/utils/diagramBuilds.test.ts) reads both webview
+      # entry bundles, and fails rather than skips in CI when they are missing, so they are built
+      # before the tests. A new step, not a new job: the job's name is a required status check.
+      - name: Build webviews
+        run: |
+          npm run build:webview -w @spekjs/web
+          npm run build:intellij -w @spekjs/web
+
       - name: Test
         run: npm test
 

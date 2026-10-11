@@ -66,24 +66,50 @@ test("the stand-in resolves to nothing", () => {
   assert.equal(/^import\s/m.test(stub), false, "the stand-in must import nothing");
 });
 
-/**
- * The one assertion against reality rather than configuration. Skipped when the build output is not
- * present, so a plain `npm test` on a fresh clone does not fail on a missing artifact — CI and anyone
- * who has run a build get the check.
- */
-test("Mermaid is not in the webview entry bundle", (t) => {
-  const entry = fileURLToPath(new URL("../../../vscode/webview/assets/index.webview.js", import.meta.url));
-  if (!existsSync(entry)) return t.skip("webview not built; run npm run build:webview");
-  const text = readFileSync(entry, "utf8");
-  for (const marker of ["dagre", "cytoscape", "katex", "sequenceDiagram"]) {
-    assert.equal(
-      text.includes(marker),
-      false,
-      `"${marker}" is in the entry bundle, so Mermaid was inlined rather than split`,
-    );
-  }
-  // A generous ceiling: the entry was ~683 KB when diagrams landed, against ~5.9 MB inlined. This
-  // catches the inlining regression, not ordinary growth.
-  const bytes = statSync(entry).size;
-  assert.ok(bytes < 2_000_000, `webview entry is ${bytes} B; Mermaid has probably been inlined`);
+test("the webview build resolves its chunks relative to itself", () => {
+  // Vite's preload helper builds a lazy chunk's dependency URLs from the base. The default "/" resolves
+  // against the vscode-webview:// origin, where nothing is served, so the first diagram on a page failed
+  // with "Unable to preload CSS". Only a real VS Code host shows this: a browser serving the build from an
+  // origin root resolves "/assets/" either way. IntelliJ's absolute "/spek/webview/" is correct for the
+  // built-in server that serves it.
+  assert.match(config("vite.webview.config.ts"), /base:\s*"\.\/"/);
 });
+
+/**
+ * The assertions against reality rather than configuration, one per drawing host's entry bundle.
+ *
+ * Outside CI a missing artifact is a skip, so a plain `npm test` on a fresh clone does not fail on a
+ * build it never ran. **In CI it is a failure**: the Node gates build both webviews before testing, and a
+ * guard that quietly skips there is a guard that never runs — which is what this one did when it shipped.
+ */
+const ENTRY_BUNDLES = [
+  { name: "VS Code webview", path: "../../../vscode/webview/assets/index.webview.js", script: "build:webview" },
+  {
+    name: "IntelliJ webview",
+    path: "../../../intellij/src/main/resources/webview/assets/index.intellij.js",
+    script: "build:intellij",
+  },
+];
+
+for (const bundle of ENTRY_BUNDLES) {
+  test(`Mermaid is not in the ${bundle.name} entry bundle`, (t) => {
+    const entry = fileURLToPath(new URL(bundle.path, import.meta.url));
+    if (!existsSync(entry)) {
+      const message = `${bundle.name} not built; run npm run ${bundle.script}`;
+      if (process.env.CI) assert.fail(`${message} (CI must build it before testing)`);
+      return t.skip(message);
+    }
+    const text = readFileSync(entry, "utf8");
+    for (const marker of ["dagre", "cytoscape", "katex", "sequenceDiagram"]) {
+      assert.equal(
+        text.includes(marker),
+        false,
+        `"${marker}" is in the ${bundle.name} entry bundle, so Mermaid was inlined rather than split`,
+      );
+    }
+    // A generous ceiling: the entry was ~683 KB when diagrams landed, against ~5.9 MB inlined. This
+    // catches the inlining regression, not ordinary growth.
+    const bytes = statSync(entry).size;
+    assert.ok(bytes < 2_000_000, `${bundle.name} entry is ${bytes} B; Mermaid has probably been inlined`);
+  });
+}
