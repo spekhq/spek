@@ -25,9 +25,9 @@
     ]]></description>
 
     <change-notes><![CDATA[
-        <p><b>1.20.1</b></p>
+        <p><b>1.20.2</b></p>
         <ul>
-            <li>No user-facing changes for the plugin in this release. It fixes the live demo and the GitHub Action's HTML snapshot, which now embed their font instead of loading it from Google Fonts and no longer carry the build machine's paths.</li>
+            <li>No user-facing changes for the plugin in this release. It adds the third-party notices to the live demo and the GitHub Action's HTML snapshot.</li>
         </ul>
     ]]></change-notes>
 

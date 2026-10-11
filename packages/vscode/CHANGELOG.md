@@ -1,5 +1,9 @@
 # Changelog
 
+## 1.20.2
+
+- No user-facing changes for the extension in this release. It adds the third-party notices to the live demo and the GitHub Action's HTML snapshot.
+
 ## 1.20.1
 
 - No user-facing changes for the extension in this release. It fixes the live demo and the GitHub Action's HTML snapshot, which now embed their font instead of loading it from Google Fonts and no longer carry the build machine's paths.

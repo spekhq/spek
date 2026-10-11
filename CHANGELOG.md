@@ -1,5 +1,10 @@
 # Changelog
 
+## 1.20.2
+
+- **The live demo and the GitHub Action's HTML snapshot carry the notices of the third-party code they bundle.** The page holds about ninety packages — React, React Router, the Markdown and highlighting stack, d3 modules — and every site that serves it redistributes them, without their licence texts until now. Each package's name, version, licence and licence text is embedded in the page (`#third-party-notices` in its source), listed from what the bundle actually contains. The page grows by about 115 KB
+- No change to the web app, VS Code or IntelliJ in this release
+
 ## 1.20.1
 
 **The live demo and the GitHub Action's HTML snapshot request nothing from another site.**
