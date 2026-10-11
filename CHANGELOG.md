@@ -1,5 +1,15 @@
 # Changelog
 
+## 1.20.1
+
+**The live demo and the GitHub Action's HTML snapshot request nothing from another site.**
+
+- **The page carries its own font.** It loaded Plus Jakarta Sans from Google Fonts, so every visitor's browser asked Google for it, although the page is meant to render with no request to any host. The font is now embedded — the same font files, with its licence — and the page works the same opened from disk, offline, or from any host. The page grows by about 85 KB
+- **The page no longer embeds the build machine's paths.** Each spec record carried the absolute path of the checkout it was built from — a home directory, in a published page. It carries the path within the repository now, and the build refuses to publish an absolute one
+- **GitHub Action users get both on their next run**: the action builds with spek's main branch unless `spek-version` pins it. A build whose schema would still embed an absolute path (a schema outside the repository, the home directory and `node_modules`) now stops with an error naming it, instead of publishing that path
+- No change to the web app, VS Code or IntelliJ in this release
+- *Internal:* the npm publish workflow builds the webviews before its gates; the READMEs are an overview pointing to the user guide at [spekterm.com/spek/docs](https://spekterm.com/spek/docs/)
+
 ## 1.20.0
 
 **Highlight: mermaid diagrams are drawn.** A design document usually explains a project's shape with a picture, and Mermaid is how that picture is written in Markdown. spek showed a ` ```mermaid ` block as highlighted source, so the one part of a design meant to be looked at was the one shown as text. Thanks to [@gokul-kulkarni](https://github.com/gokul-kulkarni) (Gokul Kulkarni) ([#55](https://github.com/spekhq/spek/pull/55))

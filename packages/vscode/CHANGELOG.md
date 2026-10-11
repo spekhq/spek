@@ -1,5 +1,9 @@
 # Changelog
 
+## 1.20.1
+
+- No user-facing changes for the extension in this release. It fixes the live demo and the GitHub Action's HTML snapshot, which now embed their font instead of loading it from Google Fonts and no longer carry the build machine's paths.
+
 ## 1.20.0
 
 **Highlight: mermaid diagrams are drawn.** A design document usually explains a project's shape with a picture, and Mermaid is how that picture is written in Markdown. spek showed a ` ```mermaid ` block as highlighted source, so the one part of a design meant to be looked at was the one shown as text. Thanks to [@gokul-kulkarni](https://github.com/gokul-kulkarni) (Gokul Kulkarni) ([#55](https://github.com/spekhq/spek/pull/55))
