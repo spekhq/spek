@@ -243,9 +243,9 @@ export class SpekPanel {
     // correct as the chunk list changes.
     const html = fs.readFileSync(indexPath, "utf-8");
     const finalHtml = html
-      // `/assets/x.js` -> a webview URI under localResourceRoots.
+      // `./assets/x.js` (the build's base is relative) -> a webview URI under localResourceRoots.
       .replace(
-        /(src|href)="\/assets\/([^"]+)"/g,
+        /(src|href)="\.\/assets\/([^"]+)"/g,
         (_match, attr: string, file: string) =>
           `${attr}="${webview.asWebviewUri(vscode.Uri.joinPath(webviewDir, "assets", file))}"`,
       )

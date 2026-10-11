@@ -9,10 +9,16 @@ export default defineConfig({
   // alongside the nonce, so a dynamic import resolves to a chunk that ships inside the vsix and is
   // fetched only when a document actually holds a diagram. See packages/vscode/src/panel.ts.
   define: { __SPEK_DRAWS_DIAGRAMS__: "true" },
+  // Relative, not the default "/". Vite's preload helper builds each lazy chunk's dependency URLs from
+  // the base, and inside a webview "/assets/..." resolves against the vscode-webview:// origin, where
+  // nothing is served: the first diagram on a page failed with "Unable to preload CSS". With "./" the
+  // helper resolves them against the importing module's own URL, which is the webview resource URI.
+  // A browser serving the build from an origin root resolves "/assets/" either way, so only the real
+  // host shows the difference.
+  base: "./",
   build: {
     outDir: path.resolve(__dirname, "../vscode/webview"),
     emptyOutDir: true,
-    // 產出 IIFE 格式（非 ESM），避免 Webview CSP 問題
     rollupOptions: {
       input: path.resolve(__dirname, "index.webview.html"),
       output: {
