@@ -1,13 +1,14 @@
 /**
- * Assembles the single-file demo page and proves it parses back as written.
+ * Assembles the single-file demo page and proves it parses back as written, and that it loads
+ * nothing from another origin.
  *
- * The page embeds four values: the title, the OpenSpec payload, and the application's script and
- * stylesheet. Where each element ends is decided by the HTML tokenizer, not by the build — `</script`
+ * The page embeds five values: the title, the OpenSpec payload, the font CSS, and the application's
+ * script and stylesheet. Where each element ends is decided by the HTML tokenizer, not by the build — `</script`
  * ends a script, and `<!--` followed by `<script` makes a later `</script` stop ending it — so a value
  * holding the wrong sequence silently restructures the page (#54). The payload and the title come
  * from content the build does not control, so they are encoded until no spelling of them is markup.
- * The script and stylesheet are the project's own output and cannot be re-encoded without changing
- * what they mean, so the assembled document is parsed and compared with what was written, and any
+ * The font CSS, script and stylesheet are the project's own output and cannot be re-encoded without
+ * changing what they mean, so the assembled document is parsed and compared with what was written, and any
  * divergence fails the build instead of producing a page that cannot boot.
  *
  * Deliberately free of `packages/core/dist` imports and of import-time side effects: its tests run
@@ -18,12 +19,14 @@ import { parse, type DefaultTreeAdapterMap } from "parse5";
 
 type ParsedNode = DefaultTreeAdapterMap["node"];
 
-export type DemoHtmlPart = "title" | "stylesheet" | "payload" | "script";
+export type DemoHtmlPart = "title" | "fonts" | "stylesheet" | "payload" | "script";
 
 export interface DemoHtmlParts {
   title: string;
   payload: unknown;
   script: string;
+  /** The `@font-face` rules carrying the page's web font, embedded (`scripts/demo-fonts.ts`). */
+  fonts?: string;
   /** Omitted or empty when the build emitted no CSS file (the demo's IIFE bundle injects its own). */
   stylesheet?: string;
 }
@@ -37,6 +40,7 @@ export interface IntendedElement {
 
 const PART_LABEL: Record<DemoHtmlPart, string> = {
   title: "the page title",
+  fonts: "the font CSS",
   stylesheet: "the application stylesheet",
   payload: "the OpenSpec payload",
   script: "the application script",
@@ -49,7 +53,9 @@ export class DemoHtmlError extends Error {
     const cause =
       part === "payload" || part === "title"
         ? "Its value is encoded before embedding so that nothing it says can do this — the encoding is at fault, not the content."
-        : "The build cannot re-encode its own bundle without changing what it means — find the sequence in the source that emitted it.";
+        : part === "fonts"
+          ? "It is assembled from the font package's CSS and licence text — look there for the sequence."
+          : "The build cannot re-encode its own bundle without changing what it means — find the sequence in the source that emitted it.";
     super(`${PART_LABEL[part]} does not parse back as written: ${detail}. ${cause}`);
     this.name = "DemoHtmlError";
     this.part = part;
@@ -133,9 +139,115 @@ export function verifyDemoHtml(html: string, intended: readonly IntendedElement[
   }
 }
 
-/** The demo page, returned only once it is known to parse back as written; throws {@link DemoHtmlError} otherwise. */
+/** An element of the page that would make the browser fetch something from another origin. */
+export class DemoHtmlLoadError extends Error {
+  constructor(element: string, url: string) {
+    super(
+      `the page's <${element}> loads ${url} from another origin. The page must render with no request to any ` +
+        "host (demo-page) — embed the resource as a data: URL instead.",
+    );
+    this.name = "DemoHtmlLoadError";
+  }
+}
+
+/**
+ * Attributes that make the browser load something, per element — the set spekterm.com's own
+ * `check-origins` uses, so a page that passes here passes the element half of that check. `<a href>`
+ * loads nothing and is not judged; every `<link>` is, `preconnect` included (it opens a connection).
+ */
+const LOADING_ATTRIBUTES: Record<string, readonly string[]> = {
+  script: ["src"],
+  link: ["href"],
+  img: ["src", "srcset"],
+  source: ["src", "srcset"],
+  iframe: ["src"],
+  embed: ["src"],
+  track: ["src"],
+  audio: ["src"],
+  input: ["src"],
+  video: ["src", "poster"],
+  object: ["data"],
+};
+
+/** A URL with a scheme other than `data:`, or a protocol-relative one. Relative and fragment URLs
+ * resolve against the page itself. */
+function isRemote(url: string): boolean {
+  const value = url.trim();
+  if (value.startsWith("//")) return true;
+  const scheme = /^([a-z][a-z0-9+.-]*):/i.exec(value);
+  return scheme !== null && scheme[1].toLowerCase() !== "data";
+}
+
+function srcsetUrls(value: string): string[] {
+  return value
+    .split(",")
+    .map((candidate) => candidate.trim().split(/\s+/)[0])
+    .filter(Boolean);
+}
+
+function findRemoteLoad(node: ParsedNode): { element: string; url: string } | null {
+  if ("tagName" in node) {
+    for (const name of LOADING_ATTRIBUTES[node.tagName] ?? []) {
+      const attribute = node.attrs.find((a) => a.name === name);
+      if (!attribute) continue;
+      const urls = name === "srcset" ? srcsetUrls(attribute.value) : [attribute.value];
+      const remote = urls.find(isRemote);
+      if (remote !== undefined) return { element: node.tagName, url: remote };
+    }
+  }
+  const children = [...("childNodes" in node ? node.childNodes : []), ...("content" in node ? [node.content] : [])];
+  for (const child of children) {
+    const found = findRemoteLoad(child);
+    if (found) return found;
+  }
+  return null;
+}
+
+/**
+ * Throws a {@link DemoHtmlLoadError} if any element of `html` loads a resource from another origin.
+ * `assembleDemoHtml` runs it after {@link verifyDemoHtml}: a part that broke out into markup is that
+ * part's failure and is reported as it, so an element reaching this check came from the template.
+ */
+export function verifyDemoOrigins(html: string): void {
+  const found = findRemoteLoad(parse(html));
+  if (found) throw new DemoHtmlLoadError(found.element, found.url);
+}
+
+/** Absolute in POSIX (`/…`), drive (`C:\…`, `C:/…`) or UNC (`\\server\…`) form. */
+function isAbsolutePath(value: string): boolean {
+  return value.startsWith("/") || /^[A-Za-z]:[\\/]/.test(value) || value.startsWith("\\\\");
+}
+
+/**
+ * Where a record the build produces carries an absolute path: `specs[].path`,
+ * `schemaDetails.*.path` and `schemaDetails.*.shadows[].path`. Only those records — artifact text and a
+ * change's metadata are the author's content, and an absolute path written there reaches the reader
+ * as written.
+ */
+export function findAbsolutePaths(payload: unknown): string[] {
+  const found: string[] = [];
+  const check = (value: unknown, location: string) => {
+    if (typeof value === "string" && isAbsolutePath(value)) found.push(location);
+  };
+  const data = (payload ?? {}) as {
+    specs?: { path?: unknown }[];
+    schemaDetails?: Record<string, { path?: unknown; shadows?: { path?: unknown }[] }>;
+  };
+  (data.specs ?? []).forEach((spec, i) => check(spec?.path, `specs[${i}].path`));
+  for (const [name, schema] of Object.entries(data.schemaDetails ?? {})) {
+    check(schema?.path, `schemaDetails.${name}.path`);
+    (schema?.shadows ?? []).forEach((shadow, i) => check(shadow?.path, `schemaDetails.${name}.shadows[${i}].path`));
+  }
+  return found;
+}
+
+/**
+ * The demo page, returned only once it is known to parse back as written and to load nothing from
+ * another origin; throws {@link DemoHtmlError} or {@link DemoHtmlLoadError} otherwise.
+ */
 export function assembleDemoHtml(parts: DemoHtmlParts): string {
   const payloadScript = `window.__DEMO_DATA__ = ${serializeForInlineScript(parts.payload)};`;
+  const fontsBlock = parts.fonts ? `\n    <style>${parts.fonts}</style>` : "";
   const styleBlock = parts.stylesheet ? `\n    <style>${parts.stylesheet}</style>` : "";
 
   const html = `<!DOCTYPE html>
@@ -143,10 +255,7 @@ export function assembleDemoHtml(parts: DemoHtmlParts): string {
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>${escapeHtmlText(parts.title)}</title>
-    <link rel="preconnect" href="https://fonts.googleapis.com" />
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400..800&display=swap" rel="stylesheet" />${styleBlock}
+    <title>${escapeHtmlText(parts.title)}</title>${fontsBlock}${styleBlock}
   </head>
   <body>
     <div id="root"></div>
@@ -156,8 +265,10 @@ export function assembleDemoHtml(parts: DemoHtmlParts): string {
 </html>`;
 
   const intended: IntendedElement[] = [{ part: "title", tag: "title", text: parts.title }];
+  if (parts.fonts) intended.push({ part: "fonts", tag: "style", text: parts.fonts });
   if (parts.stylesheet) intended.push({ part: "stylesheet", tag: "style", text: parts.stylesheet });
   intended.push({ part: "payload", tag: "script", text: payloadScript }, { part: "script", tag: "script", text: parts.script });
   verifyDemoHtml(html, intended);
+  verifyDemoOrigins(html);
   return html;
 }

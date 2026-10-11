@@ -236,7 +236,7 @@ npm run dev        # 啟動 Vite dev server + Express API server (concurrently)
 ## 8. 驗證方式
 
 1. `npm run dev` 啟動後，瀏覽器開啟 localhost
-2. 輸入 `/home/kewang/git/rewire` 路徑
+2. 輸入 `~/git/rewire` 路徑
 3. 確認 Dashboard 顯示正確的 specs/changes 數量
 4. 瀏覽幾個 spec（如 simulation-engine）確認 Markdown 渲染正確
 5. 瀏覽幾個 change（如 2026-02-10-main-breaker-simulation）確認四個 tab 都正常

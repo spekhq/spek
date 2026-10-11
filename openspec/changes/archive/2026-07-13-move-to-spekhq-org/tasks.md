@@ -9,7 +9,7 @@
 - [x] 1.1 `gh api -X POST /repos/kewang/spek/transfer -f new_owner=spekhq`。transfer 是**非同步**的
       （API 回 202、`full_name` 仍是舊值），必須輪詢 `gh api /repos/spekhq/spek` 直到落地，不能看
       回傳值就當作成功
-- [x] 1.2 本機 `/home/kewang/git/spek` 的 `git remote set-url origin`，並以 `git fetch` 實測
+- [x] 1.2 本機 `~/git/spek` 的 `git remote set-url origin`，並以 `git fetch` 實測
       （`fork` remote 指向 `nthansen/spek`，不動）
 - [x] 1.3 確認舊網址 redirect 生效：`gh api /repos/kewang/spek` 應回 `spekhq/spek`
 

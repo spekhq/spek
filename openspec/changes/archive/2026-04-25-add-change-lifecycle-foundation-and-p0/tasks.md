@@ -47,7 +47,7 @@
 ## 7. 整合與發佈準備
 
 - [x] 7.1 `npm run build`、`npm run type-check` 全綠
-- [x] 7.2 `npm run dev` 後 curl `http://localhost:3001/api/openspec/changes?dir=/home/kewang/git/spek` 確認 payload 含 `createdDate` / `archivedDate`
+- [x] 7.2 `npm run dev` 後 curl `http://localhost:3001/api/openspec/changes?dir=~/git/spek` 確認 payload 含 `createdDate` / `archivedDate`
 - [x] 7.3 `npm run build:demo`，開 `docs/demo.html` 確認靜態 demo 也顯示生命週期資訊（build 通過；瀏覽器肉眼驗證待人工確認）
 - [x] 7.4 視需要更新 `CHANGELOG.md`（root + `packages/vscode/CHANGELOG.md` + `packages/intellij/CHANGELOG.md` 三邊同步）— 延後到 release（spek 慣例：CHANGELOG 由 release skill 統一寫入新版本 entry，實作階段不修改）
 - [x] 7.5 `/openspec-verify-change` 驗證實作對齊規格（已執行；spec validate strict 通過、4 個 modified capability 皆有對應實作）

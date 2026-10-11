@@ -4,7 +4,10 @@ import vm from "node:vm";
 import { parse, type DefaultTreeAdapterMap } from "parse5";
 import {
   DemoHtmlError,
+  DemoHtmlLoadError,
   assembleDemoHtml,
+  findAbsolutePaths,
+  verifyDemoOrigins,
   escapeHtmlText,
   serializeForInlineScript,
   verifyDemoHtml,
@@ -206,4 +209,108 @@ test("assembly: a <style> element appears only when a stylesheet is given", () =
   const withCss = assembleDemoHtml({ title: "t", payload: {}, script: SAFE_SCRIPT, stylesheet: "a{color:red}" });
   const styles = elementsOf(withCss).filter((e) => e.tagName === "style");
   assert.deepEqual(styles.map(textOf), ["a{color:red}"]);
+});
+
+// Origins (demo-page "Self-contained single-file demo"). The verifier judges hand-written pages:
+// through the assembler only a part breaking out can produce an element, and that is the structural
+// check's to report.
+
+function headWith(markup: string): string {
+  return `<!DOCTYPE html><html><head><title>t</title>${markup}</head><body><div id="root"></div></body></html>`;
+}
+
+function isLoadError(fragment: string) {
+  return (error: unknown) => {
+    assert.ok(error instanceof DemoHtmlLoadError, `expected a DemoHtmlLoadError, got ${String(error)}`);
+    assert.ok(error.message.includes(fragment), `"${error.message}" names ${fragment}`);
+    return true;
+  };
+}
+
+test("origins: an element loading from another origin fails, naming the element and the URL", () => {
+  const cases: [string, string][] = [
+    ['<link rel="preconnect" href="https://fonts.googleapis.com">', "https://fonts.googleapis.com"],
+    ['<link rel="stylesheet" href="//cdn.example.com/a.css">', "//cdn.example.com/a.css"],
+    ['<script src="https://cdn.example.com/a.js"></script>', "https://cdn.example.com/a.js"],
+    ['<img src="data:image/png;base64,AAAA" srcset="data:image/png;base64,AAAA 1x, https://img.example.com/a.png 2x">', "https://img.example.com/a.png"],
+    ['<video poster="https://img.example.com/p.png"></video>', "https://img.example.com/p.png"],
+    ['<object data="http://example.com/o.swf"></object>', "http://example.com/o.swf"],
+  ];
+  for (const [markup, url] of cases) {
+    assert.throws(() => verifyDemoOrigins(headWith(markup)), isLoadError(url), markup);
+    const tag = markup.slice(1, markup.search(/[\s>]/));
+    assert.throws(() => verifyDemoOrigins(headWith(markup)), isLoadError(`<${tag}`), markup);
+  }
+});
+
+test("origins: data: URLs, same-page references and hyperlinks pass", () => {
+  const ok = [
+    '<link rel="icon" href="data:image/svg+xml,%3Csvg%3E%3C/svg%3E">',
+    '<img src="data:image/png;base64,AAAA">',
+    '<a href="https://github.com/spekhq/spek">source</a>',
+    '<a href="#/specs">specs</a>',
+  ];
+  for (const markup of ok) assert.doesNotThrow(() => verifyDemoOrigins(headWith(markup)), markup);
+});
+
+test("origins: the assembled page loads nothing from another origin", () => {
+  const html = assembleDemoHtml({ title: "t", payload: {}, script: SAFE_SCRIPT, fonts: "@font-face{}" });
+  assert.doesNotThrow(() => verifyDemoOrigins(html));
+  assert.ok(!html.includes("fonts.googleapis.com"));
+});
+
+test("assembly: a stylesheet that breaks out into a remote <link> is named as the stylesheet", () => {
+  assert.throws(
+    () => assembleDemoHtml({ title: "t", payload: {}, script: SAFE_SCRIPT, stylesheet: '</style><link rel="stylesheet" href="https://x.example/a.css">' }),
+    isDemoHtmlError("stylesheet"),
+  );
+});
+
+// The fonts part: a fifth embedded value, its own <style>, ahead of the application stylesheet.
+
+test("assembly: the font CSS is its own <style>, before the application stylesheet, read back exactly", () => {
+  const fonts = "/* licence */ @font-face{font-family:\"Plus Jakarta Sans\";src:url(data:font/woff2;base64,AAAA)}";
+  const html = assembleDemoHtml({ title: "t", payload: {}, script: SAFE_SCRIPT, fonts, stylesheet: "a{color:red}" });
+  const styles = elementsOf(html).filter((e) => e.tagName === "style");
+  assert.deepEqual(styles.map(textOf), [fonts, "a{color:red}"]);
+});
+
+test("assembly: font CSS holding </style> fails naming the font CSS", () => {
+  assert.throws(
+    () => assembleDemoHtml({ title: "t", payload: {}, script: SAFE_SCRIPT, fonts: "a{} </style> b{}" }),
+    (error: unknown) => isDemoHtmlError("fonts")(error) && /font CSS/.test((error as Error).message) && /font package/.test((error as Error).message),
+  );
+});
+
+// Record paths (demo-page "The demo payload does not depend on the machine that built it").
+
+test("findAbsolutePaths reports absolute record paths in POSIX, drive and UNC form, with their location", () => {
+  const payload = {
+    specs: [
+      { topic: "a", path: "openspec/specs/a/spec.md" },
+      { topic: "b", path: "/home/someone/repo/openspec/specs/b/spec.md" },
+    ],
+    schemaDetails: {
+      "spec-driven": { path: "C:\\repo\\openspec\\schemas\\x", shadows: [{ source: "user", path: "\\\\server\\share\\x" }] },
+      kept: { path: "@fission-ai/openspec/schemas/spec-driven", shadows: [] },
+    },
+  };
+  assert.deepEqual(findAbsolutePaths(payload), [
+    "specs[1].path",
+    "schemaDetails.spec-driven.path",
+    "schemaDetails.spec-driven.shadows[0].path",
+  ]);
+});
+
+test("findAbsolutePaths leaves content alone: artifact text and change metadata are the author's", () => {
+  const payload = {
+    specs: [{ topic: "a", path: "openspec/specs/a/spec.md" }],
+    specDetails: { a: { content: "run it against /home/someone/repo" } },
+    changeDetails: { c: { metadata: { path: "/home/someone/repo" }, artifacts: [{ content: "C:\\repo" }] } },
+  };
+  assert.deepEqual(findAbsolutePaths(payload), []);
+});
+
+test("findAbsolutePaths tolerates a payload without the record lists", () => {
+  assert.deepEqual(findAbsolutePaths({}), []);
 });

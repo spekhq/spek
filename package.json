@@ -25,6 +25,7 @@
     "test": "npm test -w @spekjs/core && npm test -w @spekjs/ui && npm test -w @spekjs/web && npm test -w spek-vscode && node --import tsx --test \"scripts/*.test.ts\""
   },
   "devDependencies": {
+    "@fontsource-variable/plus-jakarta-sans": "5.3.0",
     "eslint": "^9.39.5",
     "eslint-plugin-react-hooks": "^5.2.0",
     "parse5": "^7.3.0",

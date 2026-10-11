@@ -10,4 +10,4 @@
 
 - [x] 3.1 執行 `npm run type-check` 確認無型別錯誤
 - [x] 3.2 執行 `npm run build` 確認 build 成功
-- [x] 3.3 用瀏覽器測試：輸入缺少 config.yaml 的 repo 路徑（/home/kewang/git/ha-claude-assistant），確認能偵測到並進入 dashboard
+- [x] 3.3 用瀏覽器測試：輸入缺少 config.yaml 的 repo 路徑（~/git/ha-claude-assistant），確認能偵測到並進入 dashboard

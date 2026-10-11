@@ -21,7 +21,9 @@ import type {
   ChangeDetail,
   SchemaDefinition,
 } from "../packages/core/dist/index.js";
-import { assembleDemoHtml } from "./demo-html.js";
+import { assembleDemoHtml, findAbsolutePaths } from "./demo-html.js";
+import { buildFontFaceCss } from "./demo-fonts.js";
+import { readFontSources } from "./demo-font-sources.js";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const ROOT = path.resolve(__dirname, "..");
@@ -139,7 +141,12 @@ async function main() {
     }
   }
 
-  const specs: SpecInfo[] = scan.specs;
+  // The scanner's path is absolute — right on the reader's machine, the builder's home directory in a
+  // published page. The record carries it relative to the repository, as a clean checkout has it.
+  const specs: SpecInfo[] = scan.specs.map((spec) => ({
+    ...spec,
+    path: path.relative(REPO_DIR, spec.path).split(path.sep).join("/"),
+  }));
   const changes: ChangesData = {
     active: scan.activeChanges,
     archived: scan.archivedChanges,
@@ -197,6 +204,16 @@ async function main() {
       (catalog.degradedReason ? `, degraded: ${catalog.degradedReason}` : ""),
   );
 
+  const absolute = findAbsolutePaths(demoData);
+  if (absolute.length > 0) {
+    throw new Error(
+      `the payload would publish the build machine's filesystem: ${absolute.join(", ")} ` +
+        "hold an absolute path (demo-page: embedded records carry their source-relative form)",
+    );
+  }
+
+  const fonts = buildFontFaceCss(readFontSources());
+
   // dist-demo/ is not gitignored, so it is removed in `finally`: a build that fails — at Vite or at
   // the structural check below — must not leave untracked output behind.
   try {
@@ -226,6 +243,7 @@ async function main() {
     const html = assembleDemoHtml({
       title: PAGE_TITLE,
       payload: demoData,
+      fonts,
       script: jsContent,
       stylesheet: cssContent,
     });
