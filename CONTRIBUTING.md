@@ -43,6 +43,7 @@ npm run dev          # Vite (5173) + Express (3001) — open http://localhost:51
 ```bash
 npm run build          # Build core + ui + web
 npm run build:core     # Build @spekjs/core only
+npm run build:ui       # Build @spekjs/ui only
 npm run build:webview  # Build webview assets for the VS Code extension
 npm run build:vscode   # Build the VS Code extension
 npm run build:intellij # Build IntelliJ webview assets
@@ -52,8 +53,14 @@ npm run lint           # ESLint
 npm test               # Run the test suites (core + ui + web + vscode + scripts/)
 ```
 
-Packaging the VS Code extension and IntelliJ plugin is documented in
-[`CLAUDE.md`](CLAUDE.md) and the [README](README.md#development).
+To build the IntelliJ plugin ZIP (needs Java 17+):
+
+```bash
+npm run build:intellij                         # Build the frontend assets
+cd packages/intellij && ./gradlew buildPlugin  # Output: build/distributions/spek-intellij-*.zip
+```
+
+Packaging the VS Code extension is documented in [`CLAUDE.md`](CLAUDE.md).
 
 ## Project layout
 
@@ -70,6 +77,45 @@ spek is an npm-workspaces monorepo:
 The core scanning/reading logic lives once in `@spekjs/core` and is re-implemented in Kotlin under
 `packages/intellij/.../core/` for the IntelliJ server. When you change behavior in one, check
 whether the other needs to match.
+
+### Published packages
+
+Two packages are published to npm so that hosts outside this monorepo can reuse them:
+
+- **[`@spekjs/core`](https://www.npmjs.com/package/@spekjs/core)** — the engine: scanner, tasks
+  parser, worktree aggregation, shared types. Pure Node.js, no framework.
+- **[`@spekjs/ui`](https://www.npmjs.com/package/@spekjs/ui)** — the two visualizations:
+  `<SpecGraph>` (force-directed spec ↔ change graph) and `<ChangeTimeline>` (Gantt-style change
+  lifecycle). **Presentational only** — no router, no data layer, no CSS framework. Colours are an
+  explicit contract of nine CSS custom properties, so a host re-themes them by overriding those.
+
+Within this monorepo they resolve through npm workspaces, so development is not gated on their
+release cadence. Each has its own version line, independent of the root's; CI publishes a package
+when its declared version differs from the registry.
+
+### How the frontend reaches its data
+
+The React app talks to an `ApiAdapter` interface, injected through context, so the same pages run
+in every host:
+
+- **FetchAdapter** — Web and IntelliJ: the REST API over HTTP (configurable base URL)
+- **MessageAdapter** — VS Code: `postMessage` IPC with the extension host
+- **StaticAdapter** — the demo and the GitHub Action's page: the OpenSpec content embedded in the HTML
+
+`@spekjs/ui` does **not** depend on `ApiAdapter`: its components take data through props, and
+fetching is the host's concern.
+
+### Tech stack
+
+| Layer | Technology |
+| --- | --- |
+| Core | TypeScript, Node.js |
+| UI package | React 19 (peer), d3 (force, zoom, drag, selection, transition), hand-written CSS |
+| Frontend | React 19, Vite 6, Tailwind CSS v4, React Router v7 |
+| Backend | Express 4 |
+| Markdown | react-markdown, remark-gfm |
+| VS Code extension | VS Code Webview API, esbuild |
+| IntelliJ plugin | Kotlin, JCEF, IntelliJ Platform SDK |
 
 ## How we track changes: OpenSpec
 
