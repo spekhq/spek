@@ -3,6 +3,23 @@
 `@spekjs/core` has its own version line, independent of the spek product releases tracked in the
 repository root `CHANGELOG.md`.
 
+## 1.15.0
+
+### Added
+
+- **A `diagram` artifact kind.** A root-level `.mmd` / `.mermaid` file in a change is discovered as an artifact
+  with `kind: "diagram"`, counted by `countArtifacts`, listed by `listChangeArtifactFiles` and indexed by
+  search as the text it holds. Like a `data` artifact it keeps its extension in the title, and yields the bare
+  stem to a Markdown file of the same name (`flow.md` keeps `flow`, `flow.mmd` becomes `flow-2`).
+- **`DIAGRAM_EXTENSIONS`** (`[".mmd", ".mermaid"]`), exported from the package root beside `DATA_EXTENSIONS`, so
+  a file watcher can build the set of extensions worth reacting to from the two lists.
+
+### Changed
+
+- **`ArtifactKind` gains `"diagram"`.** `ChangeArtifact` keeps its shape, but a consumer that switches
+  exhaustively over `kind` gets a type error until it handles the new member, and one that does not will meet
+  it at runtime for any change holding a `.mmd` / `.mermaid` file.
+
 ## 1.14.0
 
 ### Added

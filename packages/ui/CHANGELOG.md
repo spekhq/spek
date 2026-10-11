@@ -1,5 +1,17 @@
 # Changelog
 
+## 1.4.1
+
+### Fixed
+
+- **`SpecGraph` no longer lays labels over other nodes.** The collision radius covered only the node, so a
+  label hanging below it landed on its neighbours. Each node now reserves room for its own label (measured with
+  `getComputedTextLength()`, so the host's font counts), a link's rest length is the sum of its two ends'
+  radii, the layout spreads with the container's aspect ratio instead of forming a disc, and nodes are no longer
+  seeded at the origin, so the same data lays out the same way on every load. Fitting to the viewport includes
+  the labels. No props or callbacks changed. Thanks to [@sammcj](https://github.com/sammcj) (Sam McLeod)
+  ([#66](https://github.com/spekhq/spek/pull/66))
+
 ## 1.4.0
 
 ### Changed
