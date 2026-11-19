@@ -1,6 +1,8 @@
 package com.spek.intellij.core
 
+import com.intellij.execution.configurations.PathEnvironmentVariableUtil
 import com.intellij.openapi.application.ApplicationManager
+import com.intellij.util.EnvironmentUtil
 import java.io.File
 import java.util.concurrent.Callable
 import java.util.concurrent.ConcurrentHashMap
@@ -75,15 +77,7 @@ object OpenspecCli {
      */
     fun run(args: List<String>, cwd: String, timeoutSeconds: Long = TIMEOUT_SECONDS): Outcome {
         return try {
-            val bin = if (System.getProperty("os.name").orEmpty().lowercase().contains("win")) {
-                "openspec.cmd"
-            } else {
-                "openspec"
-            }
-            val proc = ProcessBuilder(listOf(bin) + args)
-                .directory(File(cwd))
-                .redirectError(ProcessBuilder.Redirect.DISCARD)
-                .start()
+            val proc = processBuilder(args, cwd, EnvironmentUtil.getEnvironmentMap()).start()
             val reader = ApplicationManager.getApplication().executeOnPooledThread(
                 Callable { proc.inputStream.bufferedReader().use { it.readText() } },
             )
@@ -97,6 +91,44 @@ object OpenspecCli {
             // openspec not installed → IOException from start(); anything else is equally unusable.
             Outcome.StartFailed
         }
+    }
+
+    /**
+     * The process for `openspec <args>`, started in the user's shell environment rather than the IDE
+     * process's own (issue #73).
+     *
+     * [environment] is what the platform loaded from the login shell at startup
+     * (`EnvironmentUtil.getEnvironmentMap()`). The JVM's own environment is not that: an IDE launched
+     * from the macOS Dock, Finder or Spotlight inherits launchd's `PATH=/usr/bin:/bin:/usr/sbin:/sbin`,
+     * and the platform never writes the shell's environment back into the process — it exposes it only
+     * through `EnvironmentUtil` / `GeneralCommandLine`. Running the IDE from a terminal, or `runIde`,
+     * inherits the shell `PATH` and hides this.
+     *
+     * Both halves are needed, and neither implies the other:
+     * - **the executable is resolved here, against the shell `PATH`.** The JVM looks a bare command
+     *   name up on its *own* `PATH`, whatever environment the child is given, so passing the shell
+     *   environment alone still finds no `openspec`.
+     * - **the child gets the shell environment.** `openspec` is a Node script (`#!/usr/bin/env node`),
+     *   and under nvm `node` sits in the same shell-only directory; an absolute path to the script
+     *   alone starts `env`, which then finds no `node`.
+     *
+     * When nothing on the shell `PATH` matches, the bare name is kept, so a missing CLI still fails to
+     * start and reads as `cli-unavailable`, exactly as before.
+     */
+    internal fun processBuilder(args: List<String>, cwd: String, environment: Map<String, String>): ProcessBuilder {
+        val bin = if (System.getProperty("os.name").orEmpty().lowercase().contains("win")) {
+            "openspec.cmd"
+        } else {
+            "openspec"
+        }
+        val resolved = environment["PATH"]
+            ?.let { PathEnvironmentVariableUtil.findInPath(bin, it) { file -> file.canExecute() } }
+            ?.absolutePath
+            ?: bin
+        return ProcessBuilder(listOf(resolved) + args)
+            .directory(File(cwd))
+            .redirectError(ProcessBuilder.Redirect.DISCARD)
+            .apply { environment().putAll(environment) }
     }
 
     /**
