@@ -174,8 +174,9 @@ Each maps to one or more specs under `openspec/specs/`; that directory is author
 
 - **Dashboard** — counts of specs and changes (active / archived), task completion, plus lifecycle
   stats (avg archived lifecycle, stale active changes).
-- **Specs browser** — alphabetical list with instant filter, detail view with BDD highlighting and a
-  table of contents, revision history, and **spec diff** between change versions.
+- **Specs browser** — a folder tree of spec topics with instant filter, whose collapsed folders are
+  remembered per repository and which can be expanded or collapsed at once; detail view with BDD
+  highlighting and a table of contents, revision history, and **spec diff** between change versions.
 - **Foldable spec sections** — requirements and scenarios render as collapsible sections
   (requirements open, scenarios closed) so a spec opens as an outline carrying its normative
   sentences rather than as a wall of text; Expand all / Collapse all, remembered across specs and

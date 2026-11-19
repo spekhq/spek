@@ -725,6 +725,15 @@ GET /api/openspec/search?dir=...&q=...              # full-text search
   **This is CSS geometry, so jsdom cannot see it** — the tests assert the *shape* of these rules as text
   against `global.css`, and the geometry itself was settled by rendering the real component with the
   real built stylesheet in headless Chrome and scanning the rule's pixel column
+- **The Specs page's collapsed folders are kept per repository** (`useSpecTreeCollapsed`,
+  `localStorage["spek:spec-tree-collapsed:<repoPath>"]`). The key must carry the repository: every VS Code
+  window shares one webview origin (VS Code keys it by view type and extension id), so an unkeyed set would
+  leak one workspace's folders into another. The *collapsed* set is stored, not the expanded one, so a
+  folder that appears later is open. A write happens **only on a reader's action** and is pruned to the
+  **unfiltered** tree's foldable folders — never on mount or in an effect — because a write against a tree
+  still loading, empty or filtered would wash the stored set out. Reading storage goes through a getter
+  called inside the `try`: the `localStorage` global itself throws (`ReferenceError` under Node,
+  `SecurityError` in a sandboxed iframe), before any `getItem` would
 - **Spec typography is declared, not detected**: `MarkdownRenderer`'s `specShaped` prop demotes `h2` to a
   subordinate label, because in a spec every `h2` is a structural separator (`## Purpose`,
   `## ADDED Requirements`) while in a proposal or design it is a content heading. It is **deliberately
