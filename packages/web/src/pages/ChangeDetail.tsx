@@ -1,7 +1,7 @@
 import { useEffect, useMemo, type ReactNode } from "react";
 import { Link, useLocation, useParams, useSearchParams } from "react-router-dom";
 import { extractHeadings } from "@spekjs/core/headings";
-import type { ChangeArtifact } from "@spekjs/core";
+import type { ChangeArtifact, ChangeDetail as ChangeDetailData } from "@spekjs/core";
 import { useChange, useSpecs } from "../hooks/useOpenSpec";
 import { TabView } from "../components/TabView";
 import { TaskProgress } from "../components/TaskProgress";
@@ -35,7 +35,7 @@ function slugTitle(slug: string): string {
 // there is no error boundary. So the caller returns a graceful fallback instead.
 function assertNever(_kind: never): void {}
 
-function renderArtifact(artifact: ChangeArtifact, specTopics: string[], fold: SpecFold) {
+function renderArtifact(artifact: ChangeArtifact, specTopics: string[], fold: SpecFold, status: ChangeDetailData["status"]) {
   if (artifact.kind === "markdown") {
     // proposal / design 等 markdown artifact 不摺疊 —— 只有 spec 形狀的內容摺
     return artifact.content ? (
@@ -68,6 +68,7 @@ function renderArtifact(artifact: ChangeArtifact, specTopics: string[], fold: Sp
       <SpecsTabContent
         key={fold.generation}
         specs={artifact.specs}
+        status={status}
         fold={foldOptionsFor(fold.mode)}
       />
     ) : (
@@ -275,7 +276,7 @@ export function ChangeDetail() {
       // Only the mounted tab renders. TabView shows just activeTab.content. Building content for every
       // artifact ran each data tab's fencedBlock scan on every re-render (tab switch, sort, fold, watcher
       // refresh). Rendering only the active one bounds that scan to one artifact.
-      content: artifact.id === activeTab ? renderArtifact(artifact, specTopics, fold) : null,
+      content: artifact.id === activeTab ? renderArtifact(artifact, specTopics, fold, data.status) : null,
     };
   });
 

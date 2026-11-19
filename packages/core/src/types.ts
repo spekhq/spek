@@ -107,8 +107,15 @@ export interface ChangeArtifact {
    * less than the file says.
    */
   tasks?: ParsedTasks;
-  /** kind === "specs"：delta spec 清單 */
-  specs?: { topic: string; content: string }[];
+  /**
+   * kind === "specs"：delta spec 清單。
+   *
+   * `base` is the raw content of the main spec of the same topic in the working directory the change was read
+   * from, or `null` when that topic has no main spec — set for an **active** change only. Whether a base applies
+   * is the change's `status`, never this field: an archived change's is absent here and `null` from the
+   * IntelliJ server, and is never to be read.
+   */
+  specs?: { topic: string; content: string; base?: string | null }[];
 }
 
 export interface ChangeDetail {

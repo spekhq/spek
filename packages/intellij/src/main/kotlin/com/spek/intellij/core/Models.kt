@@ -120,6 +120,12 @@ data class ChangeDetail(
 data class ChangeSpec(
     val topic: String,
     val content: String,
+    /**
+     * The main spec of the same topic, or null when there is none — set for an active change only. Serialised
+     * as `"base": null` on an archived change too (`encodeDefaults`), which is why the frontend decides by the
+     * change's status and never reads this field for an archived one. Mirrors `ChangeArtifact.specs[].base`.
+     */
+    val base: String? = null,
 )
 
 @Serializable

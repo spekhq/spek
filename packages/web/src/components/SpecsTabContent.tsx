@@ -1,8 +1,16 @@
+import { useMemo } from "react";
 import { MarkdownRenderer } from "./MarkdownRenderer";
 import type { FoldOptions } from "../utils/foldSections";
+import { compareModified, type DeltaMarks } from "../utils/deltaCompare";
 
 interface SpecsTabContentProps {
-  specs: { topic: string; content: string }[];
+  specs: { topic: string; content: string; base?: string | null }[];
+  /**
+   * Whether the main spec is a base to compare against. Decided by status, never by `base`'s presence: the
+   * IntelliJ server sends `base: null` for an archived change too, and an archived change's main spec already
+   * contains it.
+   */
+  status?: "active" | "archived";
   // 一份 change 的 delta spec 跟它修改的 spec 是同一種文件，摺疊規則必須相同
   fold?: FoldOptions;
 }
@@ -10,10 +18,25 @@ interface SpecsTabContentProps {
 // Change 的 Specs tab：多份 delta spec 合併渲染。
 // 每份 spec 的 heading id 以 `<topic>--` 為前綴，避免不同 spec 間 slug 衝突
 // （例如兩 spec 同時有 `### Requirement: Foo`）。
-export function SpecsTabContent({ specs, fold }: SpecsTabContentProps) {
+export function SpecsTabContent({ specs, fold, status }: SpecsTabContentProps) {
+  const marks = useMemo(
+    () =>
+      specs.map((spec): DeltaMarks | undefined =>
+        status === "active" ? compareModified(spec.content, spec.base ?? null) : undefined,
+      ),
+    [specs, status],
+  );
+  const archivedWithModified =
+    status === "archived" && specs.some((spec) => compareModified(spec.content, null).hasModified);
   return (
     <div className="space-y-6">
-      {specs.map((spec) => (
+      {archivedWithModified && (
+        <p className="text-text-muted text-sm">
+          Comparison marks on modified requirements are shown for active changes only: an archived change is
+          already part of the current spec.
+        </p>
+      )}
+      {specs.map((spec, i) => (
         <section key={spec.topic} id={`spec-${spec.topic}`}>
           {/*
             Topic 是這一段的容器，排版上就必須壓過它所包住的內容。原本是 text-sm 的 h3，卻夾著
@@ -22,7 +45,7 @@ export function SpecsTabContent({ specs, fold }: SpecsTabContentProps) {
             升成 h2 並拿回分隔線：多份 spec 疊在同一頁時，這條線就是 spec 之間的邊界。
           */}
           <h2 className="text-xl font-bold text-accent mb-3 pb-2 border-b border-border">{spec.topic}</h2>
-          <MarkdownRenderer content={spec.content} idPrefix={`${spec.topic}--`} fold={fold} specShaped />
+          <MarkdownRenderer content={spec.content} idPrefix={`${spec.topic}--`} fold={fold} specShaped deltaMarks={marks[i]} />
         </section>
       ))}
     </div>

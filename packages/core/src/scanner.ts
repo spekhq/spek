@@ -286,6 +286,18 @@ export async function readChange(
   const schema = readChangeSchema(changePath, defaultSchema);
   // artifact 依 mtime 由新到舊排序（見 discoverArtifacts）
   const artifacts = discoverArtifacts(changePath);
+  // An active change's delta specs carry the main spec they modify, read from this same working directory —
+  // which is the worktree's when the caller resolved `wt` — so a reviewer can be shown what each changes.
+  // Archived: the main spec already contains the change, so it is no base, and none is read.
+  if (status === "active") {
+    const specsDir = path.join(base, "specs");
+    for (const artifact of artifacts) {
+      for (const entry of artifact.specs ?? []) {
+        const file = resolveSpecFile(specsDir, entry.topic);
+        entry.base = file === null ? null : readFileOrNull(file);
+      }
+    }
+  }
 
   // schema 權威順序（供前端 schema-order 排序用）：只對 active change 查詢 CLI，
   // archived change 無 planningArtifacts，直接為 null（前端顯示 archived 退回訊息）
