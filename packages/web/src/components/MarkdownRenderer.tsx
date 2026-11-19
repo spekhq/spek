@@ -12,6 +12,8 @@ import { specRoute } from "@spekjs/core/spec-topic";
 import { rehypeHighlightNarrow } from "../utils/highlight";
 import { rehypeSpekMermaid, MERMAID_MARKER } from "../utils/mermaidBlocks";
 import { MermaidDiagram } from "./MermaidDiagram";
+import type { DeltaMarks } from "../utils/deltaCompare";
+import { DELTA_MARK_CLASS, DELTA_MARK_LABEL, DELTA_MARK_PROP, isDeltaMark, rehypeSpekDeltaMarks } from "../utils/deltaMarks";
 import {
   rehypeSpekFoldSections,
   type FoldOptions,
@@ -110,6 +112,17 @@ interface MarkdownRendererProps {
    * `## ADDED Requirements`），而 proposal / design 的 h2 是內容標題本身，兩者不能共用一套排版。
    */
   specShaped?: boolean;
+  /**
+   * What each modified requirement changes against the main spec (`deltaCompare`), drawn as marks on the
+   * headings they belong to. Only a change's Specs tab passes it, and only for an active change.
+   */
+  deltaMarks?: DeltaMarks;
+}
+
+/** The comparison mark a heading carries, if any, rendered after its text. */
+function DeltaMark({ mark }: { mark: unknown }) {
+  if (!isDeltaMark(mark)) return null;
+  return <span className={DELTA_MARK_CLASS[mark]}>{DELTA_MARK_LABEL[mark]}</span>;
 }
 
 // BDD keyword table.
@@ -331,7 +344,7 @@ function DivOrDiagram(props: ComponentPropsWithoutRef<"div"> & { node?: unknown 
 const H2_CONTENT = "text-xl font-bold mt-6 mb-3 text-text-primary border-b border-border pb-2 scroll-mt-20";
 const H2_STRUCTURAL = "text-base font-semibold uppercase tracking-wide mt-6 mb-3 text-text-secondary scroll-mt-20";
 
-export function MarkdownRenderer({ content, specTopics, idPrefix, fold, specShaped }: MarkdownRendererProps) {
+export function MarkdownRenderer({ content, specTopics, idPrefix, fold, specShaped, deltaMarks }: MarkdownRendererProps) {
   // 順序不可調換，而且有三個理由：
   //
   // 1. heading id 必須在還是扁平樹時指派，否則 dedup counter 看到的走訪順序會變。
@@ -351,6 +364,9 @@ export function MarkdownRenderer({ content, specTopics, idPrefix, fold, specShap
     // not affect heading-id dedup.
     rehypeHighlightNarrow,
     [rehypeSpekHeadingIds, { idPrefix }],
+    // After ids (it inserts a non-heading node, which the id counter never sees either way) and before
+    // folding, which needs the marks already on the headings it moves into `summary`.
+    [rehypeSpekDeltaMarks, deltaMarks],
   ];
   if (specShaped) rehypePlugins.push([rehypeSpekElideHeadingKeyword]);
   if (fold) rehypePlugins.push([rehypeSpekFoldSections, fold]);
@@ -380,11 +396,11 @@ export function MarkdownRenderer({ content, specTopics, idPrefix, fold, specShap
           h2({ id, children }) {
             return <h2 id={id} className={specShaped ? H2_STRUCTURAL : H2_CONTENT}><InHeadingContext.Provider value={true}>{children}</InHeadingContext.Provider></h2>;
           },
-          h3({ id, children }) {
-            return <h3 id={id} className="text-lg font-semibold mt-5 mb-2 text-text-primary scroll-mt-20"><InHeadingContext.Provider value={true}>{children}</InHeadingContext.Provider></h3>;
+          h3({ id, children, ...props }) {
+            return <h3 id={id} className="text-lg font-semibold mt-5 mb-2 text-text-primary scroll-mt-20"><InHeadingContext.Provider value={true}>{children}</InHeadingContext.Provider><DeltaMark mark={(props as Record<string, unknown>)[DELTA_MARK_PROP]} /></h3>;
           },
-          h4({ children }) {
-            return <h4 className="text-base font-semibold mt-4 mb-2 text-text-secondary"><InHeadingContext.Provider value={true}>{children}</InHeadingContext.Provider></h4>;
+          h4({ children, ...props }) {
+            return <h4 className="text-base font-semibold mt-4 mb-2 text-text-secondary"><InHeadingContext.Provider value={true}>{children}</InHeadingContext.Provider><DeltaMark mark={(props as Record<string, unknown>)[DELTA_MARK_PROP]} /></h4>;
           },
           h5({ children }) {
             return <h5 className="text-sm font-semibold mt-3 mb-1 text-text-secondary"><InHeadingContext.Provider value={true}>{children}</InHeadingContext.Provider></h5>;

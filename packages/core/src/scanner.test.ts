@@ -405,3 +405,37 @@ test("scanOpenSpec: reads config.yaml once regardless of change count", async ()
     spy.mock.restore();
   }
 });
+
+function writeSpec(dir: string, topic: string, content: string): void {
+  fs.mkdirSync(path.join(dir, "specs", topic), { recursive: true });
+  fs.writeFileSync(path.join(dir, "specs", topic, "spec.md"), content);
+}
+
+const deltaEntries = (detail: Awaited<ReturnType<typeof readChange>>) =>
+  detail?.artifacts.find((a) => a.kind === "specs")?.specs ?? [];
+
+test("readChange: an active change's delta specs carry their main spec as base, or null for a new topic", async () => {
+  const repo = mkRepo();
+  writeChange(repo, "active", "add-bar", null);
+  const change = path.join(repo, "openspec", "changes", "add-bar");
+  writeSpec(path.join(repo, "openspec"), "search", "# search main\n");
+  writeSpec(path.join(repo, "openspec"), "contracts/pagination", "# nested main\n");
+  writeSpec(change, "search", "## MODIFIED Requirements\n");
+  writeSpec(change, "contracts/pagination", "## MODIFIED Requirements\n");
+  writeSpec(change, "billing", "## ADDED Requirements\n");
+
+  const entries = deltaEntries(await readChange(repo, "add-bar", noOrder));
+  const base = Object.fromEntries(entries.map((e) => [e.topic, e.base]));
+  assert.deepEqual(base, { billing: null, "contracts/pagination": "# nested main\n", search: "# search main\n" });
+});
+
+test("readChange: an archived change's delta specs carry no base", async () => {
+  const repo = mkRepo();
+  writeChange(repo, "archived", "2026-02-22-fix-y", null);
+  writeSpec(path.join(repo, "openspec"), "search", "# search main\n");
+  writeSpec(path.join(repo, "openspec", "changes", "archive", "2026-02-22-fix-y"), "search", "## MODIFIED Requirements\n");
+
+  const entries = deltaEntries(await readChange(repo, "2026-02-22-fix-y", noOrder));
+  assert.equal(entries.length, 1);
+  assert.ok(!("base" in entries[0]));
+});

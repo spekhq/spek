@@ -33,7 +33,10 @@ object ChangeReader {
         // change schema：優先 change .openspec.yaml，否則 fallback 回已算好的 repo 預設（僅供顯示 badge）
         val schema = readChangeSchema(changeDir, defaultSchema)
         // artifact 依 mtime 由新到舊排序（見 ArtifactDiscovery）
-        val artifacts = ArtifactDiscovery.discover(changeDir)
+        val discovered = ArtifactDiscovery.discover(changeDir)
+        // An active change's delta specs carry the main spec they modify (mirrors scanner.ts readChange).
+        // Archived: the main spec already contains the change, so it is no base, and none is read.
+        val artifacts = if (status == "active") withBases(discovered, File(projectPath, "openspec/specs")) else discovered
         // schema 權威順序（供前端 schema-order 排序用）：只對 active change 查詢 CLI，
         // archived change 無 planningArtifacts，直接為 null（前端顯示 archived 退回訊息）
         // 只對 active change 查 CLI（archived 無 planningArtifacts）。schema 為 null 不代表無權威順序——
@@ -62,6 +65,17 @@ object ChangeReader {
             metadata = metadata,
         )
     }
+
+    private fun withBases(artifacts: List<ChangeArtifact>, specsRoot: File): List<ChangeArtifact> =
+        artifacts.map { artifact ->
+            val specs = artifact.specs ?: return@map artifact
+            artifact.copy(
+                specs = specs.map { spec ->
+                    val file = SpecFiles.resolve(specsRoot, spec.topic)
+                    spec.copy(base = file?.let { runCatching { it.readText() }.getOrNull() })
+                },
+            )
+        }
 
     private fun readMetadata(file: File): Map<String, String>? {
         if (!file.exists()) return null

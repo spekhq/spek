@@ -3,6 +3,7 @@ package com.spek.intellij.core
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertNotNull
 import org.junit.jupiter.api.Assertions.assertNull
+import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.io.TempDir
 import java.io.File
@@ -136,5 +137,49 @@ class ChangeReaderTest {
         assertEquals(1, provider.calls)
         assertEquals("superpowers-bridge", provider.lastSchema)
         assertEquals(listOf("proposal"), detail!!.schemaOrder)
+    }
+
+    private fun writeSpec(dir: File, topic: String, content: String) {
+        File(dir, "specs/$topic").mkdirs()
+        File(dir, "specs/$topic/spec.md").writeText(content)
+    }
+
+    private fun deltaBases(detail: ChangeDetail?): Map<String, String?> =
+        detail!!.artifacts.first { it.kind == "specs" }.specs!!.associate { it.topic to it.base }
+
+    @Test
+    fun `an active change's delta specs carry their main spec as base, or null for a new topic`() {
+        writeActive("add-bar", null)
+        val change = File(repo, "openspec/changes/add-bar")
+        writeSpec(File(repo, "openspec"), "search", "# search main\n")
+        writeSpec(File(repo, "openspec"), "contracts/pagination", "# nested main\n")
+        writeSpec(change, "search", "## MODIFIED Requirements\n")
+        writeSpec(change, "contracts/pagination", "## MODIFIED Requirements\n")
+        writeSpec(change, "billing", "## ADDED Requirements\n")
+
+        val bases = deltaBases(ChangeReader.read(repo.absolutePath, "add-bar", CountingProvider()))
+        assertEquals(mapOf("billing" to null, "contracts/pagination" to "# nested main\n", "search" to "# search main\n"), bases)
+    }
+
+    @Test
+    fun `an archived change's delta specs carry no base`() {
+        writeArchived("2026-01-01-x", "schema: spec-driven\n")
+        writeSpec(File(repo, "openspec"), "topic-a", "# main\n")
+        assertEquals(mapOf("topic-a" to null), deltaBases(ChangeReader.read(repo.absolutePath, "2026-01-01-x")))
+    }
+
+    @Test
+    fun `base serialises as the server sends it - content, or an explicit null for a new topic`() {
+        writeActive("add-bar", null)
+        val change = File(repo, "openspec/changes/add-bar")
+        writeSpec(File(repo, "openspec"), "search", "main")
+        writeSpec(change, "search", "delta")
+        writeSpec(change, "billing", "delta")
+
+        val detail = ChangeReader.read(repo.absolutePath, "add-bar", CountingProvider())!!
+        // The handler's own configuration: SpekHttpRequestHandler encodes with encodeDefaults = true.
+        val encoded = kotlinx.serialization.json.Json { encodeDefaults = true }.encodeToString(ChangeDetail.serializer(), detail)
+        assertTrue(encoded.contains(""""topic":"search","content":"delta","base":"main""""), encoded)
+        assertTrue(encoded.contains(""""topic":"billing","content":"delta","base":null"""), encoded)
     }
 }
