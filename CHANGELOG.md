@@ -1,5 +1,16 @@
 # Changelog
 
+## 1.21.0
+
+**Highlight: a change's Specs tab shows what each modified requirement changes** ([#71](https://github.com/spekhq/spek/issues/71)). OpenSpec makes a MODIFIED requirement restate its whole block, so a change that adds one scenario to a requirement holding twenty showed twenty-one, and nothing said which one was new. In an active change, each modified requirement is now compared with the current spec:
+
+- Scenarios are marked `new` or `changed`. Scenarios the current spec has and the modification drops are listed under the requirement, noting that OpenSpec refuses to archive such a modification
+- The requirement itself is marked `changed` when its own text changed, `same as current spec`, `renamed only`, or `not in current spec`
+- An archived change shows a one-line note instead: its spec already contains it
+
+- **The Specs page remembers which folders you collapsed** ([#75](https://github.com/spekhq/spek/issues/75)), per repository, across pages, reloads and IDE restarts. Expand all / Collapse all buttons sit next to the filter. A folder without its own spec reads `process` instead of `process/`, and clicking its name folds it
+- **IntelliJ finds the OpenSpec CLI when the IDE is launched from the macOS Dock, Finder or Spotlight** ([#73](https://github.com/spekhq/spek/issues/73)). A GUI-launched IDE has only the system's minimal `PATH`, so a CLI installed through the shell profile (e.g. under nvm) was reported as unavailable. spek now runs it in the environment IntelliJ loads from your login shell
+
 ## 1.20.2
 
 - **The live demo and the GitHub Action's HTML snapshot carry the notices of the third-party code they bundle.** The page holds about ninety packages — React, React Router, the Markdown and highlighting stack, d3 modules — and every site that serves it redistributes them, without their licence texts until now. Each package's name, version, licence and licence text is embedded in the page (`#third-party-notices` in its source), listed from what the bundle actually contains. The page grows by about 115 KB

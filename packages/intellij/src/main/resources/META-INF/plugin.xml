@@ -25,9 +25,16 @@
     ]]></description>
 
     <change-notes><![CDATA[
-        <p><b>1.20.2</b></p>
+        <p><b>1.21.0</b></p>
+        <p><b>A change's Specs tab shows what each modified requirement changes.</b> OpenSpec makes a MODIFIED requirement restate its whole block, so a change that adds one scenario showed every scenario with nothing saying which was new. In an active change, each modified requirement is now compared with the current spec:</p>
         <ul>
-            <li>No user-facing changes for the plugin in this release. It adds the third-party notices to the live demo and the GitHub Action's HTML snapshot.</li>
+            <li>Scenarios are marked <code>new</code> or <code>changed</code>; scenarios the modification drops are listed under the requirement, noting that OpenSpec refuses to archive such a modification</li>
+            <li>The requirement itself is marked <code>changed</code>, <code>same as current spec</code>, <code>renamed only</code> or <code>not in current spec</code></li>
+            <li>An archived change shows a one-line note instead: its spec already contains it</li>
+        </ul>
+        <ul>
+            <li><b>The Specs page remembers which folders you collapsed</b>, per project, across pages and IDE restarts. Expand all / Collapse all buttons sit next to the filter; a folder without its own spec reads <code>process</code> instead of <code>process/</code>, and clicking its name folds it</li>
+            <li><b>The OpenSpec CLI is found when the IDE is launched from the macOS Dock, Finder or Spotlight.</b> A GUI-launched IDE has only the system's minimal PATH, so a CLI installed through the shell profile (e.g. under nvm) was reported as unavailable; spek now runs it in the environment IntelliJ loads from your login shell</li>
         </ul>
     ]]></change-notes>
 
