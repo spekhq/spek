@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useMemo } from "react";
 import { Link } from "react-router-dom";
 import type { SpecInfo } from "@spekjs/core";
 import { buildSpecTree, pruneSpecTree, specRoute, type SpecTreeNode } from "@spekjs/core/spec-topic";
@@ -7,15 +7,17 @@ interface SpecTreeProps {
   specs: SpecInfo[];
   /** Case-insensitive substring of the full topic. Matches keep the folders above them. */
   filter: string;
+  /** Folder paths the reader collapsed. Owned by the caller, which remembers it per repository. */
+  collapsed: ReadonlySet<string>;
+  onToggle: (path: string) => void;
 }
 
 /**
  * The Specs page's folder tree. A folder holding its own spec is a link and an expandable parent at
- * once; a folder without one only groups. Every label is one segment, so the full topic rides along as
- * the title — two folders may each hold a `pagination`.
+ * once; a folder without one only groups, and its name is part of its toggle. Every label is one
+ * segment, so the full topic rides along as the title — two folders may each hold a `pagination`.
  */
-export function SpecTree({ specs, filter }: SpecTreeProps) {
-  const [collapsed, setCollapsed] = useState<ReadonlySet<string>>(new Set());
+export function SpecTree({ specs, filter, collapsed, onToggle }: SpecTreeProps) {
   const nodes = useMemo(() => {
     const tree = buildSpecTree(specs);
     const needle = filter.toLowerCase();
@@ -28,15 +30,8 @@ export function SpecTree({ specs, filter }: SpecTreeProps) {
   // recorded now would only surface once the filter is cleared.
   const filtering = filter !== "";
   const isOpen = (path: string) => filtering || !collapsed.has(path);
-  const toggle = (path: string) =>
-    setCollapsed((prev) => {
-      const next = new Set(prev);
-      if (next.has(path)) next.delete(path);
-      else next.add(path);
-      return next;
-    });
 
-  return <SpecTreeLevel nodes={nodes} isOpen={isOpen} toggle={toggle} filtering={filtering} />;
+  return <SpecTreeLevel nodes={nodes} isOpen={isOpen} toggle={onToggle} filtering={filtering} />;
 }
 
 function SpecTreeLevel({ nodes, isOpen, toggle, filtering }: {
@@ -53,28 +48,47 @@ function SpecTreeLevel({ nodes, isOpen, toggle, filtering }: {
         return (
           <li key={node.path}>
             <div className="flex items-center gap-2 px-3 py-2 bg-bg-secondary border border-border rounded hover:border-accent transition-colors">
-              {hasChildren ? (
+              {hasChildren && !node.spec ? (
+                // A grouping folder: the whole label toggles, since there is no spec for it to open.
                 <button
                   type="button"
                   onClick={() => toggle(node.path)}
                   disabled={filtering}
                   aria-expanded={open}
-                  aria-label={`${open ? "Collapse" : "Expand"} ${node.path}`}
-                  className="w-4 text-text-muted enabled:hover:text-accent"
+                  title={node.path}
+                  className="flex-1 flex items-center gap-2 text-left text-text-muted enabled:hover:text-accent"
                 >
-                  {open ? "▾" : "▸"}
+                  <span className="w-4" aria-hidden="true">{open ? "▾" : "▸"}</span>
+                  {node.name}
                 </button>
               ) : (
-                <span className="w-4" aria-hidden="true" />
-              )}
-              {node.spec ? (
-                <Link to={specRoute(node.spec.topic)} title={node.path} className="flex-1 text-text-primary font-medium hover:text-accent">
-                  {node.name}
-                </Link>
-              ) : (
-                <span title={node.path} className="flex-1 text-text-muted">
-                  {node.name}/
-                </span>
+                <>
+                  {hasChildren ? (
+                    <button
+                      type="button"
+                      onClick={() => toggle(node.path)}
+                      disabled={filtering}
+                      aria-expanded={open}
+                      aria-label={`${open ? "Collapse" : "Expand"} ${node.path}`}
+                      className="w-4 text-text-muted enabled:hover:text-accent"
+                    >
+                      {open ? "▾" : "▸"}
+                    </button>
+                  ) : (
+                    <span className="w-4" aria-hidden="true" />
+                  )}
+                  {node.spec ? (
+                    <Link to={specRoute(node.spec.topic)} title={node.path} className="flex-1 text-text-primary font-medium hover:text-accent">
+                      {node.name}
+                    </Link>
+                  ) : (
+                    // Unreachable today (a node without a spec always has children), kept so a leaf
+                    // without one could never render as nothing.
+                    <span title={node.path} className="flex-1 text-text-muted">
+                      {node.name}
+                    </span>
+                  )}
+                </>
               )}
               {node.spec && node.spec.historyCount > 0 && (
                 <span className="text-text-muted text-xs">
