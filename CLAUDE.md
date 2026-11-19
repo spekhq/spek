@@ -734,6 +734,17 @@ GET /api/openspec/search?dir=...&q=...              # full-text search
   still loading, empty or filtered would wash the stored set out. Reading storage goes through a getter
   called inside the `try`: the `localStorage` global itself throws (`ReferenceError` under Node,
   `SecurityError` in a sandboxed iframe), before any `getItem` would
+- **A MODIFIED requirement's marks are OpenSpec's reading, placed by source line** (`utils/deltaCompare.ts`,
+  `utils/deltaMarks.ts`). The comparison mirrors OpenSpec 2.1.0's parser, not Markdown: **any** `####` is a
+  scenario (not only `#### Scenario:`) and runs to the next `####`, so an ordinary `### Notes` stays inside
+  it; a requirement ends only at the next `### Requirement:` or `## `; the base is read from `## Requirements`
+  only; same-named scenarios pair k-th to k-th; a RENAMED pair whose old name is gone and new name present was
+  synced early and is looked up under the new name; a leading BOM is stripped. Each of those was a wrong mark
+  the first draft would have drawn. Marks are keyed by the delta's **header line** and matched to
+  `node.position.start.line`, never by heading text — bold, escapes and code spans make the rendered text
+  differ from the source, and a missed match looks exactly like "nothing changed". The client compares
+  **by the change's `status`**, never by `base`'s presence: IntelliJ serialises `base: null` for an archived
+  change too (`encodeDefaults`), so absent and `null` cannot carry meaning across hosts
 - **Spec typography is declared, not detected**: `MarkdownRenderer`'s `specShaped` prop demotes `h2` to a
   subordinate label, because in a spec every `h2` is a structural separator (`## Purpose`,
   `## ADDED Requirements`) while in a proposal or design it is a content heading. It is **deliberately

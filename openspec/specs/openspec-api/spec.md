@@ -1,7 +1,9 @@
 ## Purpose
 
 提供 OpenSpec 內容的 REST API（overview / specs / changes / graph / search），作為前端資料來源。
+
 ## Requirements
+
 ### Requirement: Overview endpoint
 The system SHALL provide `GET /api/openspec/overview` that returns aggregate statistics for an OpenSpec repository. The endpoint SHALL accept an optional `aggregate` query parameter (default true); when aggregation is active and the repository has multiple worktrees, the statistics SHALL cover all worktrees following the worktree-aggregation rules (active changes unioned, archived changes deduplicated by slug).
 
@@ -244,7 +246,6 @@ slug can be resolved to the specific working copy — git worktree or jj workspa
 - **WHEN** `/watch` runs with aggregation and jj inclusion enabled on a repo with a jj workspace
 - **THEN** that workspace's `openspec/` directory is watched for changes
 
-
 ### Requirement: Worktrees endpoint
 
 The system SHALL provide a read-only `GET /api/openspec/worktrees` that returns the discovered working
@@ -428,3 +429,27 @@ The web API SHALL accept `GET /api/openspec/specs?dir=<repo>&topic=<full-topic>`
 #### Scenario: Legacy route rejects an encoded escaping topic
 - **WHEN** a client requests `/api/openspec/specs/..%2F..%2Fsecret?dir=<repo>`
 - **THEN** the API returns HTTP 400 and reads no file outside the specs tree
+
+### Requirement: Delta spec base content
+The single-change read SHALL carry, for an active change, a `base` on each entry of its `specs` artifact: the raw
+content of the main spec of the same topic in the working directory the change was read from (the `wt` worktree
+when given), resolved by the same rule as a spec read, or `null` when that topic has no main spec. For an archived
+change, `base` SHALL be absent or `null`, and a consumer SHALL NOT read it: the change's status, not this field,
+says whether a base applies. The field is additive; existing fields SHALL be unchanged. The IntelliJ embedded
+server SHALL return the same field.
+
+#### Scenario: Active change with an existing main spec
+- **WHEN** an active change has a delta spec for topic `search` and `openspec/specs/search/spec.md` exists
+- **THEN** that delta entry's `base` is the content of `openspec/specs/search/spec.md`
+
+#### Scenario: Active change introducing a new topic
+- **WHEN** an active change has a delta spec for topic `billing` and there is no main spec for `billing`
+- **THEN** that delta entry's `base` is `null`
+
+#### Scenario: Change read from a worktree
+- **WHEN** the change is read with `wt` naming a worktree
+- **THEN** each `base` is read from that worktree's `openspec/specs/`
+
+#### Scenario: Archived change
+- **WHEN** an archived change is read
+- **THEN** its delta entries carry no base content

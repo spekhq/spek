@@ -197,7 +197,10 @@ Each maps to one or more specs under `openspec/specs/`; that directory is author
   anchor are unchanged.
 - **Changes browser** — active and archived changes; each change renders its disk-discovered
   artifacts as tabs (Proposal / Design / Tasks / Specs and any custom-schema artifacts), with
-  user-selectable tab ordering (Last modified / Schema order / A–Z) and a schema badge.
+  user-selectable tab ordering (Last modified / Schema order / A–Z) and a schema badge. In an
+  active change's Specs tab, each MODIFIED requirement is marked against the main spec — scenarios
+  `new` / `changed`, dropped scenarios listed, the requirement `changed` / `same as current spec` /
+  `renamed only` / `not in current spec` — so a reviewer sees what a restated block changes.
 - **Git worktree aggregation** — discovers every worktree of a repo and merges their in-flight
   changes into one view; duplicate active changes are de-duplicated by a git-divergence election
   rather than file timestamps.
