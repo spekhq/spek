@@ -3,6 +3,15 @@
 `@spekjs/core` has its own version line, independent of the spek product releases tracked in the
 repository root `CHANGELOG.md`.
 
+## 1.16.0
+
+### Added
+
+- **`base` on the delta specs of a change read.** `readChange` sets each `ChangeArtifact.specs` entry's
+  `base` to the content of the main spec of the same topic, read from the working directory the change was
+  read from, or `null` when that topic has no main spec — for an active change only. Optional and additive.
+  Decide whether a base applies from the change's `status`, not from the field.
+
 ## 1.15.0
 
 ### Added
