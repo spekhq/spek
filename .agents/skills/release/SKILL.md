@@ -157,12 +157,31 @@ Automate the spek release process — update CHANGELOGs, bump version, create ta
 
 8. **Rebuild demo page**
 
-   Rebuild `docs/demo.html` and badges so they reflect the latest code and openspec content:
+   Rebuild `docs/demo.html` and badges so they reflect the latest code and openspec content. **Set
+   `NODE_ENV=production` first**: `build:demo` follows the shell's `NODE_ENV`, the maintainer's shell
+   defaults to `development`, and an unset one embeds React's development build (about 270 KB more).
+   v1.8.0 shipped exactly that to the live demo, and v1.8.2 nearly did again.
 
    ```bash
+   export NODE_ENV=production
    npm run build:demo
    npm run build:badges
    ```
+
+   Then check that the page is a production build. Every one of these must print `0`:
+
+   ```bash
+   grep -c 'react-dom.development' docs/demo.html
+   grep -c 'Each child in a list should have a unique' docs/demo.html
+   grep -c 'process.env.NODE_ENV' docs/demo.html
+   ```
+
+   Do **not** judge by `__REACT_DEVTOOLS_GLOBAL_HOOK__`: a production build contains it too. Also compare
+   the size with the previous release (`git show HEAD:docs/demo.html | wc -c` against
+   `wc -c < docs/demo.html`). A jump of roughly 270 KB means the development build; growth in the tens of
+   KB is usually new code plus the changes archived since.
+
+   Committing this file publishes it: `pages.yml` uploads the committed `docs/` as is and never rebuilds.
 
    Stage the updated files:
 
@@ -229,6 +248,16 @@ Automate the spek release process — update CHANGELOGs, bump version, create ta
    - CI/CD status: "Pushed. GitHub Actions will publish to VS Code Marketplace and JetBrains Marketplace."
    - GitHub Release: "Release created. Action published to GitHub Actions Marketplace."
    - Remind: "Monitor the workflows at: https://github.com/<owner>/<repo>/actions"
+
+   Once the workflows finish, confirm that the live demo is the page you committed. "Deploy Pages" runs on
+   the master push; do not use the legacy `pages/builds` API, whose `latest` is frozen at a timestamp from
+   before the workflow-based deploy:
+
+   ```bash
+   gh run list --workflow pages.yml --limit 3          # completed / success
+   wc -c < docs/demo.html
+   curl -s https://spekhq.github.io/spek/demo.html | wc -c   # equal; the CDN may lag 1–2 minutes
+   ```
 
 **Guardrails**
 - ALWAYS update all three CHANGELOGs (root + vscode + intellij). They share one version history but are NOT identical — each drops entries irrelevant to its channel (see CLAUDE.md). A channel with nothing to report still gets a section saying so, because `npm version` publishes it at the new version regardless.
