@@ -15,8 +15,10 @@ const SPECS = [
   spec("guides/pagination"),
 ];
 
-const render = (filter = "", specs = SPECS): string =>
-  renderToStaticMarkup(createElement(MemoryRouter, null, createElement(SpecTree, { specs, filter })));
+const render = (filter = "", specs = SPECS, collapsed: ReadonlySet<string> = new Set()): string =>
+  renderToStaticMarkup(
+    createElement(MemoryRouter, null, createElement(SpecTree, { specs, filter, collapsed, onToggle: () => {} })),
+  );
 
 const links = (html: string): string[] => [...html.matchAll(/<a [^>]*href="([^"]*)"/g)].map((m) => m[1]);
 
@@ -28,10 +30,28 @@ test("a spec-bearing parent is a link and expands to its child", () => {
   assert.match(html, /title="contracts\/pagination\/streaming-search"[^>]*>streaming-search</);
 });
 
-test("a grouping-only folder links nowhere", () => {
+test("a grouping-only folder links nowhere, carries no separator, and its name is its toggle", () => {
   const html = render();
   assert.ok(!links(html).some((href) => href === "/specs/contracts" || href === "/specs/guides"));
-  assert.match(html, /<span title="guides"[^>]*>guides\/<\/span>/);
+  assert.match(html, /<button [^>]*aria-expanded="true"[^>]*title="guides"[^>]*>.*?guides<\/button>/);
+  assert.doesNotMatch(html, />guides\/</);
+});
+
+test("a collapsed folder hides its children; others stay open", () => {
+  const html = render("", SPECS, new Set(["contracts/pagination"]));
+  assert.ok(!links(html).includes("/specs/contracts/pagination/streaming-search"));
+  assert.ok(links(html).includes("/specs/contracts/pagination"));
+  assert.ok(links(html).includes("/specs/guides/pagination"));
+  assert.match(html, /aria-label="Expand contracts\/pagination"/);
+
+  const grouped = render("", SPECS, new Set(["guides"]));
+  assert.ok(!links(grouped).includes("/specs/guides/pagination"));
+  assert.match(grouped, /aria-expanded="false"[^>]*title="guides"/);
+});
+
+test("a filter shows what it keeps whatever the collapsed set holds", () => {
+  const html = render("streaming", SPECS, new Set(["contracts", "contracts/pagination"]));
+  assert.ok(links(html).includes("/specs/contracts/pagination/streaming-search"));
 });
 
 test("duplicate basenames stay distinct by full topic", () => {
