@@ -31,7 +31,8 @@ tasks 與 delta spec 各自成為分頁，另有 workflow schema、關聯圖、�
 - **Dashboard** —— spec 與 change 數量、任務完成率、平均生命週期，以及停滯的 change
 - **Specs** —— 以資料夾樹呈現，巢狀結構與 `openspec/specs/` 在磁碟上一致；spec 打開是一張大綱，
   requirement 與 scenario 就地摺疊，並附 git 修訂歷史
-- **Changes** —— 進行中與已封存，change 裡有幾個 artifact 就有幾個分頁，不論它用哪個 schema 撰寫
+- **Changes** —— 進行中與已封存，change 裡有幾個 artifact 就有幾個分頁，不論它用哪個 schema 撰寫；
+  進行中 change 的 MODIFIED requirement 會標出它相對於目前 spec 改了什麼
 - **Schemas、關聯圖、時間軸** —— 每個 workflow schema 畫成流程、spec 與 change 的關係、每個 change
   的生命週期畫在 Gantt 風格的圖上
 - **Worktree 聚合** —— 所有 git worktree 進行中的 change 合併成一份去重的清單（jj workspace 為實驗性

@@ -34,7 +34,8 @@ and full-text search. It only reads; it never changes a file.
 - **Specs** — a folder tree nested as `openspec/specs/` is on disk; a spec opens as an outline with its
   requirements and scenarios folded in place, and its revision history from git
 - **Changes** — active and archived, one tab per artifact the change contains, whatever schema it was
-  written under
+  written under; an active change's modified requirements are marked with what they change against the
+  current spec
 - **Schemas, graph, timeline** — each workflow schema drawn as a flow, how specs and changes relate, and
   every change's lifecycle on a Gantt-style chart
 - **Worktree aggregation** — the in-flight changes of every git worktree in one list, deduplicated (jj
